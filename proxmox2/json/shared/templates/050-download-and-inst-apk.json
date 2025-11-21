@@ -1,0 +1,34 @@
+{
+    "$schema": "file:/Users/volkmar/proxmox2/schemas/template.schema.json",
+    "execute_on": "lxc",
+    "name": "Install Modbus2Mqtt",
+    "description": "Install modbus2mqtt on lxc container",
+    "parameters": [
+        {
+            "name": "packageurl",
+            "type": "string",
+            "required": true,
+            "description": "URL of the Modbus2Mqtt package to be installed"
+        },
+        {
+            "name": "packagerpubkey",
+            "type": "string",
+            "required": true,
+            "description": "Public key for verifying the package"
+        }
+    ],
+    "commands": [
+            {
+                    "type": "command",
+                    "name": "Download Package",
+                    "execute": "wget {{ packageurl }} -O packagefile",
+                    "description": "Download package to the LXC container"
+            }, 
+            {
+                    "type": "command",
+                    "name": "Install Package",
+                    "execute": "apk add --allow-untrusted --key \"{{ packagerpubkey }}\" packagefile",
+                    "description": "Verify and install package on the LXC container"
+            }  
+    ]
+}
