@@ -1,6 +1,6 @@
-import { describe, it, beforeEach, expect, afterEach } from "vitest";
-import { ProxmoxExecution } from "@src/proxmox-execution.js";
-import { ICommand, IProxmoxExecuteMessage, ISsh } from "@src/types.js";
+import { describe, it, expect, afterEach } from "vitest";
+import { ProxmoxExecution } from "@src/proxmox-execution.mjs";
+import { ICommand, IProxmoxExecuteMessage, ISsh } from "@src/types.mjs";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";

@@ -8,7 +8,7 @@ import {
   afterEach,
 } from "vitest";
 import request from "supertest";
-import { ProxmoxWebApp } from "@src/webapp.js";
+import { ProxmoxWebApp } from "@src/webapp.mjs";
 import express from "express";
 import fs from "node:fs";
 import path from "node:path";

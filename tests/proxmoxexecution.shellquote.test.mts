@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { ProxmoxExecution } from "@src/proxmox-execution.mjs";
 import { ICommand } from "@src/types.mjs";
 import { spawnSync } from "child_process";
-import * as fs from "fs";
+import fs from "fs";
 import * as path from "path";
 describe("ProxmoxExecution shell quoting", () => {
   const dummySSH = { host: "localhost", port: 22 };

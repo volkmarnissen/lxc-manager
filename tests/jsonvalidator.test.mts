@@ -54,11 +54,11 @@ describe("JsonValidator", () => {
       error = e;
     }
     expect(error).toBeDefined();
-    expect(error.message).toMatch(/Validation failed/);
-    expect(error.errorLines).toBeDefined();
-    expect(Array.isArray(error.errorLines)).toBe(true);
+    expect(error.message).toMatch(/has errors/);
+    expect(error.details[0].line).toBe(4);
+    expect(Array.isArray(error.details)).toBe(true);
     // Die Zeilennummer sollte im Bereich der modifizierten Zeile liegen
-    expect(error.errorLines.some((l: number) => l > 0)).toBe(true);
+    expect(error.details.some((d: any) => d.line > 0)).toBe(true);
     // Aufräumen
     rmSync(tmp, { recursive: true, force: true });
   });

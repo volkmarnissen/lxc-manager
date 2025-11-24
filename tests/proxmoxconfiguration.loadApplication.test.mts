@@ -3,7 +3,7 @@ import { expect, describe, it, beforeEach, afterEach } from "vitest";
 import {
   ProxmoxConfiguration,
   ProxmoxConfigurationError,
-} from "@src/proxmoxconfiguration.js";
+} from "@src/proxmoxconfiguration.mjs";
 import { ProxmoxTestHelper } from "@tests/proxmoxTestHelper.mjs";
 
 declare module "@tests/proxmoxTestHelper.mjs" {

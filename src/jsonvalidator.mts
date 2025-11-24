@@ -2,7 +2,7 @@ import { parse as parseWithSourceMap } from "json-source-map";
 
 import { Ajv, ErrorObject } from "ajv";
 import ajvErrors from "ajv-errors";
-import { readFileSync, readdirSync } from "fs";
+import fs from "fs";
 import path, { resolve, extname, join } from "path";
 export interface IJsonErrorDetails {
   line?: number;
@@ -57,7 +57,7 @@ export class JsonValidator {
     ajvErrors.default(this.ajv);
     // Validate and add all .schema.json files
     let allFiles: string[] = [];
-    const files = readdirSync(schemasDir).filter((f) => extname(f) === ".json");
+    const files = fs.readdirSync(schemasDir).filter((f) => extname(f) === ".json");
     // 1. Basis-Schemas zuerst
     for (const file of baseSchemas) {
       if (files.includes(file)) allFiles.push(file);
@@ -71,7 +71,7 @@ export class JsonValidator {
     for (const file of allFiles) {
       try {
         const schemaPath = join(schemasDir, file);
-        const schemaContent = readFileSync(schemaPath, "utf-8");
+        const schemaContent = fs.readFileSync(schemaPath, "utf-8");
         const schema = JSON.parse(schemaContent);
         this.ajv.addSchema(schema, file);
         this.ajv.compile(schema);
@@ -169,7 +169,7 @@ export class JsonValidator {
     let data: unknown;
     let pointers: any;
     try {
-      fileText = readFileSync(filePath, "utf-8");
+      fileText = fs.readFileSync(filePath, "utf-8");
     } catch (e: any) {
       throw new Error(
         `File not found or cannot be read: ${filePath}\n${e && (e.message || String(e))}`,

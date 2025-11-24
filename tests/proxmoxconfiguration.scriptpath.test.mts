@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { ProxmoxConfiguration } from "../src/proxmoxconfiguration.js";
-import * as fs from "fs";
+import { ProxmoxConfiguration } from "../src/proxmoxconfiguration.mjs";
+import fs from "fs";
 import * as path from "path";
 import os from "node:os";
 

@@ -3,7 +3,6 @@ import express from "express";
 import { ProxmoxConfiguration } from "@src/proxmoxconfiguration.mjs";
 import { TaskType, ISsh, IProxmoxExecuteMessage } from "@src/types.mjs";
 import { ProxmoxExecution } from "@src/proxmox-execution.mjs";
-import { existsSync } from "fs";
 import http from "http";
 import path from "path";
 import fs from "node:fs";
@@ -145,7 +144,7 @@ export class ProxmoxWebApp {
         const testApplications =
           localJsonPath &&
           localJsonPath !== jsonPath &&
-          existsSync(localJsonPath)
+          fs.existsSync(localJsonPath)
             ? config.listApplications()
             : [];
 
