@@ -15,8 +15,8 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
-        "value": {"type": "string"},
-        "default": {"type": "string"}
+        "value": {"type": [ "string", "boolean", "number" ]},
+        "default": {"type": [ "string", "boolean", "number" ]}
       },
       "required": ["name"],
       "additionalProperties": false

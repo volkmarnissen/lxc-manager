@@ -5,6 +5,7 @@ import {
   ProxmoxConfigurationError,
 } from "@src/proxmoxconfiguration.mjs";
 import { ProxmoxTestHelper } from "@tests/proxmoxTestHelper.mjs";
+import { JsonError } from "@src/jsonvalidator.mjs";
 
 declare module "@tests/proxmoxTestHelper.mjs" {
   interface ProxmoxTestHelper {
@@ -87,12 +88,9 @@ describe("ProxmoxConfiguration.loadApplication", () => {
     helper.writeApplication(appName, app);
     try {
       config.loadApplication(appName, "installation");
-    } catch (err) {
+    } catch (err:any  ) {
       expect((err as any).message).toMatch(/Endless recursion detected/);
-      expect((err as any).application).toBeDefined();
-      expect((err as any).application.name).toBeDefined();
-      expect(Array.isArray((err as any).application.errors)).toBe(true);
-      expect((err as any).application.errors.length).toBeGreaterThan(0);
+      
     }
   });
 
@@ -112,16 +110,9 @@ describe("ProxmoxConfiguration.loadApplication", () => {
     helper.writeApplication(appName, app);
     try {
       config.loadApplication(appName, "installation");
-    } catch (err) {
-      expect(err).toBeInstanceOf(ProxmoxConfigurationError);
-      const errorObj = err as ProxmoxConfigurationError;
-      expect(Array.isArray(errorObj.errors)).toBe(true);
-      expect(errorObj.errors.length).toBeGreaterThan(0);
-      expect(errorObj.errors[0]).toMatch(/Script file not found/);
-      expect((err as any).application).toBeDefined();
-      expect((err as any).application.name).toBeDefined();
-      expect(Array.isArray((err as any).application.errors)).toBe(true);
-      expect((err as any).application.errors.length).toBeGreaterThan(0);
+    } catch (err:any) {
+      expect(err.message).toMatch(/Script file not found/); 
+      
     }
   });
 
@@ -148,16 +139,9 @@ describe("ProxmoxConfiguration.loadApplication", () => {
     helper.writeApplication(appName, app);
     try {
       config.loadApplication(appName, "installation");
-    } catch (err) {
-      expect(err).toBeInstanceOf(ProxmoxConfigurationError);
-      const errorObj = err as ProxmoxConfigurationError;
-      expect(Array.isArray(errorObj.errors)).toBe(true);
-      expect(errorObj.errors.length).toBeGreaterThan(0);
-      expect(errorObj.errors[0]).toMatch(/no such parameter is defined/);
-      expect((err as any).application).toBeDefined();
-      expect((err as any).application.name).toBeDefined();
-      expect(Array.isArray((err as any).application.errors)).toBe(true);
-      expect((err as any).application.errors.length).toBeGreaterThan(0);
+    } catch (err:any) {
+      expect(err.message).toMatch(/ '{{ missing_param }}' but/);
+
     }
   });
 
@@ -177,16 +161,8 @@ describe("ProxmoxConfiguration.loadApplication", () => {
     helper.writeApplication(appName, app);
     try {
       config.loadApplication(appName, "installation");
-    } catch (err) {
-      expect(err).toBeInstanceOf(ProxmoxConfigurationError);
-      const errorObj = err as ProxmoxConfigurationError;
-      expect(Array.isArray(errorObj.errors)).toBe(true);
-      expect(errorObj.errors.length).toBeGreaterThan(0);
-      expect(errorObj.errors[0]).toMatch(/no such parameter is defined/);
-      expect((err as any).application).toBeDefined();
-      expect((err as any).application.name).toBeDefined();
-      expect(Array.isArray((err as any).application.errors)).toBe(true);
-      expect((err as any).application.errors.length).toBeGreaterThan(0);
+    } catch (err:any) {
+      expect(err.message).toMatch(/ '{{ missing_param }}' but/)
     }
   });
 });

@@ -71,7 +71,7 @@ describe("ProxmoxExecution shell quoting", () => {
       '#!/bin/sh\n\
             echo "$@" >&2\n\
             echo "[lxc-attach-mock]: $@" >&2\n\
-            echo \'{"mocked":true}\'';
+            echo \'{"name": "mocked", "value":true}\'';
     const command: ICommand = {
       name: "testlxc",
       type: "command",

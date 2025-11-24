@@ -234,7 +234,7 @@ class ProxmoxConfiguration {
     if (errors.length > 0) {
       if (errors.length === 1 && errors[0]) {
         // Only one error: throw it directly (as string or error object)
-        throw errors[0];
+        throw errors[0].error;
       } else {
         const err = new ProxmoxConfigurationError(
           applicationName,
