@@ -1,3 +1,4 @@
+
 import { EventEmitter } from "events";
 import { ICommand, IProxmoxExecuteMessage, ISsh } from "@src/types.mjs";
 import path from "path";
@@ -9,7 +10,12 @@ export interface IProxmoxRunResult {
 }
 
 let index = 0;
-
+// Generated from outputs.schema.json
+export interface IOutput {
+  name: string;
+  value?: string;
+  default?: string;
+}
 /**
  * ProxmoxExecution: Executes a list of ICommand objects with variable substitution and remote/container execution.
  */
@@ -151,17 +157,20 @@ export class ProxmoxExecution extends EventEmitter {
         }
       }
 
-      const json = JSON.parse(stdout);
-      // Validate against outputs.schema.json (throws on error)
-
-      this.validator.serializeJsonWithSchema(json, "outputs.schema.json", "Outputs " + tmplCommand.name);
-      if (Array.isArray(json)) {
-        for (const entry of json) {
-          this.outputs.set(entry.name, entry.value);
+      const outputsJson = this.validator.serializeJsonWithSchema<IOutput[]|IOutput>(JSON.parse(stdout), "outputs.schema.json", "Outputs " + tmplCommand.name);
+      if (Array.isArray(outputsJson)) {
+        for (const entry of outputsJson) {
+          if (entry.value)
+              this.outputs.set(entry.name, entry.value);
+          if (entry.default)
+              this.defaults.set(entry.name, entry.default);
         }
-      } else if (typeof json === "object" && json !== null) {
-        this.outputs.set(json.name, json.value);
-      }
+      } else if (typeof outputsJson === "object" && outputsJson !== null) {
+        if (outputsJson.value)
+              this.outputs.set(outputsJson.name, outputsJson.value);
+          if (outputsJson.default)
+              this.defaults.set(outputsJson.name, outputsJson.default);
+        }
     } catch (e) {
       const msg: IProxmoxExecuteMessage = {
         stderr,

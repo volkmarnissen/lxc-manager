@@ -15,9 +15,10 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
-        "value": {}
+        "value": {"type": "string"},
+        "default": {"type": "string"}
       },
-      "required": ["name", "value"],
+      "required": ["name"],
       "additionalProperties": false
     }
   }
