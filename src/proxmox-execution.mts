@@ -1,4 +1,3 @@
-
 import { EventEmitter } from "events";
 import { ICommand, IProxmoxExecuteMessage, ISsh } from "@src/types.mjs";
 import path from "path";
@@ -157,20 +156,24 @@ export class ProxmoxExecution extends EventEmitter {
         }
       }
 
-      const outputsJson = this.validator.serializeJsonWithSchema<IOutput[]|IOutput>(JSON.parse(stdout), "outputs.schema.json", "Outputs " + tmplCommand.name);
+      const outputsJson = this.validator.serializeJsonWithSchema<
+        IOutput[] | IOutput
+      >(
+        JSON.parse(stdout),
+        "outputs.schema.json",
+        "Outputs " + tmplCommand.name,
+      );
       if (Array.isArray(outputsJson)) {
         for (const entry of outputsJson) {
-          if (entry.value)
-              this.outputs.set(entry.name, entry.value);
-          if (entry.default)
-              this.defaults.set(entry.name, entry.default);
+          if (entry.value) this.outputs.set(entry.name, entry.value);
+          if (entry.default) this.defaults.set(entry.name, entry.default);
         }
       } else if (typeof outputsJson === "object" && outputsJson !== null) {
         if (outputsJson.value)
-              this.outputs.set(outputsJson.name, outputsJson.value);
-          if (outputsJson.default)
-              this.defaults.set(outputsJson.name, outputsJson.default);
-        }
+          this.outputs.set(outputsJson.name, outputsJson.value);
+        if (outputsJson.default)
+          this.defaults.set(outputsJson.name, outputsJson.default);
+      }
     } catch (e) {
       const msg: IProxmoxExecuteMessage = {
         stderr,

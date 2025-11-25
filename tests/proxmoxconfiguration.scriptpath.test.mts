@@ -3,6 +3,7 @@ import { ProxmoxConfiguration } from "../src/proxmoxconfiguration.mjs";
 import fs from "fs";
 import * as path from "path";
 import os from "node:os";
+import { TemplateProcessor } from "@src/templateprocessor.mjs";
 
 describe("ProxmoxConfiguration script path resolution", () => {
   const tmp = os.tmpdir();
@@ -59,8 +60,10 @@ describe("ProxmoxConfiguration script path resolution", () => {
 
   it("should resolve script path in commands", () => {
     const config = new ProxmoxConfiguration(schemaPath, jsonPath, localPath);
-    config.loadApplication(appName, "installation");
-    const scriptCmd = config.commands.find((cmd) => cmd.type === "script");
+    const templateProcessor = new TemplateProcessor(config);
+  
+    const result = templateProcessor.loadApplication(appName, "installation");
+    const scriptCmd = result.commands.find((cmd) => cmd.type === "script");
     expect(scriptCmd).toBeDefined();
     expect(scriptCmd!.execute).toBe(scriptPath);
   });

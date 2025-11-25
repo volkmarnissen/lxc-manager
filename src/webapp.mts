@@ -7,6 +7,7 @@ import http from "http";
 import path from "path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
+import { TemplateProcessor } from "@src/templateprocessor.mjs";
 
 export class ProxmoxWebApp {
   app: express.Application;
@@ -48,10 +49,11 @@ export class ProxmoxWebApp {
             jsonPath,
             localJsonPath,
           );
-          config.loadApplication(application, task as TaskType);
-          const commands = config.commands;
+          const templateProcessor = new TemplateProcessor(config);
+          const loaded = templateProcessor.loadApplication(application, task as TaskType);
+          const commands = loaded.commands;
           const defaults = new Map<string, string | number | boolean>();
-          config.parameters.forEach((param) => {
+          loaded.parameters.forEach((param) => {
             const p = defaults.get(param.name);
             if (!p && param.default !== undefined) {
               // do not overwrite existing defaults
@@ -123,8 +125,9 @@ export class ProxmoxWebApp {
             jsonPath,
             localJsonPath,
           );
-          config.loadApplication(application, task as TaskType);
-          res.json({ unresolvedParameters: config.getUnresolvedParameters() });
+          const templateProcessor = new TemplateProcessor(config);
+          const loaded = templateProcessor.loadApplication(application, task as TaskType);
+          res.json({ unresolvedParameters: loaded.parameters.filter(param => !param.default) });
         } catch (err: any) {
           res
             .status(400)

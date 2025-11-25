@@ -4,13 +4,12 @@ import { Ajv, ErrorObject } from "ajv";
 import ajvErrors from "ajv-errors";
 import fs from "fs";
 import path, { resolve, extname, join } from "path";
-export interface IJsonErrorDetails {
+export interface IJsonErrorDetails extends Error {
   line?: number;
-  error: Error;
 }
 export class JsonError extends Error {
-  public static baseDir: string="";
-  public details: IJsonErrorDetails[]|undefined;
+  public static baseDir: string = "";
+  public details: IJsonErrorDetails[] | undefined;
   public filename: string;
 
   constructor(filename: string, details?: IJsonErrorDetails[]) {
@@ -20,18 +19,23 @@ export class JsonError extends Error {
     this.details = details;
   }
   get message(): string {
-    return `'${path.relative(JsonError.baseDir, this.filename)}' has errors.` +
+    return (
+      `'${path.relative(JsonError.baseDir, this.filename)}' has errors.` +
       (this.details && this.details.length > 1
         ? ` See details for ${this.details.length} errors.`
-        : "");
+        : "")
+    );
   }
 }
-export class ValidateJsonError extends Error {
-   constructor(filename: string, result: ErrorObject) {
-    super(`'${filename}': Validation error ${result.instancePath} ${result.message || "Unknown validation error"}`);
+export class ValidateJsonError extends Error implements IJsonErrorDetails {
+  line?: number;
+  constructor(filename: string, result: ErrorObject, _line?: number) {
+    super(
+      `'${filename}': Validation error ${result.instancePath} ${result.message || "Unknown validation error"}`,
+    );
     this.name = "ValidateJsonError";
-  } 
- 
+    if (_line !== undefined) this.line = _line;
+  }
 }
 export class JsonValidator {
   static instance: JsonValidator | undefined;
@@ -57,7 +61,9 @@ export class JsonValidator {
     ajvErrors.default(this.ajv);
     // Validate and add all .schema.json files
     let allFiles: string[] = [];
-    const files = fs.readdirSync(schemasDir).filter((f) => extname(f) === ".json");
+    const files = fs
+      .readdirSync(schemasDir)
+      .filter((f) => extname(f) === ".json");
     // 1. Basis-Schemas zuerst
     for (const file of baseSchemas) {
       if (files.includes(file)) allFiles.push(file);
@@ -76,14 +82,11 @@ export class JsonValidator {
         this.ajv.addSchema(schema, file);
         this.ajv.compile(schema);
       } catch (err: Error | any) {
-        errors.push({ line: -1, error: err  as Error});
+        errors.push(err);
       }
     }
     if (errors.length > 0) {
-      throw new JsonError(
-        "",
-        errors
-      );
+      throw new JsonError("", errors);
     }
   }
 
@@ -94,7 +97,11 @@ export class JsonValidator {
    * @param schemaId The path to the schema file
    * @returns The validated and typed object
    */
-  public serializeJsonWithSchema<T>(jsonData: unknown, schemaId: string, filePath?: string): T {
+  public serializeJsonWithSchema<T>(
+    jsonData: unknown,
+    schemaId: string,
+    filePath?: string,
+  ): T {
     const schemaKey = path.basename(schemaId);
     const validate = this.ajv.getSchema<T>(schemaKey);
     if (!validate) {
@@ -138,17 +145,15 @@ export class JsonValidator {
               ? pointer.key.line + 1
               : pointer.value.line + 1
             : -1;
-          return {
-            line,
-            error: new ValidateJsonError(schemaKey, e)
-          };
+          return new ValidateJsonError(schemaKey, e, line);
         });
       } else if (validate.errors) {
-        details = validate.errors.map((e: ErrorObject): IJsonErrorDetails  => ({
-          error: new ValidateJsonError(filePath ? filePath : schemaKey, e)
-        }));
+        details = validate.errors.map(
+          (e: ErrorObject): IJsonErrorDetails =>
+            new ValidateJsonError(filePath ? filePath : schemaKey, e),
+        );
       } else {
-        details = [{ line: -1, error: new Error("Unknown error") }];
+        details = [new Error("Unknown error")];
       }
       throw new JsonError(schemaId, details);
     }
@@ -183,15 +188,13 @@ export class JsonValidator {
       (data as any).__sourceMap = { pointers };
     } catch (e: any) {
       // Try to extract line/column from error if possible
-      if( e instanceof JsonError)
-        e.filename = filePath
-      throw e
+      if (e instanceof JsonError) e.filename = filePath;
+      throw e;
     }
     try {
       return this.serializeJsonWithSchema<T>(data, schemaKey, filePath);
     } catch (e: any) {
-      if( e instanceof JsonError)
-        e.filename = filePath
+      if (e instanceof JsonError) e.filename = filePath;
       throw e;
     }
   }

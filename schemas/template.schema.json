@@ -11,7 +11,8 @@
       "type": "boolean"
     },
     "name": {
-      "type": "string", "maxLength": 30
+      "type": "string",
+      "maxLength": 30
     },
     "description": {
       "type": "string"

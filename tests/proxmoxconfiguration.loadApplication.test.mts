@@ -6,6 +6,7 @@ import {
 } from "@src/proxmoxconfiguration.mjs";
 import { ProxmoxTestHelper } from "@tests/proxmoxTestHelper.mjs";
 import { JsonError } from "@src/jsonvalidator.mjs";
+import { TemplateProcessor } from "@src/templateprocessor.mjs";
 
 declare module "@tests/proxmoxTestHelper.mjs" {
   interface ProxmoxTestHelper {
@@ -33,17 +34,17 @@ describe("ProxmoxConfiguration.loadApplication", () => {
 
   it("should load parameters and commands for modbus2mqtt installation", () => {
     const config = helper.createProxmoxConfiguration();
+    const templateProcessor = new TemplateProcessor(config);
+    const result = templateProcessor.loadApplication("modbus2mqtt", "installation");
 
-    config.loadApplication("modbus2mqtt", "installation");
-
-    expect(config.parameters.length).toBeGreaterThan(0);
-    expect(config.commands.length).toBeGreaterThan(0);
-    const paramNames = config.parameters.map((p) => p.name);
+    expect(result.parameters.length).toBeGreaterThan(0);
+    expect(result.commands.length).toBeGreaterThan(0);
+    const paramNames = result.parameters.map((p) => p.name);
     expect(paramNames).toContain("packagerpubkey");
     expect(paramNames).toContain("packageurl");
     expect(paramNames).toContain("vm_id");
 
-    config.getUnresolvedParameters().forEach((param) => {
+    templateProcessor.getUnresolvedParameters(result.parameters, result.resolvedParams).forEach((param) => {
       expect(param.name).not.toBe("vm_id");
     });
   });
@@ -54,12 +55,13 @@ describe("ProxmoxConfiguration.loadApplication", () => {
     try {
       let application = helper.readApplication("modbus2mqtt");
       application.installation = ["nonexistent-template.json"];
-      config.loadApplication("modbus2mqtt", "installation");
+      const templateProcessor = new TemplateProcessor(config);
+      templateProcessor.loadApplication("modbus2mqtt", "installation");
     } catch (err) {
       expect(err).toBeInstanceOf(ProxmoxConfigurationError);
       const errorObj = err as ProxmoxConfigurationError;
-      expect(Array.isArray(errorObj.errors)).toBe(true);
-      expect(errorObj.errors.length).toBeGreaterThan(0);
+      expect(Array.isArray(errorObj.details)).toBe(true);
+      expect(errorObj.details!.length).toBeGreaterThan(0);
       expect(errorObj.message).toMatch(
         /Multiple errors|Template file not found/,
       );
@@ -87,10 +89,10 @@ describe("ProxmoxConfiguration.loadApplication", () => {
     app.installation = [templateName];
     helper.writeApplication(appName, app);
     try {
-      config.loadApplication(appName, "installation");
-    } catch (err:any  ) {
+      const templateProcessor = new TemplateProcessor(config);
+      templateProcessor.loadApplication(appName, "installation");
+    } catch (err: any) {
       expect((err as any).message).toMatch(/Endless recursion detected/);
-      
     }
   });
 
@@ -109,10 +111,10 @@ describe("ProxmoxConfiguration.loadApplication", () => {
     app.installation = [templateName];
     helper.writeApplication(appName, app);
     try {
-      config.loadApplication(appName, "installation");
-    } catch (err:any) {
-      expect(err.message).toMatch(/Script file not found/); 
-      
+      const templateProcessor = new TemplateProcessor(config);
+      templateProcessor.loadApplication(appName, "installation");
+    }  catch (err: any) {
+      expect(err.message).toMatch(/Script file not found/);
     }
   });
 
@@ -138,10 +140,9 @@ describe("ProxmoxConfiguration.loadApplication", () => {
     app.installation = [templateName];
     helper.writeApplication(appName, app);
     try {
-      config.loadApplication(appName, "installation");
-    } catch (err:any) {
+      const templateProcessor = new TemplateProcessor(config);
+    } catch (err: any) {
       expect(err.message).toMatch(/ '{{ missing_param }}' but/);
-
     }
   });
 
@@ -160,9 +161,10 @@ describe("ProxmoxConfiguration.loadApplication", () => {
     app.installation = [templateName];
     helper.writeApplication(appName, app);
     try {
-      config.loadApplication(appName, "installation");
-    } catch (err:any) {
-      expect(err.message).toMatch(/ '{{ missing_param }}' but/)
+      const templateProcessor = new TemplateProcessor(config);
+      templateProcessor.loadApplication(appName, "installation");
+    } catch (err: any) {
+      expect(err.message).toMatch(/ '{{ missing_param }}' but/);
     }
   });
 });
