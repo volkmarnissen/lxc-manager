@@ -1,0 +1,30 @@
+
+.app-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 44px;
+	background: #f5f5f5;
+	color: #222;
+	padding: 0 1rem;
+	box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+
+.app-title {
+	font-size: 1.1rem;
+	font-weight: 500;
+}
+
+.ssh-btn {
+	background: #fff;
+	color: #222;
+	border: none;
+	border-radius: 4px;
+	padding: 0.3em 1em;
+	font-size: 1rem;
+	cursor: pointer;
+	transition: background 0.2s;
+}
+.ssh-btn:hover {
+	background: #e0e0e0;
+}

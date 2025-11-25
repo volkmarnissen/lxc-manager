@@ -1,0 +1,36 @@
+
+<h2>Process Monitor</h2>
+
+<mat-accordion>
+  @for (msg of messages; track msg.index) {
+    <mat-expansion-panel>
+    <mat-expansion-panel-header>
+      <mat-panel-title>
+        @if (msg.exitCode === 0) {
+          <span style="color:green; font-size:1.5em;">&#10003;</span>
+        } @else {
+          <span style="color:red; font-size:1.5em;">&#10007;</span>
+        }
+        &nbsp;{{ msg.command }}
+      </mat-panel-title>
+      <mat-panel-description>
+        @if (msg.stderr) {<span>stderr</span>}
+      </mat-panel-description>
+    </mat-expansion-panel-header>
+    @if (msg.stderr) {
+      <div>
+        <strong>stderr:</strong>
+        <pre>{{ msg.stderr }}</pre>
+      </div>
+    } @else {
+      <div>
+        <em>No stderr output.</em>
+      </div>
+    }
+  </mat-expansion-panel>
+  }@empty {
+    <div>No process messages available.</div>
+  }
+</mat-accordion>
+
+

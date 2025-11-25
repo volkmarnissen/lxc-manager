@@ -1,0 +1,101 @@
+
+// ...existing code...
+import { Component, Inject, OnInit, computed, signal } from '@angular/core';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { CommonModule } from '@angular/common';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { IApplicationWeb, IParameter } from '../../shared/types';
+import { ProxmoxConfigurationService } from '../proxmox-configuration.service';
+
+@Component({
+  selector: 'app-proxmox-configuration-dialog',
+  standalone: true,
+  imports: [
+    CommonModule, MatDialogModule, FormsModule, ReactiveFormsModule,
+    MatFormFieldModule, MatInputModule, MatSelectModule, MatTooltipModule, MatSlideToggleModule
+  ],
+  templateUrl: './proxmox-configuration-dialog.html',
+  styleUrl: './proxmox-configuration-dialog.scss',
+})
+export class ProxmoxConfigurationDialog implements OnInit {
+  form: FormGroup;
+  unresolvedParameters: IParameter[] = [];
+  groupedParameters: { [template: string]: IParameter[] } = {};
+  loading = signal(true);
+  error = signal<string | null>(null);
+
+  constructor(
+    public dialogRef: MatDialogRef<ProxmoxConfigurationDialog>,
+    @Inject(MAT_DIALOG_DATA) public data: { app: IApplicationWeb },
+    private fb: FormBuilder,
+    private configService: ProxmoxConfigurationService
+  ) {
+    this.form = this.fb.group({});
+  }
+  getGroupNames(): string[] {
+    return Object.keys(this.groupedParameters);
+  }
+  ngOnInit(): void {
+    // For demo: use 'installation' as default task, can be extended
+    this.configService.getUnresolvedParameters(this.data.app.id, 'installation').subscribe({
+      next: (res) => {
+        this.unresolvedParameters = res.unresolvedParameters;
+        // Gruppiere nach template
+        this.groupedParameters = {};
+        for (const param of this.unresolvedParameters) {
+          const group = param.template || 'General';
+          if (!this.groupedParameters[group]) this.groupedParameters[group] = [];
+          this.groupedParameters[group].push(param);
+          const validators = param.required ? [Validators.required] : [];
+          const defaultValue = param.default !== undefined ? param.default : '';
+          this.form.addControl(param.name, new FormControl(defaultValue, validators));
+        }
+        this.loading.set(false);
+      },
+      error: (err) => {
+        this.error.set('Failed to load parameters');
+        this.loading.set(false);
+        this.dialogRef.close();
+      }
+    });
+  }
+
+  getTooltip(param: IParameter): string | undefined {
+    return param.description;
+  }
+
+  save() {
+    if (this.form.invalid) return;
+    this.loading.set(true);
+    const params = Object.entries(this.form.value)
+      .filter(([_, value]) => value !== null && value !== undefined && value !== '')
+      .map(([name, value]) => ({ name, value: value as string | number | boolean }));
+    const application = this.data.app.id;
+    const task = 'installation';
+    this.configService.postProxmoxConfiguration(application, task, params).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.dialogRef.close(this.form.value);
+        // Navigate to process-monitor after successful install
+        this.configService['router'].navigate(['/monitor']);
+      },
+      error: (err) => {
+        this.error.set('Failed to install configuration');
+        this.loading.set(false);
+      }
+    });
+  }
+
+  close(): void {
+    this.dialogRef.close();
+  }
+
+  get groupNames(): string[] {
+    return Object.keys(this.groupedParameters);
+  }
+}

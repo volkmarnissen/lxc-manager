@@ -1,0 +1,11 @@
+<header class="app-header">
+  <span class="app-title">Proxmox WebApp</span>
+  <button class="ssh-btn" type="button" (click)="openSshDialog()">SSH Konfiguration</button>
+</header>
+
+
+@if (showSshDialog) {
+  <app-configuration-dialog [sshMode]="true" (close)="closeSshDialog()"></app-configuration-dialog>
+}
+
+<router-outlet></router-outlet>

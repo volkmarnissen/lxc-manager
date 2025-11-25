@@ -1,0 +1,123 @@
+/* Zentrierte, moderne Buttons */
+.dialog-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+  margin-bottom: 2.5rem;
+}
+
+button[mat-stroked-button],
+button[mat-flat-button] {
+  min-width: 120px;
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px 0 #0001;
+  letter-spacing: 0.03em;
+}
+h2, p {
+  margin: 0;
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+  padding: 2rem 1.5rem 1.5rem 1.5rem;
+  background: #f5f7fa;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+.app-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px 0 #0002;
+  object-fit: contain;
+  background: #fff;
+}
+.header-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.header-divider {
+  border: none;
+  border-bottom: 2px solid #e0e0e0;
+  margin: 0 0 1.5rem 0;
+  width: 100%;
+}
+/* Gruppen-Layout für Parameter */
+
+.mat-mdc-dialog-content {
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 2.5rem;
+}
+
+h2, p {
+  text-align: center;
+}
+
+.group-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.param-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 260pt;
+  min-width: 260pt;
+  max-width: 260pt;
+  padding: 0.3rem 0.5rem 0.5rem 0.5rem;
+  border-radius: 8px;
+  background: #fafbfc;
+  box-shadow: 0 2px 8px 0 #0001;
+  margin-bottom: 1rem;
+}
+
+.group-title {
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  width: 100%;
+  text-align: center;
+}
+
+.group-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  justify-content: center;
+}
+
+.param-field {
+  width: 200pt;
+  min-width: 200pt;
+  margin-bottom: 1rem;
+}
+.param-toggle {
+  width: 200pt;
+  min-width: 200pt;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+button {
+  margin-top: 2rem;
+}
