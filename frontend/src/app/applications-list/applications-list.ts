@@ -1,10 +1,10 @@
 
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ProxmoxConfigurationDialog } from '../proxmox-configuration-dialog/proxmox-configuration-dialog';
 import { CommonModule } from '@angular/common';
 import { ProxmoxConfigurationService } from '../proxmox-configuration.service';
-import { IApplicationWeb } from '../../shared/types';
+import { IApplicationWeb } from '../../shared/types.mjs';
 
 @Component({
   selector: 'app-applications-list',
@@ -18,7 +18,8 @@ export class ApplicationsList implements OnInit {
   loading = true;
   error?: string;
 
-  constructor(private proxmoxService: ProxmoxConfigurationService, private dialog: MatDialog) {}
+  private proxmoxService = inject(ProxmoxConfigurationService);
+  private dialog = inject(MatDialog);
 
   openProxmoxConfigDialog(app: IApplicationWeb) {
     this.dialog.open(ProxmoxConfigurationDialog, {
@@ -32,7 +33,7 @@ export class ApplicationsList implements OnInit {
         this.applications = apps;
         this.loading = false;
       },
-      error: (err) => {
+      error: () => {
         this.error = 'Error loading applications';
         this.loading = false;
       }
