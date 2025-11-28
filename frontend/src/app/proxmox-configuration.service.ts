@@ -1,34 +1,35 @@
 //
 
-import { ISsh } from '../shared/types';
-import { Injectable } from '@angular/core';
+import { ISsh } from '../shared/types.mjs';
+import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { IApplicationWeb, IParameter } from '../shared/types';
+import { IApplicationWeb, IParameter } from '../shared/types.mjs';
 
 
 
-export type ProxmoxConfigParam = { name: string; value: string | number | boolean };
+export interface ProxmoxConfigParam { name: string; value: string | number | boolean }
 
 
 @Injectable({
   providedIn: 'root',
 })
 export class ProxmoxConfigurationService {
-  constructor(private http: HttpClient, private router: Router) {}
+  private http = inject(HttpClient);
+  private router = inject(Router);
 
   private static _router: Router;
   static setRouter(router: Router) {
     ProxmoxConfigurationService._router = router;
   }
-  static handleError(err: any) {
+  static handleError(err: Error & { errors?: Error; status?: number; message?: string }) {
     let msg = '';
-    if (err?.error?.errors && Array.isArray(err.error.errors) && err.error.errors.length > 0) {
-      msg = err.error.errors.join('\n');
-    } else if (err?.error?.error) {
-      msg = err.error.error;
+    if (err?.errors && Array.isArray(err.errors) && err.errors.length > 0) {
+      msg = err.errors.join('\n');
+    } else if (err?.errors instanceof Error) {
+      msg = err.errors.message;
     } else if (err?.message) {
       msg = err.message;
     } else if (err?.status) {

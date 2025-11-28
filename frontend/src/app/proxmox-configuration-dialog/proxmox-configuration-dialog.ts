@@ -1,6 +1,6 @@
 
 // ...existing code...
-import { Component, Inject, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
@@ -9,7 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { IApplicationWeb, IParameter } from '../../shared/types';
+import { IApplicationWeb, IParameter } from '../../shared/types.mjs';
 import { ProxmoxConfigurationService } from '../proxmox-configuration.service';
 
 @Component({
@@ -25,16 +25,14 @@ import { ProxmoxConfigurationService } from '../proxmox-configuration.service';
 export class ProxmoxConfigurationDialog implements OnInit {
   form: FormGroup;
   unresolvedParameters: IParameter[] = [];
-  groupedParameters: { [template: string]: IParameter[] } = {};
+  groupedParameters: Record<string, IParameter[]> = {};
   loading = signal(true);
   error = signal<string | null>(null);
-
-  constructor(
-    public dialogRef: MatDialogRef<ProxmoxConfigurationDialog>,
-    @Inject(MAT_DIALOG_DATA) public data: { app: IApplicationWeb },
-    private fb: FormBuilder,
-    private configService: ProxmoxConfigurationService
-  ) {
+  private configService: ProxmoxConfigurationService = inject(ProxmoxConfigurationService);
+  public dialogRef: MatDialogRef<ProxmoxConfigurationDialog> = inject(MatDialogRef<ProxmoxConfigurationDialog>);
+  private fb: FormBuilder = inject(FormBuilder);
+  public data = inject(MAT_DIALOG_DATA) as { app: IApplicationWeb };
+  constructor(  ) {
     this.form = this.fb.group({});
   }
   getGroupNames(): string[] {
@@ -57,7 +55,7 @@ export class ProxmoxConfigurationDialog implements OnInit {
         }
         this.loading.set(false);
       },
-      error: (err) => {
+      error: () => {
         this.error.set('Failed to load parameters');
         this.loading.set(false);
         this.dialogRef.close();
@@ -73,7 +71,7 @@ export class ProxmoxConfigurationDialog implements OnInit {
     if (this.form.invalid) return;
     this.loading.set(true);
     const params = Object.entries(this.form.value)
-      .filter(([_, value]) => value !== null && value !== undefined && value !== '')
+      .filter(([, value]) => value !== null && value !== undefined && value !== '')
       .map(([name, value]) => ({ name, value: value as string | number | boolean }));
     const application = this.data.app.id;
     const task = 'installation';
@@ -84,7 +82,7 @@ export class ProxmoxConfigurationDialog implements OnInit {
         // Navigate to process-monitor after successful install
         this.configService['router'].navigate(['/monitor']);
       },
-      error: (err) => {
+      error: () => {
         this.error.set('Failed to install configuration');
         this.loading.set(false);
       }

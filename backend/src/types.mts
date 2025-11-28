@@ -1,4 +1,3 @@
-import { E } from "node_modules/vitest/dist/chunks/environment.d.CrsxCzP1.js";
 
 export interface ISsh {
   host: string;
@@ -44,9 +43,12 @@ export interface IProxmoxExecuteMessage {
   error?: Error;
   index?: number;
 }
+
+export type ParameterType = 'string' | 'number' | 'boolean' | 'enum';
+
 export interface IParameter {
   name: string;
-  type: "string" | "number" | "boolean";
+  type: ParameterType;
   description?: string;
   required?: boolean;
   secure?: boolean;
@@ -60,9 +62,9 @@ export interface ITemplate {
   if?: boolean;
   name: string;
   description?: string;
-  parameters?: Array<IParameter>;
+  parameters?: IParameter[];
   outputs?: string[];
-  commands: Array<ICommand>;
+  commands: ICommand[];
 }
 export interface IError {
   message: string;

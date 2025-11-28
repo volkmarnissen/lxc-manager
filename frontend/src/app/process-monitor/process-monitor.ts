@@ -1,7 +1,7 @@
-import { NgZone, OnDestroy, Component, OnInit } from '@angular/core';
+import { NgZone, OnDestroy, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { IProxmoxExecuteMessage } from '../../../../proxmox2/src/types';
+import { IProxmoxExecuteMessage } from '../../shared/types.mjs';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 
 @Component({
@@ -14,9 +14,10 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
 export class ProcessMonitor implements OnInit, OnDestroy {
   messages: IProxmoxExecuteMessage[] = [];
   private destroyed = false;
-  private pollInterval?: any;
+  private pollInterval?: number;
 
-  constructor(private http: HttpClient, private zone: NgZone) {}
+  private http = inject(HttpClient);
+  private zone = inject(NgZone);
 
   ngOnInit() {
     this.startPolling();
@@ -40,7 +41,7 @@ export class ProcessMonitor implements OnInit, OnDestroy {
             });
           }
         },
-        error: (err) => {
+        error: () => {
           // Optionally handle error
         }
       });
