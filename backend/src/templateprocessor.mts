@@ -212,9 +212,9 @@ export class TemplateProcessor {
 
     // Custom validation: 'if' must refer to another parameter name, not its own
     if (tmplData.parameters) {
-      const paramNames = tmplData.parameters.map(p => p.name);
+      const paramNames = tmplData.parameters.map(p => p.id);
       for (const param of tmplData.parameters) {
-        if (param.if && (param.if === param.name || !paramNames.includes(param.if))) {
+        if (param.if && (param.if === param.id || !paramNames.includes(param.if))) {
           opts.errors.push(new JsonError(`Parameter '${param.name}': 'if' must refer to another parameter name in the same template (not itself).`));
         }
       }
