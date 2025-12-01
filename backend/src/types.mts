@@ -5,7 +5,8 @@ export interface IJsonError extends Error {
 }
 export interface ISsh {
   host: string;
-  port: number;
+  port?: number;
+  current?: boolean;
 }
 export interface IApplicationBase {
   name: string;
@@ -78,4 +79,9 @@ export interface ITemplate {
 export interface IError {
   message: string;
   errors?: string[];
+}
+
+export enum ApiUri {
+  SshConfigs = '/api/sshconfigs',
+  SshConfig = '/api/sshconfig',
 }

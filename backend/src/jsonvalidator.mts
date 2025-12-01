@@ -5,6 +5,7 @@ import ajvErrors from "ajv-errors";
 import fs from "fs";
 import path, { resolve, extname, join } from "path";
 import { IJsonError } from "./types.mjs";
+import { json } from "stream/consumers";
 
 export class JsonError extends Error implements IJsonError {
   public static baseDir: string = "";
@@ -64,7 +65,7 @@ export class ValidateJsonError extends JsonError implements IJsonError {
 export class JsonValidator {
   static instance: JsonValidator | undefined;
   static getInstance(
-    schemaPath: string,
+    schemaPath?: string,
     baseSchemas: string[] = ["templatelist.schema.json"],
   ): JsonValidator {
     if (!JsonValidator.instance) {
@@ -138,6 +139,7 @@ export class JsonValidator {
     let sourceMap: any = undefined;
     let originalText: string | undefined = undefined;
     // Try to get line numbers if jsonData is a plain object from JSON.parse
+    let dataToValidate: any = structuredClone(jsonData);
     if (
       typeof jsonData === "object" &&
       jsonData !== null &&
@@ -147,10 +149,11 @@ export class JsonValidator {
       sourceMap = (jsonData as any).__sourceMap;
     }
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { __sourceMapText, __sourceMap, ...dataToValidate } =
-        jsonData as any;
-      const result = validate(dataToValidate);
+      if(dataToValidate.__sourceMapText )
+        delete (dataToValidate as any).__sourceMapText
+      if(dataToValidate.__sourceMap )
+        delete (dataToValidate as any).__sourceMap
+      const result = validate(dataToValidate);  
       if (result instanceof Promise) {
         throw new Error(
           "Async schemas are not supported in serializeJsonWithSchema",

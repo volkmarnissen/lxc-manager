@@ -1,17 +1,24 @@
 <div class="dialog" [class.ssh-dialog]="sshMode">
 	@if (sshMode) {
-		<h3>SSH Konfiguration</h3>
-		<form (ngSubmit)="save()">
+		<h3>SSH Configuration</h3>
+		<form #sshForm="ngForm" (ngSubmit)="save()">
+			@if (ssh.length > 0) {
+				@for (s of ssh; track s; let idx = $index) {
+					<div class="form-row">
+						<input type="radio" name="current" [checked]="s.current" (change)="setCurrent(idx)" />
+						<input [(ngModel)]="s.host" [name]="'host' + idx" required placeholder="Host" />
+						<input type="number" [(ngModel)]="s.port" [name]="'port' + idx" required min="1" max="65535" placeholder="Port" />
+						@if (ssh.length > 1) {
+							<button type="button" (click)="removeSsh(idx)">🗑️</button>
+						}
+					</div>
+				}
+			}
 			<div class="form-row">
-				<label for="ssh-host">Host:</label>
-				<input id="ssh-host" [(ngModel)]="ssh.host" name="host" required />
-			</div>
-			<div class="form-row">
-				<label for="ssh-port">Port:</label>
-				<input id="ssh-port" type="number" [(ngModel)]="ssh.port" name="port" required min="1" max="65535" />
+				<button type="button" (click)="addSsh()">Add SSH Configuration</button>
 			</div>
 			<div class="dialog-actions">
-				<button type="submit" [disabled]="loading">Save</button>
+				<button type="submit" [disabled]="!canSave || !sshForm.form.valid">Save</button>
 				<button type="button" (click)="cancel()">Cancel</button>
 			</div>
 			@if (error) {

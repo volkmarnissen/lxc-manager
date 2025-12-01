@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import express from "express";
 import { VeConfiguration } from "@src/ve-configuration.mjs";
-import { TaskType, ISsh, IProxmoxExecuteMessage } from "@src/types.mjs";
+import { TaskType, ISsh, IProxmoxExecuteMessage, ApiUri } from "@src/types.mjs";
 import { VeExecution } from "@src/ve-execution.mjs";
 import http from "http";
 import path from "path";
@@ -81,15 +81,10 @@ export class ProxmoxWebApp {
       },
     );
     // SSH config API
-    this.app.get("/api/sshconfig", (req, res) => {
+    this.app.get(ApiUri.SshConfigs, (req, res) => {
       try {
-        const ssh: ISsh | null = VeExecution.getSshParameters();
-        if (ssh) {
-          res.json(ssh);
-          res.status(200);
-        } else {
-          res.status(404).json({ error: "SSH config not set" });
-        }
+        const sshs: ISsh[] | null = VeExecution.getSshConfigurations() ;
+          res.json(sshs).status(200);
       } catch (err: any) {
         res.status(500).json({ error: err.message });
       }
@@ -113,7 +108,7 @@ export class ProxmoxWebApp {
         return;
       }
       try {
-        VeExecution.setSshParameters(ssh);
+        VeExecution.setSshParameter(ssh);
         res.json({ success: true }).status(200);
       } catch (err: any) {
         res.status(500).json({ error: err.message });

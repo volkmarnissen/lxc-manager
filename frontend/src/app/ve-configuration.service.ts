@@ -1,6 +1,6 @@
 //
 
-import { ISsh } from '../shared/types.mjs';
+import { ApiUri, ISsh } from '../shared/types.mjs';
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -56,8 +56,8 @@ export class ProxmoxConfigurationService {
       catchError(ProxmoxConfigurationService.handleError)
     );
   }
-  getSshConfig() {
-    return this.http.get<ISsh>('/api/sshconfig').pipe(
+  getSshConfigs() {
+    return this.http.get<ISsh[]>(ApiUri.SshConfigs).pipe(
       catchError(ProxmoxConfigurationService.handleError)
     );
   }

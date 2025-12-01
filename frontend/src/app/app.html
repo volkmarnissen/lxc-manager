@@ -5,7 +5,7 @@
 
 
 @if (showSshDialog) {
-  <app-configuration-dialog [sshMode]="true" (close)="closeSshDialog()"></app-configuration-dialog>
+  <app-configuration-dialog [sshMode]="true" (dialogClose)="closeSshDialog()"></app-configuration-dialog>
 }
 
 <router-outlet></router-outlet>

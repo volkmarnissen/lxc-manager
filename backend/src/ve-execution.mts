@@ -31,7 +31,8 @@ export interface IRestartInfo {
  * ProxmoxExecution: Executes a list of ICommand objects with variable substitution and remote/container execution.
  */
 export class VeExecution extends EventEmitter {
-  private ssh: ISsh | null = null;
+  private static sshs: ISsh[] | null = null;
+  private static ssh: ISsh | null = null;
   private commands!: ICommand[];
   private inputs!: Record<string, string | number | boolean>;
   public outputs: Map<string, string | number | boolean> = new Map();
@@ -48,7 +49,7 @@ export class VeExecution extends EventEmitter {
       this.inputs[inp.id] = inp.value;
     }
     // Load SSH config on instance creation
-    this.ssh = VeExecution.getSshParameters();
+    VeExecution.sshs = VeExecution.getSshConfigurations();
     // Use singleton factory for JsonValidator
     this.validator = JsonValidator.getInstance(
       path.join(process.cwd(), "schemas"),
@@ -58,40 +59,63 @@ export class VeExecution extends EventEmitter {
   /**
    * Reads SSH parameters from ./local/sshconfig.json. Creates the directory if needed.
    */
-  static getSshParameters(): ISsh | null {
+  static getSshConfigurations(): ISsh[] | [] {
     const dir = path.join(process.cwd(), "local");
-    const file = path.join(dir, "sshconfig.json");
+    const file = path.join(dir, "sshconfigs.json");
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
     if (fs.existsSync(file)) {
       try {
-        const data = JSON.parse(fs.readFileSync(file, "utf-8"));
-        if (
-          data &&
-          typeof data.host === "string" &&
-          typeof data.port === "number"
-        ) {
-          return { host: data.host, port: data.port };
-        }
+        const sshs =  JsonValidator.getInstance().serializeJsonFileWithSchema<ISsh[]>(file,"sshs");
+        sshs.find((s) => s.current);
+        VeExecution.sshs = sshs;
+        return VeExecution.sshs;
+
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (e) {
         // Ignore parse errors, treat as not set
       }
     }
-    return null;
+    return [];
   }
 
   /**
    * Writes SSH parameters to ./local/sshconfig.json. Creates the directory if needed.
    */
-  static setSshParameters(ssh: ISsh): void {
+  static setSshParameter(ssh: ISsh): void {
     const dir = path.join(process.cwd(), "local");
-    const file = path.join(dir, "sshconfig.json");
+    const file = path.join(dir, "sshconfigs.json");
+    let sshs: ISsh[] = VeExecution.sshs || [];
+    const existing = sshs.find((s) => s.host == ssh.host);
+    if( existing ) {
+      if( ssh.port !== undefined )
+        existing.port = ssh.port;
+      if( ssh.current !== undefined )
+        existing.current = ssh.current;
+    } else {
+      sshs.push(ssh);
+    }
+    if( ssh.current ) {
+      // unset current for all others
+      for( const s of sshs ) {
+        if( s.host != ssh.host ) {
+          s.current = false;
+        }
+      }
+    }
+    const validator = JsonValidator.getInstance().serializeJsonWithSchema<ISsh[]>(
+      sshs,
+      "sshs",
+    ); // validate before writing
+    if( !validator ) {
+      throw new Error("Invalid SSH configuration");
+    }
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(file, JSON.stringify(ssh, null, 2), "utf-8");
+    VeExecution.sshs = sshs;
+    fs.writeFileSync(file, JSON.stringify(sshs, null, 2), "utf-8");
   }
   /**
    * Executes a command on the Proxmox host via SSH, with timeout. Parses stdout as JSON and updates outputs.
@@ -105,8 +129,9 @@ export class VeExecution extends EventEmitter {
     remoteCommand?: string[],
     sshCommand: string = "ssh",
   ): IProxmoxExecuteMessage {
-    if (!this.ssh) throw new Error("SSH parameters not set");
-    const { host, port } = this.ssh;
+    if (!VeExecution.ssh) throw new Error("SSH parameters not set");
+    const  host = VeExecution.ssh.host;
+    const port = VeExecution.ssh.port || 22;
     let sshArgs: string[] = [];
     if (sshCommand === "ssh")
       sshArgs = [

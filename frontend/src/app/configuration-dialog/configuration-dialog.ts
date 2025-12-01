@@ -11,33 +11,64 @@ import { ISsh } from '../../shared/types.mjs';
   templateUrl: './configuration-dialog.html',
   styleUrl: './configuration-dialog.scss',
 })
+
 export class ConfigurationDialog implements OnInit {
   @Input() sshMode = false;
   @Output() dialogClose = new EventEmitter<void>();
   @Output() saved = new EventEmitter<ISsh>();
 
-  ssh: ISsh = { host: '', port: 22 };
+  ssh: ISsh[] = [];
   loading = false;
   error = '';
-
   configService = inject(ProxmoxConfigurationService);
 
   ngOnInit() {
     if (this.sshMode) {
       this.loading = true;
-      this.configService.getSshConfig().subscribe({
-        next: ssh => { this.ssh = ssh; this.loading = false; },
-        error: () => { this.error = 'Fehler beim Laden der SSH-Konfiguration.'; this.loading = false; }
+      this.configService.getSshConfigs().subscribe({
+        next: ssh => {
+          this.ssh = ssh && ssh.length > 0 ? ssh : [];
+          this.loading = false;
+        },
+        error: () => { this.error = 'Error loading SSH configuration.'; this.loading = false; }
       });
+    }
+  }
+
+  setCurrent(index: number) {
+    this.ssh.forEach((s, i) => s.current = i === index);
+  }
+
+  addSsh() {
+    // Wenn die Liste leer ist, wird die erste Konfiguration als current markiert
+    this.ssh.push({ host: '', port: 22, current: this.ssh.length === 0 });
+  }
+
+  removeSsh(index: number) {
+    const wasCurrent = this.ssh[index].current;
+    this.ssh.splice(index, 1);
+    if (wasCurrent && this.ssh.length > 0) {
+      this.ssh[0].current = true;
     }
   }
 
   save() {
     this.loading = true;
-    this.configService.setSshConfig(this.ssh).subscribe({
-      next: () => { this.loading = false; this.saved.emit(this.ssh); this.dialogClose.emit(); },
-      error: () => { this.error = 'Fehler beim Speichern.'; this.loading = false; }
+    const ssh = this.ssh.find(s => s.current);
+    if(!ssh) {
+      this.error = 'Please choose an SSH configuration.';
+      this.loading = false;
+      return;
+    }
+    this.configService.setSshConfig(ssh).subscribe({
+      next: () => { this.loading = false; this.saved.emit(ssh); this.dialogClose.emit(); },
+      error: () => { this.error = 'Error saving SSH configuration.'; this.loading = false; }
     });
+  }
+
+  get canSave(): boolean {
+    // Save ist nur erlaubt, wenn mindestens eine SSH-Konfiguration existiert
+    return this.ssh.length > 0 && !this.loading;
   }
 
   cancel() {
