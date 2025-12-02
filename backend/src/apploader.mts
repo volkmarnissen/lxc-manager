@@ -114,6 +114,7 @@ export class ApplicationLoader {
       "uninstall",
       "update",
       "upgrade",
+      "webui",
     ];
     for (const key of taskKeys) {
       const list = (appData as any)[key];

@@ -8,6 +8,7 @@ import path from "path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { TemplateProcessor } from "@src/templateprocessor.mjs";
+import { a } from "node_modules/vitest/dist/chunks/suite.d.BJWk38HB.js";
 
 export class ProxmoxWebApp {
   app: express.Application;
@@ -54,6 +55,8 @@ export class ProxmoxWebApp {
             application,
             task as TaskType,
           );
+          const webuiTemplates = loaded.webuiTemplates; 
+          templateProcessor.loadTemplatesForApplication(application, webuiTemplates);
           const commands = loaded.commands;
           const defaults = new Map<string, string | number | boolean>();
           loaded.parameters.forEach((param) => {

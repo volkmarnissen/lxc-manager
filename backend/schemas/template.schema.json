@@ -38,8 +38,15 @@
             "enumValues": {
               "type": "array",
               "items": { "type": "string" }
+            },
+            "enumValuesTemplate": {
+              "type": "string"
             }
-          }
+          },
+          "anyOf": [
+            { "required": ["enumValues"] },
+            { "required": ["enumValuesTemplate"] }
+          ]
         }
       }
     },

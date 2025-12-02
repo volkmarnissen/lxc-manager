@@ -33,6 +33,7 @@ interface IProcessTemplateOpts {
   parentTemplate?: string | undefined;
   templatePathes: string[];
   scriptPathes: string[];
+  webuiTemplates: string[];
 }
 export interface IParameterWithTemplate extends IParameter {
   template: string;
@@ -41,6 +42,7 @@ export interface ITemplateProcessorLoadResult {
   commands: ICommand[];
   parameters: IParameterWithTemplate[];
   resolvedParams: IResolvedParam[];
+  webuiTemplates: string[];
 }
 export class TemplateProcessor {
   resolvedParams: IResolvedParam[] = [];
@@ -117,6 +119,7 @@ export class TemplateProcessor {
     const errors: IJsonError[] = [];
     let outParameters: IParameterWithTemplate[] = [];
     let outCommands: ICommand[] = [];
+    let webuiTemplates: string[] = [];
     for (const tmpl of templates) {
       let ptOpts: IProcessTemplateOpts = {
         application: applicationName,
@@ -130,6 +133,7 @@ export class TemplateProcessor {
         requestedIn: task,
         templatePathes,
         scriptPathes,
+        webuiTemplates
       };
       this.#processTemplate(ptOpts);
     }
@@ -152,6 +156,7 @@ export class TemplateProcessor {
       parameters: outParameters,
       commands: outCommands,
       resolvedParams: resolvedParams,
+      webuiTemplates: webuiTemplates
     };
   }
 
@@ -227,6 +232,12 @@ export class TemplateProcessor {
           template: opts.template,
           templatename: tmplData.name || opts.template,
         };
+        if( param.type === "enum" && (param as any).enumValuesTemplate) {
+          // Load enum values from another template
+          const enumTmplName = (param as any).enumValuesTemplate;
+          opts.webuiTemplates?.push(enumTmplName);
+        }
+            
         opts.parameters.push(pparm);
       }
     }

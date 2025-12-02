@@ -28,7 +28,8 @@ export type TaskType =
   | "restore"
   | "uninstall"
   | "update"
-  | "upgrade";
+  | "upgrade"
+  | "webui";
 // Generated from template.schema.json
 export interface ICommand {
   name: string;

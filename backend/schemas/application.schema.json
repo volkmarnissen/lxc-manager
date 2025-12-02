@@ -11,8 +11,7 @@
     "backup": { "$ref": "templatelist" },
     "restore": { "$ref": "templatelist" },
     "uninstall": { "$ref": "templatelist" },
-    "update": { "$ref": "templatelist" },
-    "upgrade": { "$ref": "templatelist" }
+    "update": { "$ref": "templatelist" }
   },
   "required": ["name", "installation"],
   "additionalProperties": false

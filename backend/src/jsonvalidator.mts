@@ -5,7 +5,6 @@ import ajvErrors from "ajv-errors";
 import fs from "fs";
 import path, { resolve, extname, join } from "path";
 import { IJsonError } from "./types.mjs";
-import { json } from "stream/consumers";
 
 export class JsonError extends Error implements IJsonError {
   public static baseDir: string = "";
