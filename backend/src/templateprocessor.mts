@@ -18,10 +18,14 @@ import { ApplicationLoader } from "@src/apploader.mjs";
 import fs from "fs";
 import { ScriptValidator } from "@src/scriptvalidator.mjs";
 import { StorageContext } from "./storagecontext.mjs";
-
+export interface ITemplateReference {
+  name: string;
+  before?: string[];
+  after?: string[];
+}
 interface IProcessTemplateOpts {
   application: string;
-  template: string;
+  template: ITemplateReference | string;
   templatename: string;
   resolvedParams: IResolvedParam[];
   parameters: IParameterWithTemplate[];
@@ -93,7 +97,7 @@ export class TemplateProcessor {
     }
     application!.id = applicationName;
     // 3. Get template list for the task
-    const templates: string[] | undefined = application?.[task];
+    const templates: (ITemplateReference|string)[] | undefined = readOpts.taskTemplates.find(t => t.task === task)?.templates;
 
     if (!templates) {
       const appBase = {
@@ -128,7 +132,7 @@ export class TemplateProcessor {
       let ptOpts: IProcessTemplateOpts = {
         application: applicationName,
         template: tmpl,
-        templatename: tmpl,
+        templatename: this.extractTemplateName(tmpl),
         resolvedParams,
         visitedTemplates: new Set<string>(),
         parameters: outParameters,
@@ -163,13 +167,21 @@ export class TemplateProcessor {
       webuiTemplates: webuiTemplates,
     };
   }
-
+  private extractTemplateName(
+    template: ITemplateReference | string,
+  ): string {
+    if (typeof template === "string") {
+      return template;
+    } else {
+      return template.name;
+    }
+  }
   // Private method to process a template (including nested templates)
   #processTemplate(opts: IProcessTemplateOpts): void {
     opts.visitedTemplates = opts.visitedTemplates ?? new Set<string>();
     opts.errors = opts.errors ?? [];
     // Prevent endless recursion
-    if (opts.visitedTemplates.has(opts.template)) {
+    if (opts.visitedTemplates.has(this.extractTemplateName(opts.template))) {
       opts.errors.push(
         new JsonError(
           `Endless recursion detected for template: ${opts.template}`,
@@ -177,8 +189,8 @@ export class TemplateProcessor {
       );
       return;
     }
-    opts.visitedTemplates.add(opts.template);
-    const tmplPath = this.findInPathes(opts.templatePathes, opts.template);
+    opts.visitedTemplates.add(this.extractTemplateName(opts.template));
+    const tmplPath = this.findInPathes(opts.templatePathes, this.extractTemplateName(opts.template));
     if (!tmplPath) {
       opts.errors.push(
         new JsonError(
@@ -211,7 +223,7 @@ export class TemplateProcessor {
     // Mark outputs as resolved BEFORE adding parameters
     for (const out of tmplData.outputs ?? []) {
       if (undefined == opts.resolvedParams.find((p) => p.id === out.id)) {
-        opts.resolvedParams.push({ id: out.id, template: opts.template });
+        opts.resolvedParams.push({ id: out.id, template: this.extractTemplateName(opts.template) });
       }
     }
 
@@ -236,8 +248,8 @@ export class TemplateProcessor {
       if (!opts.parameters.some((p) => p.id === param.id)) {
         const pparm: IParameterWithTemplate = {
           ...param,
-          template: opts.template,
-          templatename: tmplData.name || opts.template,
+          template: this.extractTemplateName(opts.template),
+          templatename: tmplData.name || this.extractTemplateName(opts.template),
         };
         if (param.type === "enum" && (param as any).enumValuesTemplate) {
           // Load enum values from another template
@@ -259,7 +271,7 @@ export class TemplateProcessor {
           this.#processTemplate({
             ...opts,
             template: cmd.template,
-            parentTemplate: opts.template,
+            parentTemplate: this.extractTemplateName(opts.template),
           });
         } else if (cmd.script !== undefined) {
           const scriptValidator = new ScriptValidator();

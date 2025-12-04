@@ -6,6 +6,7 @@ import {
 import path from "path";
 import fs from "fs";
 import { StorageContext } from "./storagecontext.mjs";
+import { ITemplateReference } from "./templateprocessor.mjs";
 
 export interface IReadApplicationOptions {
   applicationHierarchy: string[];
@@ -14,7 +15,7 @@ export interface IReadApplicationOptions {
   error: VEConfigurationError;
   taskTemplates: {
     task: string;
-    templates: string[];
+    templates: (ITemplateReference| string)[];
   }[];
 }
 export class ApplicationLoader {
@@ -76,7 +77,7 @@ export class ApplicationLoader {
     try {
       appData = validator.serializeJsonFileWithSchema<IApplication>(
         appFile,
-        path.join(this.pathes.schemaPath, "application"),
+        "application"
       );
       // Save the first application in the hierarchy
       if (!opts.application) {

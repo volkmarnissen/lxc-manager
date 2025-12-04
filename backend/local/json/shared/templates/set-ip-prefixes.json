@@ -1,16 +1,21 @@
 {
 	"execute_on": "proxmox",
-	"name": "set-ip-prefixes",
-	"description": "Set sensible local IPv4/IPv6 prefixes and enable static IP mode.",
+	"name": "Set IP Prefixes for LXC",
+	"description": "Set local static IPv4/IPv6 properties for all local applications and enable static IP mode.",
 	"parameters": [],
 	"outputs": [
-		{ "id": "use_static_ip", "default": true }
+		"use_static_ip",
+        "ip4_prefix",
+        "ip4_cidr",
+        "ip6_prefix",
+        "ip6_cidr",
+        "static_gw",
+        "static_gw6"
 	],
 	"commands": [
 		{
-			"name": "emit-prefix-params",
 			"command": "sh -lc 'echo { \"id\": \"use_static_ip\", \"value\": true }; echo { \"id\": \"ip4_prefix\", \"value\": \"192.168.4\" }; echo { \"id\": \"ip4_cidr\", \"value\": \"24\" }; echo { \"id\": \"ip6_prefix\", \"value\": \"fd00:4::\" }; echo { \"id\": \"ip6_cidr\", \"value\": \"64\" }; echo { \"id\": \"static_gw\", \"value\": \"192.168.4.1\" }; echo { \"id\": \"static_gw6\", \"value\": \"fd00:4::1\" }'"
-		}
-	]
+	    }
+]
 }
 
