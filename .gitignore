@@ -16,5 +16,17 @@ coverage/
 cypress/
 playwright-report/
 test-results/
+
+# Alpine packaging: ignore generated package directories
+alpine/package/**/*
+!alpine/package/apk-template/
+!alpine/package/common/
+# Keep generator and INIs tracked
+!alpine/package/generate-ap.sh
+!alpine/package/*.ini
+!alpine/package/README.md
+
+# Alpine local repository (build output)
+alpine/repo/
 #
 test-results/
