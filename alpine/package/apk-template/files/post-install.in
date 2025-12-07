@@ -3,7 +3,6 @@
 # Optional OpenSSH setup: run only if sshd is available
 if command -v sshd >/dev/null 2>&1 || [ -x /usr/sbin/sshd ]; then
   mkdir -p /root/.ssh /var/run/sshd
-  chmod 700 /root/.ssh
   if [ -f /etc/ssh/sshd_config ]; then
     sed -i 's/^#*PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
     sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
@@ -26,6 +25,11 @@ if command -v rc-update >/dev/null 2>&1; then
   fi
   rc-update add @PKGNAME@ default 2>/dev/null || true
   rc-service @PKGNAME@ start 2>/dev/null || true
+fi
+
+# Ensure runtime directory ownership
+if id @PKGNAME@ >/dev/null 2>&1; then
+  chown -R @PKGNAME@:dialout /var/lib/@PKGNAME@ 2>/dev/null || true
 fi
 
 exit 0

@@ -14,13 +14,29 @@ echo "Build user: builder ($HOST_UID:$HOST_GID)"
 # Setup Alpine repositories
 ALPINE_REPO_VER="v${ALPINE_VERSION}"
 cat > /etc/apk/repositories <<-REPO
+https://mirror.init7.net/alpinelinux/${ALPINE_REPO_VER}/main
+https://mirror.init7.net/alpinelinux/${ALPINE_REPO_VER}/community
+REPO
+
+write_repos() {
+  cat > /etc/apk/repositories <<-REPO
+https://mirror.init7.net/alpinelinux/${ALPINE_REPO_VER}/main
+https://mirror.init7.net/alpinelinux/${ALPINE_REPO_VER}/community
+REPO
+}
+write_repos
+if ! apk update >/dev/null 2>&1; then
+  echo "WARN: apk update failed on primary mirror, switching to CDN-only" >&2
+  cat > /etc/apk/repositories <<-REPO
 https://dl-cdn.alpinelinux.org/alpine/${ALPINE_REPO_VER}/main
 https://dl-cdn.alpinelinux.org/alpine/${ALPINE_REPO_VER}/community
 REPO
-
-if ! apk update >/dev/null 2>&1; then
-  echo "ERROR: failed to use alpine repositories for ${ALPINE_REPO_VER}" >&2
-  exit 1
+  if ! apk update >/dev/null 2>&1; then
+    echo "ERROR: failed to use alpine repositories for ${ALPINE_REPO_VER}" >&2
+    echo "Contents of /etc/apk/repositories:" >&2
+    sed -n '1,120p' /etc/apk/repositories >&2 || true
+    exit 1
+  fi
 fi
 
 # Install build dependencies
@@ -69,66 +85,60 @@ cp /home/builder/.abuild/builder-6904805d.rsa.pub /etc/apk/keys || true
 cat > /home/builder/.abuild/abuild.conf <<-EOF
 PACKAGER_PRIVKEY="/home/builder/.abuild/builder-6904805d.rsa"
 PACKAGER_PUBKEY="/home/builder/.abuild/builder-6904805d.rsa.pub"
-REPODEST="/work/alpine"
 EOF
 chmod 600 /home/builder/.abuild/abuild.conf || true
 chown builder:dialout /home/builder/.abuild/abuild.conf || true
-
+# Ensure desired repo channel directory exists (use channel "lxc-manager")
+mkdir -p /work/alpine/lxc-manager
+chown -R builder:dialout /work/alpine
 # Prepare source
 echo "Preparing source code..." >&2
 rm -rf /work/src/node_modules || true
 # has been set in generate-ap.sh sed -i 's/pkgver=.*/pkgver='"${PKG_VERSION}"'/g' /work/APKBUILD || true
 
-# Build APK as builder user
-echo "Building APK version $PKG_VERSION into /work/alpine/repo/<arch>"
-su - builder -s /bin/sh -c '
-  set -e
-  cd /work/'"$PKG_BASE"'/'"$PKG_NAME"'
- 
-  # Configure abuild to build directly to the mounted repo directory
-  export REPODEST="/work/alpine"
-  export repo="repo"
-  
-  # Clean old APK files first (abuild will create the architecture subdirectory)
-  rm -f "$REPODEST"/repo/*/'"$PKG_NAME"'*.apk || true
-  echo "Building checksum... " >&2
-  # prepare abuild and build package (checksum + build/sign)
-  # Use timeout and retry to avoid occasional hangs
-  abuild checksum || true
+# Build APK as builder user via a temporary script to avoid quoting issues
+echo "Building APK version $PKG_VERSION into /work/alpine/lxc-manager/<arch>"
+cat >/tmp/build-as-builder.sh <<'BUILDER'
+#!/bin/sh
+set -e
+cd /work
+ls
+export REPODEST=/work/alpine
+export repo=lxc-manager
+export ABUILD_VERBOSE=1
+export ABUILD_TRACE=1
+mkdir -p /var/cache/apk
+export APK="apk --no-progress --cache-dir /var/cache/apk"
+echo "Building checksum..." >&2
+abuild checksum || true
+echo "Starting abuild -r..." >&2
+abuild -r -P "/work/alpine"
+echo "Finished abuild -r" >&2
+# Copy public key to repo for convenience
+if [ -f "/home/builder/.abuild/builder-6904805d.rsa.pub" ]; then
+  cp /home/builder/.abuild/builder-6904805d.rsa.pub "$REPODEST/$repo/packager.rsa.pub"
+  echo "✓ Public key copied to $REPODEST/$repo/packager.rsa.pub (architecture-independent)"
+else
+  echo "WARNING: Public key /home/builder/.abuild/builder-6904805d.rsa.pub not found"
+  echo "Available files in /home/builder/.abuild/:"
+  ls -la /home/builder/.abuild/ || true
+fi
+BUILDER
+chmod +x /tmp/build-as-builder.sh
+chown builder:dialout /tmp/build-as-builder.sh || true
+su - builder -s /bin/sh -c '/tmp/build-as-builder.sh'
 
-  tries=0
-  max_tries=2
-  while [ $tries -le $max_tries ]; do
-    if timeout 20m abuild -r; then
-      build_ok=1
-      break
-    fi
-    tries=$((tries+1))
-    echo "WARN: abuild run failed or timed out (attempt $tries/$max_tries), retrying..." >&2
-    sleep 3
-  done
-  [ "${build_ok:-0}" -eq 1 ] || { echo "ERROR: abuild failed after retries" >&2; exit 1; }
-  
-  # Verify build results (abuild creates architecture-specific subdirectories)
-  apk_count=$(find "$REPODEST"/repo -name "*.apk" | wc -l)
-  if [ "$apk_count" -gt 0 ]; then
-    echo "✓ Built $apk_count APK files under $REPODEST/repo"
-    find "$REPODEST"/repo -name "*.apk" -exec ls -la {} \;
-  else
-    echo "ERROR: No APK files found under $REPODEST/repo" >&2
-    find "$REPODEST"/repo -type f || echo "No files found in $REPODEST/repo"
-    exit 1
-  fi
-  
-  # Place the public signing key into the repo root for architecture-independent access
-  if [ -f "/home/builder/.abuild/builder-6904805d.rsa.pub" ]; then
-    cp /home/builder/.abuild/builder-6904805d.rsa.pub "$REPODEST/repo/packager.rsa.pub"
-    echo "✓ Public key copied to $REPODEST/repo/packager.rsa.pub (architecture-independent)"
-  else
-    echo "WARNING: Public key /home/builder/.abuild/builder-6904805d.rsa.pub not found"
-    echo "Available files in /home/builder/.abuild/:"
-    ls -la /home/builder/.abuild/ || true
-  fi
-'
+# Collect built APKs into final /work/repo
+mkdir -p /work/repo || true
+if [ -d "/home/builder/packages" ]; then
+  echo "Collecting APKs from /home/builder/packages to /work/repo..." >&2
+  # Copy per-arch repos preserving structure
+  find /home/builder/packages -type f -name '*.apk' -exec cp -v {} /work/repo/ \; 2>/dev/null || true
+  # Also copy index and signing artifacts if present
+  find /home/builder/packages -type f -name 'APKINDEX.tar.gz' -exec cp -v {} /work/repo/ \; 2>/dev/null || true
+fi
+if [ -f "/home/builder/.abuild/builder-6904805d.rsa.pub" ]; then
+  cp /home/builder/.abuild/builder-6904805d.rsa.pub /work/repo/packager.rsa.pub || true
+fi
 
 echo "✓ APK build completed successfully"

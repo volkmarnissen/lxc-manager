@@ -4,17 +4,17 @@ pkgver=@PKGVER@
 pkgrel=@PKGREL@
 pkgdesc="@PKGDESC@"
 url="@URL@"
-arch="$CARCH"
+arch="noarch"
 license="@LICENSE@"
 depends="@DEPENDS@"
 makedepends="@MAKEDEPENDS@"
 install="$pkgname.pre-install $pkgname.post-install"
 options="!check !strip"
 source="
-    files/service.initd.in
-    files/service.confd.in
-    files/pre-install.in
-    files/post-install.in
+    files/service.initd
+    files/service.confd
+    files/pre-install
+    files/post-install
     "
 builddir="$srcdir/$pkgname-$pkgver"
 npmpackage="@NPMPACKAGE@"
@@ -68,5 +68,8 @@ package() {
     install -d -m 755 "$pkgdir"/ssl
     install -m755 -D "$startdir"/files/service.initd "$pkgdir"/etc/init.d/$pkgname
     install -m644 -D "$startdir"/files/service.confd "$pkgdir"/etc/conf.d/$pkgname
+    # Create runtime directory inside package; ownership set in maintainer scripts
+    install -d -m 755 "$pkgdir"/var/lib/@PKGNAME@
+    # install -d -m700 /root/.ssh
 }
 sha512sums=""

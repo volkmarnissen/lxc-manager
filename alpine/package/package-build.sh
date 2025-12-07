@@ -8,25 +8,13 @@ set -eu
 # - PKG_NAME: package name (matches directory under $PKG_BASE)
 # - PKG_BASE: base path to packages (default: alpine/package)
 # - ALPINE_VERSION: optional, for logging
-
-PKG_BASE="${PKG_BASE:-alpine/package}"
-PKG_NAME="${PKG_NAME:-}"
-if [ -z "$PKG_NAME" ]; then
-  echo "ERROR: PKG_NAME not set" >&2
-  exit 2
-fi
-WORKDIR="/work/$PKG_BASE/$PKG_NAME"
-REPODEST="/work/alpine/repo"
-
-if [ ! -d "$WORKDIR" ] || [ ! -f "$WORKDIR/APKBUILD" ]; then
-  echo "ERROR: APKBUILD not found in $WORKDIR" >&2
-  ls -la "$WORKDIR" 2>/dev/null || true
-  exit 3
-fi
-
 echo "Container build for $PKG_NAME (Alpine ${ALPINE_VERSION:-unknown})"
-cd "$WORKDIR"
-
+cd /work/"$PKG_NAME"
+ALPINE_REPO_VER="v${ALPINE_VERSION}"
+cat > /etc/apk/repositories <<-REPO
+https://mirror.init7.net/alpinelinux/${ALPINE_REPO_VER}/main
+https://mirror.init7.net/alpinelinux/${ALPINE_REPO_VER}/community
+REPO
 # Install build tools
 apk add --no-cache --allow-untrusted --cache-dir /var/cache/apk abuild alpine-sdk nodejs npm shadow openssl doas rsync python3 py3-psutil make build-base linux-headers udev
 mkdir -p /etc/doas.d
@@ -43,7 +31,7 @@ chown builder:dialout /home/builder || true
 mkdir -p /home/builder/.npm
 chown -R builder:dialout /home/builder/.npm || true
 mkdir -p /home/builder/.abuild
-
+rm -rf  /work/repo/work || true
 umask 077
 # Generate abuild keys (non-interactive) and install pubkey if no PACKAGER_PRIVKEY provided
 if [ -z "${PACKAGER_PRIVKEY:-}" ]; then
@@ -64,47 +52,51 @@ else
   cp /home/builder/.abuild/${PACKAGER_KEY}.pub "/etc/apk/keys/${PACKAGER_KEY}.pub"
 fi
  ls -ls /home/builder/.abuild/*.rsa >&2
- 
+rm -f "/work/repo/lxc-manager/APKINDEX.tar.gz" || true
+
 # Repo destination and abuild config
-mkdir -p "$REPODEST"
 cat >/home/builder/.abuild/abuild.conf <<EOF
 PACKAGER_PRIVKEY=/home/builder/.abuild/${PACKAGER_KEY}
 PACKAGER_PUBKEY=/home/builder/.abuild/${PACKAGER_KEY}.pub
 KEYDIR=/etc/apk/keys
-REPODEST=$REPODEST
+REPODEST=/work/repo
+repo=lxc-manager
 EOF
 chown -R builder:dialout /home/builder
 
 # Run abuild
 su - builder -s /bin/sh -c '
   set -e
-  cd /work/'"$PKG_BASE"'/'"$PKG_NAME"'
-  pwd >&2
-
-  export REPODEST="'"$REPODEST"'"
-  echo "Building APK for '"$PKG_NAME"' to '"$REPODEST"'" >&2
+  cd /work/"'$PKG_NAME'"
   export ALLOW_UNTRUSTED=1
+  export REPODEST=/work/repo
+  export repo=lxc-manager
   # Ensure abuild keys exist and pubkey installed (non-interactive)
-  PACKAGER="${PACKAGER:-Builder <builder@example.com>}" abuild-keygen -a -i -n || true
+  PACKAGER="${PACKAGER:-builder}" abuild-keygen -a -i -n || true
    # Configure npm cache if provided
    if [ -n "${NPM_CONFIG_CACHE:-}" ]; then
      mkdir -p "${NPM_CONFIG_CACHE}"
      chown -R builder:dialout "${NPM_CONFIG_CACHE}" 2>/dev/null || true
      npm config set cache "${NPM_CONFIG_CACHE}" --global || true
    fi
+  echo "Running checksum for '"$PKG_NAME"'..."
   abuild checksum || true
-  abuild -r
-  apk_count=$(find "'"$REPODEST"'" -name "*.apk" | wc -l)
-  if [ "$apk_count" -gt 0 ]; then
-    echo "✓ Built $apk_count APK files directly to '"$REPODEST"'"
-    find "'"$REPODEST"'" -name "*.apk" -exec ls -la {} \;
-  else
-    echo "ERROR: No APK files found in '"$REPODEST"'" >&2
-    find "'"$REPODEST"'" -type f || echo "No files found in '"$REPODEST"'"; exit 1
-  fi
+  echo "Running abuild for '"$PKG_NAME"'..."
+   abuild -P "/work/repo" rootpkg
+   echo "APK created successfully."
+   echo "Running abuild for '"$PKG_NAME"' (build + create apk)..."
 '
+# Collect built artifacts into /work/repo and copy signing key
+  echo "Collecting APKs and indexes preserving channel/arch structure..." >&2
+  mkdir -p "/work/repo"
+  rm -rf "/work/repo/$PKG_NAME"/*
+  dirname=$(ls -d /work/repo/work/*)
+  mv $dirname "/work/repo/$PKG_NAME"/
+  echo "$dirname"
+  rmdir "/work/repo/work" || true
 
-# Copy public key to repo for convenience
-cp /home/builder/.abuild/privkey.rsa.pub "$REPODEST/packager.rsa.pub" || true
+# Copy public key to repo channel for convenience
+mkdir -p /work/repo/lxc-manager || true
+cp /home/builder/.abuild/${PACKAGER_KEY}.pub "/work/repo/packager.rsa.pub" || true
 
 echo "Build finished for $PKG_NAME"

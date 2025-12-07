@@ -98,21 +98,24 @@ for ini in "$PKG_BASE"/*.ini; do
     fi
 
     echo "--- Building $pkg in container from $REPO_ROOT ---"
+    # Derive package version from root package.json for container logging
+    PKG_VERSION_HOST=$(awk -F '"' '/"version"/ {for (i=1;i<=NF;i++) if ($i=="version") {print $(i+2); exit}}' "$REPO_ROOT/package.json" | sed 's/[[:space:]]//g' | sed 's/,\?$//')
     docker run --rm \
+        -e PACKAGER_KEY \
         -e PACKAGER_PRIVKEY \
         -e PKG_NAME="$pkg" \
-        -e PKG_BASE="$PKG_BASE" \
         -e ALPINE_VERSION="$ALPINE_VERSION" \
+        -e PKG_VERSION="$PKG_VERSION_HOST" \
         -e ALLOW_UNTRUSTED=1 \
         -e NPM_CONFIG_CACHE="/home/builder/.npm" \
         -e npm_config_cache="/home/builder/.npm" \
         -e HOST_UID="$HOST_ID" \
         -e HOST_GID="$HOST_GID" \
-        -v "$REPO_ROOT":"/work" \
+        -v "$REPO_ROOT/alpine/package":"/work" \
         -v "$NPM_CACHE_DIR":"/home/builder/.npm" \
         -v "$APK_CACHE_DIR":"/var/cache/apk" \
         -w "/work" \
-        alpine:"$ALPINE_VERSION" sh -lc 'sh /work/alpine/package-build.sh' || status=1
+        alpine:"$ALPINE_VERSION" sh -lc 'sh /work/package-build.sh' || status=1
 done
 
 if [ "$status" -ne 0 ]; then

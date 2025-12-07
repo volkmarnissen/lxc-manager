@@ -145,14 +145,22 @@ fi
 echo "Generating APK package skeleton for '$PKGNAME'..."
 mkdir -p "$OUT_DIR"
 
-# Copy template files directory
+# Copy and render template files from TPL_DIR/files into OUT_DIR/files
 mkdir -p "$OUT_DIR/files"
-cp "$TPL_DIR/files"/*.in "$OUT_DIR/files/"
-
-# Render service files ahead of time (avoid sed in APKBUILD)
-sed "s/@PKGNAME@/$PKGNAME/g" "$TPL_DIR/files/service.initd.in" > "$OUT_DIR/files/service.initd"
-sed "s/@PKGNAME@/$PKGNAME/g" "$TPL_DIR/files/service.confd.in" > "$OUT_DIR/files/service.confd"
-chmod +x "$OUT_DIR/files/service.initd"
+for f in "$TPL_DIR/files"/*.in; do
+  [ -f "$f" ] || continue
+  base="$(basename "$f" .in)"
+  out="$OUT_DIR/files/$base"
+  # Render known placeholders; escape sed special chars in values
+  sed \
+    -e "s/@PKGNAME@/$(printf '%s' "$PKGNAME" | sed 's/[&/]/\\&/g')/g" \
+    -e "s/@PKGVER@/$(printf '%s' "$PKGVER" | sed 's/[&/]/\\&/g')/g" \
+    -e "s/@PKGREL@/$(printf '%s' "$PKGREL" | sed 's/[&/]/\\&/g')/g" \
+    -e "s/@NPMPACKAGE@/$(printf '%s' "$NPMPACKAGE" | sed 's/[&/]/\\&/g')/g" \
+    "$f" > "$out"
+  # Ensure executable bit for init script if applicable
+  case "$base" in service.initd) chmod +x "$out";; esac
+done
 
 # Render APKBUILD from template
 sed \
