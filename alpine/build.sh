@@ -60,19 +60,19 @@ APK_CACHE_DIR="$REPO_ROOT/alpine/cache/apk"
 mkdir -p "$APK_CACHE_DIR"
 if [ "$(id -u)" -eq 0 ]; then
     HOST_ID=1000:1000
-    HOST_GID=1000   
+    HOST_GID=1000
 else
-    HOST_ID="$(id -u)"":"$(id -g)"  
+    HOST_ID="$(id -u)"
     HOST_GID="$(id -g)"
-fi  
-echo "Host UID:GID for container build: $HOST_ID"   
+fi
+echo "Host UID:GID for container build: $HOST_ID"
 # Clean local repo to avoid mixing packages signed with different keys
 REPO_DIR="$REPO_ROOT/alpine/repo"
 echo "Cleaning local APK repo at $REPO_DIR to avoid signature mismatches..."
 rm -rf "$REPO_DIR"/* 2>/dev/null || true
 mkdir -p "$REPO_DIR"
-chown -R "$HOST_ID:$HOST_GID" "$REPO_DIR" || true     
-chmod -R 777 "$REPO_DIR" || true     
+chown -R "$HOST_ID:$HOST_GID" "$REPO_DIR" || true
+chmod -R 777 "$REPO_DIR" || true
 
 # Optional: build only specific packages via BUILD_ONLY (space-separated)
 BUILD_ONLY="${BUILD_ONLY:-}"
