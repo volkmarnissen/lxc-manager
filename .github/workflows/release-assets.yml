@@ -180,8 +180,8 @@ jobs:
           if [ -n "$APK_FILE" ]; then
             FILENAME=$(basename "$APK_FILE")
             SIZE=$(ls -lh "$APK_FILE" | awk '{print $5}')
-            DOWNLOAD_LINK="[📥 Download](https://github.com/${{ github.repository }}/releases/download/v${VERSION}/${FILENAME})"
-            echo "$product_name APK Size: \`$FILENAME\\` $SIZE    $DOWNLOAD_LINK" >> release-body.md
+            DOWNLOAD_LINK="[📥 Download](https://github.com/${{ github.repository }}/releases/download/v${VERSION}/$FILENAME)"
+            printf "%s\n" "$product_name APK Size: \`$FILENAME\` $SIZE    $DOWNLOAD_LINK" >> release-body.md
           else
             echo "apknotfound=true" >> $GITHUB_OUTPUT
           fi
