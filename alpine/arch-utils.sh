@@ -19,6 +19,7 @@ detect_alpine_version() {
     fi
     
     case "$NODE_MAJOR" in
+        24) ALPINE_VERSION="3.22" ;;
         22) ALPINE_VERSION="3.22" ;;
         20) ALPINE_VERSION="3.20" ;;
         18) ALPINE_VERSION="3.18" ;;
