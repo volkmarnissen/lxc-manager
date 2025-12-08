@@ -91,25 +91,12 @@ jobs:
           echo "Checking APK structure..."
           ls -laR alpine/package/repo/ || echo "alpine/package/repo not found"
           find . -name "*.apk" -type f || echo "No APK files found"
-      - name: Prepare APK filenames
-        run: |
-          set -euo pipefail
-          SRC_DIR="alpine/package/repo/lxc-manager"
-          DST_DIR="alpine/package/repo/upload"
-          mkdir -p "$DST_DIR"
-          shopt -s nullglob || true
-          for f in "$SRC_DIR"/*.apk; do
-            [ -f "$f" ] || continue
-            base=$(basename "$f")
-            cp "$f" "$DST_DIR/$base"
-          done
-          ls -lh "$DST_DIR" || true
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: apks-${{ needs.prepare.outputs.resolved_version }}
-          path: alpine/package/repo/upload/*.apk
+          path: alpine/package/repo/*.apk
           if-no-files-found: error
 
       - name: Upload packager.rsa.pub as separate artifact
@@ -144,7 +131,9 @@ jobs:
       - name: Flatten APK artifacts for upload
         run: |
           mkdir -p release-apks
-          find apks -type f \( -name "*.apk" -o -name "packager.rsa.pub" \) -exec cp {} release-apks/ \;
+          find apks -type f -name "*.apk" -exec cp {} release-apks/ \;
+          # Ensure public key is included as well
+          if [ -f release-apks/packager.rsa.pub ]; then :; else cp alpine/package/repo/packager.rsa.pub release-apks/ || true; fi
           ls -lh release-apks/
 
       - name: Generate GitHub changelog (initial-release-notes.md)

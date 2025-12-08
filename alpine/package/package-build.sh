@@ -92,19 +92,14 @@ su - builder -s /bin/sh -c '
   echo "Running checksum for '"$PKG_NAME"'..."
   abuild checksum || true
   echo "Running abuild -P for '"$PKG_NAME"' (build + package to REPODEST)..."
-  abuild -P "/work/repo" build
-  echo "APK created successfully."
+  abuild -r -P "/work/repo" validate builddeps clean fetch \
+	unpack prepare mkusers build check rootpkg
 '
 # Collect built artifacts: with -P, abuild already placed them under REPODEST/repo
-  echo "Collecting APKs and indexes (no move needed with -P)..." >&2
-  mkdir -p "/work/repo/$PKG_NAME" || true
-  # Nothing to move; ensure directory exists and list result for logs
-  find "/work/repo/$PKG_NAME" -maxdepth 2 -type f -name "*.apk" -o -name "APKINDEX*.tar*" | sed 's/^/  -> /' || true
-
-# Copy public key to repo channel for convenience
-mkdir -p /work/repo/lxc-manager || true
+   echo "Place the apk file directly in work/repo" >&2
+   find /work/repo -name "*.apk" -exec mv {} /work/repo \; >&2
+   
 cp /home/builder/.abuild/${PACKAGER_KEY}.pub "/work/repo/packager.rsa.pub" || true
-
 # Ensure repo artifacts are world-readable for CI artifact collection
 chmod -R a+rX /work/repo || true
 
