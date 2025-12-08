@@ -81,10 +81,9 @@ su - builder -s /bin/sh -c '
    fi
   echo "Running checksum for '"$PKG_NAME"'..."
   abuild checksum || true
-  echo "Running abuild for '"$PKG_NAME"'..."
-   abuild -P "/work/repo" rootpkg
-   echo "APK created successfully."
-   echo "Running abuild for '"$PKG_NAME"' (build + create apk)..."
+  echo "Running abuild -r for '"$PKG_NAME"' (full build + package)..."
+  abuild -r -P "/work/repo"
+  echo "APK created successfully."
 '
 # Collect built artifacts into /work/repo and copy signing key
   echo "Collecting APKs and indexes preserving channel/arch structure..." >&2
