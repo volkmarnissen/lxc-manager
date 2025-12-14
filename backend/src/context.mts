@@ -29,6 +29,14 @@ export class Context {
 
   remove(key: string): void {
     delete this.context[key];
+    // Persist removal to disk to ensure deletions survive reloads
+    try {
+      writeFileSync(
+        this.filePath,
+        JSON.stringify(this.context, null, 2),
+        "utf-8",
+      );
+    } catch {}
   }
 
   clear(): void {

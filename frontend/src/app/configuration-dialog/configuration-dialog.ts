@@ -46,7 +46,7 @@ export class ConfigurationDialog implements OnInit {
     const sel = this.ssh[index];
     if (sel?.host) {
       this.configService.checkSsh(sel.host, sel.port).subscribe({
-        next: r => { sel.permissionOk = !!r?.permissionOk; },
+        next: r => { sel.permissionOk = !!r?.permissionOk; (sel as any).stderr = r?.stderr; },
         error: () => { sel.permissionOk = false; }
       });
     }
@@ -58,7 +58,15 @@ export class ConfigurationDialog implements OnInit {
   }
 
   removeSsh(index: number) {
-    const wasCurrent = this.ssh[index].current;
+    const removed = this.ssh[index];
+    const wasCurrent = removed.current;
+    // Persist deletion if host is set
+    if (removed?.host) {
+      this.configService.deleteSshConfig(removed.host).subscribe({
+        next: () => {},
+        error: () => {}
+      });
+    }
     this.ssh.splice(index, 1);
     if (wasCurrent && this.ssh.length > 0) {
       this.ssh[0].current = true;
@@ -105,7 +113,7 @@ export class ConfigurationDialog implements OnInit {
     const sel = this.ssh[index];
     if (sel?.host) {
       this.configService.checkSsh(sel.host, sel.port).subscribe({
-        next: r => { sel.permissionOk = !!r?.permissionOk; },
+        next: r => { sel.permissionOk = !!r?.permissionOk; (sel as any).stderr = r?.stderr; },
         error: () => { sel.permissionOk = false; }
       });
     }
@@ -116,5 +124,10 @@ export class ConfigurationDialog implements OnInit {
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(text).catch(() => {});
     }
+  }
+
+  getCurrentStderr(): string {
+    const cur = (this.ssh.find(s => s.current) ?? this.ssh[0]) as any;
+    return (cur && typeof cur.stderr === 'string') ? cur.stderr : '';
   }
 }

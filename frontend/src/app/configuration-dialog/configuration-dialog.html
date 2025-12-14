@@ -10,10 +10,10 @@
 							<div class="form-row">
 								<mat-radio-button [checked]="s.current" (change)="setCurrent(idx)" aria-label="Set current"></mat-radio-button>
 								<mat-form-field appearance="fill" class="field">
-									<input matInput [(ngModel)]="s.host" [name]="'host' + idx" required placeholder="Host" (blur)="refreshPermission(idx)" />
+									<input matInput [(ngModel)]="s.host" [name]="'host' + idx" placeholder="Host" readonly disabled />
 								</mat-form-field>
 								<mat-form-field appearance="fill" class="field narrow">
-									<input matInput type="number" [(ngModel)]="s.port" [name]="'port' + idx" required min="1" max="65535" placeholder="Port" (blur)="refreshPermission(idx)" />
+									<input matInput type="number" [(ngModel)]="s.port" [name]="'port' + idx" placeholder="Port" readonly disabled />
 								</mat-form-field>
 								@if (ssh.length > 1) {
 									<button type="button" mat-icon-button color="warn" (click)="removeSsh(idx)" aria-label="Remove">
@@ -27,9 +27,15 @@
 			@if (permissionOk) {
 				<div class="ok-banner"><mat-icon class="ok-icon">verified</mat-icon> SSH access is working. No further action required.</div>
 			}
-			@else {
-				<div class="warn-banner"><mat-icon class="warn-icon">warning</mat-icon> SSH access is not allowed yet. Please run the steps below.</div>
-			}
+						@else {
+								<div class="warn-banner"><mat-icon class="warn-icon">warning</mat-icon> SSH access is not allowed yet. Please run the steps below.</div>
+								@if (ssh.length > 0) {
+									<div class="stderr-box">
+										<div class="stderr-title">SSH Fehlerdetails</div>
+										<pre class="stderr-content">{{ getCurrentStderr() }}</pre>
+									</div>
+								}
+						}
 			<mat-accordion multi>
 				@if (publicKeyCommand) {
 					<mat-expansion-panel>

@@ -65,7 +65,7 @@ export class ProxmoxConfigurationService {
   checkSsh(host: string, port?: number) {
     const params = new URLSearchParams({ host });
     if (typeof port === 'number') params.set('port', String(port));
-    return this.http.get<{ permissionOk: boolean }>(`${ApiUri.SshCheck}?${params.toString()}`).pipe(
+    return this.http.get<{ permissionOk: boolean; stderr?: string }>(`${ApiUri.SshCheck}?${params.toString()}`).pipe(
       catchError(ProxmoxConfigurationService.handleError)
     );
   }
@@ -83,6 +83,13 @@ export class ProxmoxConfigurationService {
 
   setSshConfig(ssh: ISsh) {
     return this.http.post<{ success: boolean }>('/api/sshconfig', ssh).pipe(
+      catchError(ProxmoxConfigurationService.handleError)
+    );
+  }
+
+  deleteSshConfig(host: string) {
+    const params = new URLSearchParams({ host });
+    return this.http.delete<{ success: boolean; deleted?: boolean }>(`/api/sshconfig?${params.toString()}`).pipe(
       catchError(ProxmoxConfigurationService.handleError)
     );
   }

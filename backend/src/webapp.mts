@@ -81,8 +81,8 @@ export class VEWebApp {
           res.status(400).json({ error: "Missing host" });
           return;
         }
-        const ok = Ssh.checkSshPermission(host, port);
-        res.json({ permissionOk: ok });
+        const result = Ssh.checkSshPermission(host, port);
+        res.json(result);
       } catch (err: any) {
         res.status(500).json({ error: err.message });
       }
@@ -112,6 +112,27 @@ export class VEWebApp {
           current,
         } as IVEContext);
         res.json({ success: true }).status(200);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // Delete SSH config by host (port currently ignored in keying)
+    this.app.delete(ApiUri.SshConfig, (req, res) => {
+      try {
+        const host = String(req.query.host || "").trim() || String((req.body as any)?.host || "").trim();
+        if (!host) {
+          res.status(400).json({ error: "Missing host" });
+          return;
+        }
+        const key = `ve_${host}`;
+        if (!storageContext.has(key)) {
+          // Consider non-existent as success for idempotency
+          res.json({ success: true, deleted: false }).status(200);
+          return;
+        }
+        storageContext.remove(key);
+        res.json({ success: true, deleted: true }).status(200);
       } catch (err: any) {
         res.status(500).json({ error: err.message });
       }

@@ -47,9 +47,8 @@ function buildAppendCommand(pubKey: string, targetFile: string = "~/.ssh/authent
 }
 
 export class Ssh {
-  static checkSshPermission(host: string, port?: number): boolean {
+  static checkSshPermission(host: string, port?: number): { permissionOk: boolean; stderr?: string } {
     try {
-      // Ensure ssh exists
       const sshCmd = "ssh";
       const args = [
         "-o", "BatchMode=yes",
@@ -61,10 +60,16 @@ export class Ssh {
         args.push("-p", String(port));
       }
       args.push(`root@${host}`, "true");
-      const res = spawnSync(sshCmd, args, { stdio: "ignore", timeout: 3000 });
-      return res.status === 0;
-    } catch {
-      return false;
+      const res = spawnSync(sshCmd, args, { encoding: "utf-8", timeout: 3000 });
+      const result: { permissionOk: boolean; stderr?: string } = { permissionOk: res.status === 0 };
+      if (typeof res.stderr === "string" && res.stderr.length > 0) {
+        result.stderr = res.stderr;
+      }
+      return result;
+    } catch (err: any) {
+      const result: { permissionOk: boolean; stderr?: string } = { permissionOk: false };
+      if (err?.message) result.stderr = String(err.message);
+      return result;
     }
   }
   static getPublicKey(): string | null {
@@ -115,7 +120,9 @@ export class Ssh {
     if (typeof ctx.current === "boolean") base.current = ctx.current;
     if (pub) base.publicKeyCommand = pub;
     base.installSshServer = install;
-    base.permissionOk = this.checkSshPermission(base.host, base.port);
+    const perm = this.checkSshPermission(base.host, base.port);
+    base.permissionOk = perm.permissionOk;
+    if (perm.stderr) (base as any).stderr = perm.stderr;
     return base;
   }
 
@@ -134,7 +141,9 @@ export class Ssh {
         if (typeof anyCtx.current === "boolean") item.current = anyCtx.current;
         if (pubCmd) item.publicKeyCommand = pubCmd;
         item.installSshServer = install;
-        item.permissionOk = this.checkSshPermission(item.host, item.port);
+        const perm = this.checkSshPermission(item.host, item.port);
+        item.permissionOk = perm.permissionOk;
+        if (perm.stderr) (item as any).stderr = perm.stderr;
         result.push(item);
       }
     }
