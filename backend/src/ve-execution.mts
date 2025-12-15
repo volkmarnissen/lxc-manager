@@ -229,7 +229,8 @@ export class VeExecution extends EventEmitter {
     const vmidOk = Number(vmctx.vmid) === Number(found.vmid);
     if (!pveOk || !vmidOk) throw new Error("PVE or VMID mismatch between host data and VMContext");
     // Replace variables with vmctx.data for host execution
-    const execCmd = this.replaceVarsWithContext(command, (vmctx as any).data || {});
+    var execCmd = this.replaceVarsWithContext(command, (vmctx as any).data || {});
+    execCmd = this.replaceVarsWithContext(execCmd, this.outputs || {});
     this.runOnLxc(vmctx.vmid, execCmd, tmplCommand);
   }
 

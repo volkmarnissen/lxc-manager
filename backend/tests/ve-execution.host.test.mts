@@ -226,4 +226,68 @@ describe("VeExecution host: flow", () => {
     expect(exec.captured).toContain("myapp-on-apphost");
     expect(exec.captured).not.toContain("inputApp");
   });
+
+  it("prefers vmctx.data.vm_id over outputs.vm_id", () => {
+    const storage = StorageContext.getInstance();
+    storage.setVMContext({
+      vmid: 101,
+      vekey: "ve_localhost",
+      data: { hostname: "apphost", pve: "pve-1", vm_id: 101 },
+    } as any);
+
+    const command: ICommand = {
+      name: "deploy",
+      command: "echo '{{vm_id}}'",
+      execute_on: "host:apphost",
+    };
+
+    class TestExec extends VeExecution {
+      public captured: string | undefined;
+      protected runOnVeHost(
+        _input: string,
+        tmplCommand: ICommand,
+        _timeoutMs = 10000,
+        remoteCommand?: string[],
+      ) {
+        if (remoteCommand && remoteCommand.length > 0) {
+          return {
+            stderr: "",
+            result: JSON.stringify([
+              { hostname: "apphost", pve: "pve-1", vmid: 101 },
+            ]),
+            exitCode: 0,
+            command: tmplCommand.name,
+            execute_on: tmplCommand.execute_on!,
+            index: 0,
+          } as any;
+        }
+        return {
+          stderr: "",
+          result: "",
+          exitCode: 0,
+          command: tmplCommand.name,
+          execute_on: tmplCommand.execute_on!,
+          index: 0,
+        } as any;
+      }
+      protected runOnLxc(_vmid: string | number, cmd: string, tmplCommand: ICommand) {
+        this.captured = cmd;
+        return {
+          stderr: "",
+          result: cmd,
+          exitCode: 0,
+          command: tmplCommand.name,
+          execute_on: tmplCommand.execute_on!,
+          index: 1,
+        } as any;
+      }
+    }
+
+    const outputs = [{ id: "vm_id", value: "999" }] as any;
+    const exec = new TestExec([command], outputs, dummyVE, defaults, "sh");
+    const rc = exec.run();
+    expect(rc?.lastSuccessfull).toBe(0);
+    expect(exec.captured).toContain("101");
+    expect(exec.captured).not.toContain("999");
+  });
 });
