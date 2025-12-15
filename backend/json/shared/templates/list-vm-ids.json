@@ -1,0 +1,12 @@
+{
+  "execute_on": "ve",
+  "name": "List VM IDs",
+  "description": "List all LXC container VM IDs on in the VE Cluster",
+  "outputs": ["vm_ids"],
+  "commands": [
+    {
+      "name": "List VM IDs",
+      "script": "list-vm-ids.sh"
+    }
+  ]
+}

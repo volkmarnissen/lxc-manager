@@ -1,8 +1,7 @@
 
 import { Component, inject, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { VeConfigurationDialog } from '../ve-configuration-dialog/ve-configuration-dialog';
-import { ErrorDialog } from './error-dialog';
 import { CommonModule } from '@angular/common';
 import { ProxmoxConfigurationService } from '../ve-configuration.service';
 import { IApplicationWeb } from '../../shared/types';
@@ -13,7 +12,7 @@ interface IApplicationWebIntern extends IApplicationWeb{
 @Component({
   selector: 'app-applications-list',
   standalone: true,
-  imports: [CommonModule, MatDialogModule],
+    imports: [CommonModule, MatDialogModule],
   templateUrl: './applications-list.html',
   styleUrl: './applications-list.scss',
 })
@@ -23,17 +22,15 @@ export class ApplicationsList implements OnInit {
   loading = true;
   error?: string;
   private proxmoxService = inject(ProxmoxConfigurationService);
+  private router = inject(Router);
   private dialog = inject(MatDialog);
 
-  openProxmoxConfigDialog(app: IApplicationWeb) {
-    this.dialog.open(VeConfigurationDialog, {
-      data: { app },
-    });
+  openProxmoxConfigDialog(_app: IApplicationWeb) {
+    this.router.navigateByUrl('/ssh-config');
   }
-  showErrors(app: IApplicationWebIntern) {
-    if (app.errors && app.errors.length > 0) {
-      this.dialog.open(ErrorDialog, { data: { errors: app.errors }, panelClass: 'error-dialog-panel' });
-    }
+  showErrors(_app: IApplicationWebIntern) {
+    // Non-modal mode: optionally navigate to a dedicated errors page or inline panel.
+    // Currently a no-op to remove MatDialog usage.
   }
 
   ngOnInit(): void {

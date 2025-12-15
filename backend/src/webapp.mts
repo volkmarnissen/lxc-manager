@@ -106,11 +106,16 @@ export class VEWebApp {
         return;
       }
       try {
-        storageContext.setVEContext({
-          host,
-          port,
-          current,
-        } as IVEContext);
+        // Add or update VE context
+        storageContext.setVEContext({ host, port, current } as IVEContext);
+        // If set as current, unset others
+        if (current === true) {
+          for (const key of storageContext.keys().filter((k) => k.startsWith("ve_") && k !== `ve_${host}`)) {
+            const ctx: any = storageContext.get(key) || {};
+            const updated = { ...ctx, current: false };
+            storageContext.set(key, updated);
+          }
+        }
         res.json({ success: true }).status(200);
       } catch (err: any) {
         res.status(500).json({ error: err.message });
@@ -132,7 +137,44 @@ export class VEWebApp {
           return;
         }
         storageContext.remove(key);
+        // If the removed one was current, set another VE as current (first found)
+        const remainingKeys: string[] = storageContext.keys().filter((k: string) => k.startsWith("ve_"));
+        if (remainingKeys.length > 0) {
+          // Choose first and mark as current
+          const firstKey: string = remainingKeys[0] as string;
+          const ctx: any = storageContext.get(firstKey) || {};
+          const updated = { ...ctx, current: true };
+          storageContext.set(firstKey, updated);
+        }
         res.json({ success: true, deleted: true }).status(200);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // Set an existing SSH config as current (by host). Unset others.
+    this.app.put(ApiUri.SshConfig, express.json(), (req, res) => {
+      try {
+        const rawHost = (req.query.host as string | undefined) ?? (req.body as any)?.host as string | undefined;
+        const host = rawHost ? String(rawHost).trim() : "";
+        if (!host) {
+          res.status(400).json({ error: "Missing host" });
+          return;
+        }
+        const key: string = `ve_${host}`;
+        if (!storageContext.has(key)) {
+          res.status(404).json({ error: "SSH config not found" });
+          return;
+        }
+        // Unset current for all others
+        for (const k of storageContext.keys().filter((k: string) => k.startsWith("ve_") && k !== key)) {
+          const ctx: any = storageContext.get(k) || {};
+          storageContext.set(k, { ...ctx, current: false });
+        }
+        // Set this one as current
+        const curCtx: any = storageContext.get(key) || {};
+        storageContext.set(key, { ...curCtx, current: true });
+        res.json({ success: true }).status(200);
       } catch (err: any) {
         res.status(500).json({ error: err.message });
       }

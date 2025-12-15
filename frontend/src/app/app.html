@@ -1,11 +1,19 @@
 <header class="app-header">
+  <img class="app-logo" src="/favicon-32.png" alt="Logo" width="24" height="24" />
   <span class="app-title">Proxmox WebApp</span>
-  <button class="ssh-btn" type="button" (click)="openSshDialog()">SSH Configuration</button>
+  <span>
+  <button class="apps-btn header-btn" type="button" aria-label="Applications" routerLink="/applications" matTooltip="Applications">
+    <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="3" y="3" width="8" height="8" rx="2" fill="#3949AB"/>
+      <rect x="13" y="3" width="8" height="8" rx="2" fill="#1E88E5"/>
+      <rect x="3" y="13" width="8" height="8" rx="2" fill="#43A047"/>
+      <rect x="13" y="13" width="8" height="8" rx="2" fill="#FB8C00"/>
+    </svg>
+  </button>
+  <button class="settings-btn header-btn" type="button" aria-label="Settings" routerLink="/ssh-config" matTooltip="Settings">
+    <span class="gear" aria-hidden="true">⚙️</span>
+  </button>
+  </span>
 </header>
-
-
-@if (showSshDialog) {
-  <app-configuration-dialog [sshMode]="true" (dialogClose)="closeSshDialog()"></app-configuration-dialog>
-}
 
 <router-outlet></router-outlet>

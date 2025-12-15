@@ -1,21 +1,13 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-import { ConfigurationDialog } from './configuration-dialog/configuration-dialog';
+import { Component } from '@angular/core';
+import { RouterOutlet, RouterLink } from '@angular/router';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, ConfigurationDialog],
+  imports: [RouterOutlet, RouterLink, MatTooltipModule],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
 export class App {
-  protected readonly title = signal('webapp-angular');
-  showSshDialog = false;
-
-  openSshDialog() {
-    this.showSshDialog = true;
-  }
-  closeSshDialog() {
-    this.showSshDialog = false;
-  }
+  // Root app component renders header and router outlet
 }

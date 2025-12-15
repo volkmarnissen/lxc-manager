@@ -14,10 +14,8 @@
     "build:frontend": "cd frontend && npm run build",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
-    "scripts": {
-      "lint:lang": "node scripts/check-language.js"
-    }
-    "e2e:debug": "PWDEBUG=1 playwright test --headed"
+    "e2e:debug": "PWDEBUG=1 playwright test --headed",
+    "lint:lang": "node scripts/check-language.js"
   },
   "bin": {
     "lxc-manager-web": "bin/webapp"
