@@ -126,12 +126,12 @@ export class StorageContext extends Context implements IContext {
         taskTemplates: [],
       };
       const appLoader = new ApplicationLoader(this.pathes);
-      try{
-        let app = appLoader.readApplicationJson(applicationName, readOpts)
+      try {
+        let app = appLoader.readApplicationJson(applicationName, readOpts);
         app.description = app.description || "No desription available";
-        applications.push( app as IApplicationWeb);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (e: Error | any) { 
+        applications.push(app as IApplicationWeb);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (e: Error | any) {
         // Errors are handled below
       }
       if (readOpts.error.details && readOpts.error.details.length > 0) {

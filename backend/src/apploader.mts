@@ -30,7 +30,7 @@ export class ApplicationLoader {
   public readApplicationJson(
     application: string,
     opts: IReadApplicationOptions,
-  ): IApplication{
+  ): IApplication {
     let appPath: string | undefined;
     let appFile: string | undefined;
     let appName = application;
@@ -78,6 +78,15 @@ export class ApplicationLoader {
         appFile,
         "application",
       );
+      // Check for icon.png in the application directory
+      let icon = appData?.icon ? appData.icon : "icon.png";
+      if (appPath) {
+        const iconPath = path.join(appPath, icon);
+        if (fs.existsSync(iconPath)) {
+          appData.icon = icon;
+          appData.iconContent = fs.readFileSync(iconPath, { encoding: "base64" });
+        }
+      }
       // Save the first application in the hierarchy
       if (!opts.application) {
         opts.application = appData;
