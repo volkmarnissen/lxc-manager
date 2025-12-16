@@ -7,7 +7,6 @@ import path from "path";
 import fs from "fs";
 import { StorageContext } from "./storagecontext.mjs";
 import { ITemplateReference } from "./templateprocessor.mjs";
-
 export interface IReadApplicationOptions {
   applicationHierarchy: string[];
   application?: IApplication;
@@ -15,7 +14,7 @@ export interface IReadApplicationOptions {
   error: VEConfigurationError;
   taskTemplates: {
     task: string;
-    templates: (ITemplateReference| string)[];
+    templates: (ITemplateReference | string)[];
   }[];
 }
 export class ApplicationLoader {
@@ -31,7 +30,7 @@ export class ApplicationLoader {
   public readApplicationJson(
     application: string,
     opts: IReadApplicationOptions,
-  ) {
+  ): IApplication{
     let appPath: string | undefined;
     let appFile: string | undefined;
     let appName = application;
@@ -77,7 +76,7 @@ export class ApplicationLoader {
     try {
       appData = validator.serializeJsonFileWithSchema<IApplication>(
         appFile,
-        "application"
+        "application",
       );
       // Save the first application in the hierarchy
       if (!opts.application) {
@@ -98,13 +97,14 @@ export class ApplicationLoader {
         }
       }
       this.processTemplates(appData, opts);
-      // Add application to hierarchy
+      return appData;
     } catch (e: Error | any) {
       if (opts.error.details === undefined) {
         opts.error.details = [];
       }
       opts.error.details.push(e);
     }
+    throw opts.error;
   }
 
   private processTemplates(

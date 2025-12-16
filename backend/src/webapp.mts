@@ -22,7 +22,11 @@ import { IVEContext } from "./backend-types.mjs";
 export class VEWebApp {
   app: express.Application;
   public httpServer: http.Server;
-  returnResponse<T>(res: express.Response, payload: T, statusCode: number = 200) {
+  returnResponse<T>(
+    res: express.Response,
+    payload: T,
+    statusCode: number = 200,
+  ) {
     res.status(statusCode).json(payload);
   }
   constructor(storageContext: StorageContext) {
@@ -36,12 +40,18 @@ export class VEWebApp {
     // fs imported from ESM above
     // Allow configuration via ENV or package.json
     // ENV has precedence: absolute or relative to repo root
-    let configuredRel: string | undefined = process.env.LXC_MANAGER_FRONTEND_DIR;
+    let configuredRel: string | undefined =
+      process.env.LXC_MANAGER_FRONTEND_DIR;
     try {
       const rootPkg = path.join(__dirname, "../../package.json");
       if (fs.existsSync(rootPkg)) {
         const pkg = JSON.parse(fs.readFileSync(rootPkg, "utf-8"));
-        if (pkg && pkg.lxcManager && pkg.lxcManager.frontendDir && !configuredRel) {
+        if (
+          pkg &&
+          pkg.lxcManager &&
+          pkg.lxcManager.frontendDir &&
+          !configuredRel
+        ) {
           configuredRel = String(pkg.lxcManager.frontendDir);
         }
       }
@@ -51,7 +61,11 @@ export class VEWebApp {
     const candidates: string[] = [];
     if (configuredRel) {
       // support absolute or relative path
-      candidates.push(path.isAbsolute(configuredRel) ? configuredRel : path.join(repoRoot, configuredRel));
+      candidates.push(
+        path.isAbsolute(configuredRel)
+          ? configuredRel
+          : path.join(repoRoot, configuredRel),
+      );
     }
     // Fallbacks
     candidates.push(
@@ -101,7 +115,7 @@ export class VEWebApp {
       } catch (err: any) {
         res.status(500).json({ error: err.message });
       }
-    }); 
+    });
     // Check SSH permission for host/port
     this.app.get(ApiUri.SshCheck, (req, res) => {
       try {
@@ -125,11 +139,7 @@ export class VEWebApp {
       const port = body?.port;
       const current = body?.current === true;
       // publicKeyCommand must never be persisted; ignore it from payload
-      if (
-        !host ||
-        typeof host !== "string" ||
-        typeof port !== "number"
-      ) {
+      if (!host || typeof host !== "string" || typeof port !== "number") {
         res.status(400).json({
           error:
             "Invalid SSH config. Must provide host (string) and port (number).",
@@ -138,18 +148,25 @@ export class VEWebApp {
       }
       try {
         // Add or update VE context
-        var currentKey:string|undefined = storageContext.setVEContext({ host, port, current } as IVEContext);
+        var currentKey: string | undefined = storageContext.setVEContext({
+          host,
+          port,
+          current,
+        } as IVEContext);
         // If set as current, unset others
         if (current === true) {
-          for (const key of storageContext.keys().filter((k) => k.startsWith("ve_") && k !== `ve_${host}`)) {
+          for (const key of storageContext
+            .keys()
+            .filter((k) => k.startsWith("ve_") && k !== `ve_${host}`)) {
             const ctx: any = storageContext.get(key) || {};
             const updated = { ...ctx, current: false };
             storageContext.setVEContext(updated);
-           }
-         }
-         else
-          currentKey = undefined;
-        this.returnResponse<ISetSshConfigResponse>(res, { success: true , key: currentKey });
+          }
+        } else currentKey = undefined;
+        this.returnResponse<ISetSshConfigResponse>(res, {
+          success: true,
+          key: currentKey,
+        });
       } catch (err: any) {
         res.status(500).json({ error: err.message });
       }
@@ -158,7 +175,9 @@ export class VEWebApp {
     // Delete SSH config by host (port currently ignored in keying)
     this.app.delete(ApiUri.SshConfig, (req, res) => {
       try {
-        const host = String(req.query.host || "").trim() || String((req.body as any)?.host || "").trim();
+        const host =
+          String(req.query.host || "").trim() ||
+          String((req.body as any)?.host || "").trim();
         if (!host) {
           res.status(400).json({ error: "Missing host" });
           return;
@@ -166,13 +185,18 @@ export class VEWebApp {
         const key = `ve_${host}`;
         if (!storageContext.has(key)) {
           // Consider non-existent as success for idempotency
-          this.returnResponse<IDeleteSshConfigResponse>(res, { success: true, deleted: false });
+          this.returnResponse<IDeleteSshConfigResponse>(res, {
+            success: true,
+            deleted: false,
+          });
           return;
         }
         storageContext.remove(key);
         // If the removed one was current, set another VE as current (first found)
-        const remainingKeys: string[] = storageContext.keys().filter((k: string) => k.startsWith("ve_"));
-        var currentKey:string| undefined = undefined
+        const remainingKeys: string[] = storageContext
+          .keys()
+          .filter((k: string) => k.startsWith("ve_"));
+        var currentKey: string | undefined = undefined;
         if (remainingKeys.length > 0 && remainingKeys[0] !== undefined) {
           // Choose first and mark as current
           currentKey = remainingKeys[0];
@@ -180,7 +204,11 @@ export class VEWebApp {
           const updated = { ...ctx, current: true };
           storageContext.set(currentKey, updated);
         }
-        this.returnResponse<IDeleteSshConfigResponse>(res, { success: true, deleted: true, key: currentKey });
+        this.returnResponse<IDeleteSshConfigResponse>(res, {
+          success: true,
+          deleted: true,
+          key: currentKey,
+        });
       } catch (err: any) {
         res.status(500).json({ error: err.message });
       }
@@ -189,7 +217,9 @@ export class VEWebApp {
     // Set an existing SSH config as current (by host). Unset others.
     this.app.put(ApiUri.SshConfig, express.json(), (req, res) => {
       try {
-        const rawHost = (req.query.host as string | undefined) ?? (req.body as any)?.host as string | undefined;
+        const rawHost =
+          (req.query.host as string | undefined) ??
+          ((req.body as any)?.host as string | undefined);
         const host = rawHost ? String(rawHost).trim() : "";
         if (!host) {
           res.status(400).json({ error: "Missing host" });
@@ -201,14 +231,16 @@ export class VEWebApp {
           return;
         }
         // Unset current for all others
-        for (const k of storageContext.keys().filter((k: string) => k.startsWith("ve_") && k !== key)) {
+        for (const k of storageContext
+          .keys()
+          .filter((k: string) => k.startsWith("ve_") && k !== key)) {
           const ctx: any = storageContext.get(k) || {};
           storageContext.set(k, { ...ctx, current: false });
         }
         // Set this one as current
         const curCtx: any = storageContext.get(key) || {};
         storageContext.set(key, { ...curCtx, current: true });
-        this.returnResponse<ISetSshConfigResponse>(res, { success: true , key });
+        this.returnResponse<ISetSshConfigResponse>(res, { success: true, key });
       } catch (err: any) {
         res.status(500).json({ error: err.message });
       }
@@ -218,26 +250,34 @@ export class VEWebApp {
     this.app.get(ApiUri.UnresolvedParameters, async (req, res) => {
       try {
         const { application, task } = req.params;
-        const veContextKey = (req.query.veContext as string | undefined) || undefined;
+        const veContextKey =
+          (req.query.veContext as string | undefined) || undefined;
         if (!veContextKey) {
-          return res.status(400).json({ success: false, error: "Missing veContext" });
+          return res
+            .status(400)
+            .json({ success: false, error: "Missing veContext" });
         }
         const storageContext = StorageContext.getInstance();
-        const ctx: IVEContext | null = storageContext.getVEContextByKey(veContextKey);
+        const ctx: IVEContext | null =
+          storageContext.getVEContextByKey(veContextKey);
         if (!ctx) {
-          return res.status(404).json({ success: false, error: "VE context not found" });
+          return res
+            .status(404)
+            .json({ success: false, error: "VE context not found" });
         }
         const templateProcessor = storageContext.getTemplateProcessor();
         const loaded = templateProcessor.loadApplication(
           application,
           task as TaskType,
-          ctx
+          ctx,
         );
         const unresolved = templateProcessor.getUnresolvedParameters(
           loaded.parameters,
           loaded.resolvedParams,
         );
-        this.returnResponse<IUnresolvedParametersResponse>(res, { unresolvedParameters: unresolved });
+        this.returnResponse<IUnresolvedParametersResponse>(res, {
+          unresolvedParameters: unresolved,
+        });
       } catch (err: any) {
         return res
           .status(500)
@@ -261,8 +301,6 @@ if (
   import.meta.url === process.argv[1] ||
   import.meta.url === `file://${process.argv[1]}`
 ) {
-  const filename = fileURLToPath(import.meta.url);
-  const dirname = path.dirname(filename);
   // Do NOT change working directory; respect caller's CWD.
   // Support --local <dir> CLI option to set the local directory
   // Default is './local' relative to current working directory
@@ -283,7 +321,7 @@ if (
   }
 
   // Initialize StorageContext with absolute paths to avoid CWD-dependency
-  StorageContext.setInstance( localDir);
+  StorageContext.setInstance(localDir);
   const webApp = new VEWebApp(StorageContext.getInstance());
   const port = process.env.PORT || 3000;
   webApp.httpServer.listen(port, () => {

@@ -15,7 +15,8 @@ describe("VeExecution host: flow", () => {
     // Reset singleton with a unique temp directory to isolate contexts
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "lxc-mgr-host-"));
     if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-    if (!fs.existsSync(path.join(tmpDir, "local"))) fs.mkdirSync(path.join(tmpDir, "local"), { recursive: true });
+    if (!fs.existsSync(path.join(tmpDir, "local")))
+      fs.mkdirSync(path.join(tmpDir, "local"), { recursive: true });
     StorageContext.setInstance(tmpDir);
   });
 
@@ -66,7 +67,11 @@ describe("VeExecution host: flow", () => {
           index: 0,
         } as any;
       }
-      protected runOnLxc(vmid: string | number, command: string, tmplCommand: ICommand) {
+      protected runOnLxc(
+        vmid: string | number,
+        command: string,
+        tmplCommand: ICommand,
+      ) {
         this.lxcCalledWith = { vmid, command };
         return {
           stderr: "",
@@ -82,7 +87,11 @@ describe("VeExecution host: flow", () => {
     const rc = exec.run();
     expect(rc?.lastSuccessfull).toBe(0);
     expect(exec.probePath).toBeDefined();
-    expect(exec.probePath!.endsWith(path.join("json", "shared", "scripts", "write-vmids-json.sh"))).toBe(true);
+    expect(
+      exec.probePath!.endsWith(
+        path.join("json", "shared", "scripts", "write-vmids-json.sh"),
+      ),
+    ).toBe(true);
     expect(exec.lxcCalledWith.vmid).toBe(101);
     expect(exec.lxcCalledWith.command).toContain("echo 'hello'");
   });
@@ -120,11 +129,25 @@ describe("VeExecution host: flow", () => {
             index: 0,
           } as any;
         }
-        return { stderr: "", result: "", exitCode: 0, command: tmplCommand.name, execute_on: tmplCommand.execute_on!, index: 0 } as any;
+        return {
+          stderr: "",
+          result: "",
+          exitCode: 0,
+          command: tmplCommand.name,
+          execute_on: tmplCommand.execute_on!,
+          index: 0,
+        } as any;
       }
       protected runOnLxc() {
         this.lxcCalled = true;
-        return { stderr: "", result: "", exitCode: 0, command: "", execute_on: "lxc", index: 1 } as any;
+        return {
+          stderr: "",
+          result: "",
+          exitCode: 0,
+          command: "",
+          execute_on: "lxc",
+          index: 1,
+        } as any;
       }
     }
     const exec = new TestExec([command], [], dummyVE, defaults, "sh");
@@ -166,11 +189,25 @@ describe("VeExecution host: flow", () => {
             index: 0,
           } as any;
         }
-        return { stderr: "", result: "", exitCode: 0, command: tmplCommand.name, execute_on: tmplCommand.execute_on!, index: 0 } as any;
+        return {
+          stderr: "",
+          result: "",
+          exitCode: 0,
+          command: tmplCommand.name,
+          execute_on: tmplCommand.execute_on!,
+          index: 0,
+        } as any;
       }
       protected runOnLxc() {
         this.lxcCalled = true;
-        return { stderr: "", result: "", exitCode: 0, command: "", execute_on: "lxc", index: 1 } as any;
+        return {
+          stderr: "",
+          result: "",
+          exitCode: 0,
+          command: "",
+          execute_on: "lxc",
+          index: 1,
+        } as any;
       }
     }
     const exec = new TestExec([command], [], dummyVE, defaults, "sh");
@@ -212,15 +249,39 @@ describe("VeExecution host: flow", () => {
             index: 0,
           } as any;
         }
-        return { stderr: "", result: "", exitCode: 0, command: tmplCommand.name, execute_on: tmplCommand.execute_on!, index: 0 } as any;
+        return {
+          stderr: "",
+          result: "",
+          exitCode: 0,
+          command: tmplCommand.name,
+          execute_on: tmplCommand.execute_on!,
+          index: 0,
+        } as any;
       }
-      protected runOnLxc(_vmid: string | number, cmd: string, tmplCommand: ICommand) {
+      protected runOnLxc(
+        _vmid: string | number,
+        cmd: string,
+        tmplCommand: ICommand,
+      ) {
         this.captured = cmd;
-        return { stderr: "", result: cmd, exitCode: 0, command: tmplCommand.name, execute_on: tmplCommand.execute_on!, index: 1 } as any;
+        return {
+          stderr: "",
+          result: cmd,
+          exitCode: 0,
+          command: tmplCommand.name,
+          execute_on: tmplCommand.execute_on!,
+          index: 1,
+        } as any;
       }
     }
     // Provide an input that would differ from vmctx.data to ensure data wins
-    const exec = new TestExec([command], [{ id: "app_name", value: "inputApp" }], dummyVE, defaults, "sh");
+    const exec = new TestExec(
+      [command],
+      [{ id: "app_name", value: "inputApp" }],
+      dummyVE,
+      defaults,
+      "sh",
+    );
     const rc = exec.run();
     expect(rc?.lastSuccessfull).toBe(0);
     expect(exec.captured).toContain("myapp-on-apphost");
@@ -271,7 +332,11 @@ describe("VeExecution host: flow", () => {
           index: 0,
         } as any;
       }
-      protected runOnLxc(_vmid: string | number, cmd: string, tmplCommand: ICommand) {
+      protected runOnLxc(
+        _vmid: string | number,
+        cmd: string,
+        tmplCommand: ICommand,
+      ) {
         this.captured = cmd;
         return {
           stderr: "",

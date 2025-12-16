@@ -13,7 +13,10 @@ describe("WebApp serves index.html", () => {
   beforeAll(() => {
     // Create a temporary static directory with an index.html
     tempDir = mkdtempSync(path.join(tmpdir(), "webapp-static-"));
-    writeFileSync(path.join(tempDir, "index.html"), "<html><body>OK</body></html>");
+    writeFileSync(
+      path.join(tempDir, "index.html"),
+      "<html><body>OK</body></html>",
+    );
     // Point frontend dir to tempDir
     process.env.LXC_MANAGER_FRONTEND_DIR = tempDir;
     // Minimal StorageContext init; paths won't be used for this test route
@@ -29,9 +32,6 @@ describe("WebApp serves index.html", () => {
 
   it("GET / returns 200 and HTML", async () => {
     const app = new VEWebApp(StorageContext.getInstance()).app;
-    await request(app)
-      .get("/")
-      .expect(200)
-      .expect("Content-Type", /html/);
+    await request(app).get("/").expect(200).expect("Content-Type", /html/);
   });
 });

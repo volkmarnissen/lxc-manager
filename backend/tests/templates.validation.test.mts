@@ -50,10 +50,10 @@ describe("Template JSON validation", () => {
     }
 
     if (errors.length > 0) {
-      const list = errors
-        .map((e) => `- ${e.file}: ${e.message}`)
-        .join("\n");
-      throw new Error(`Template validation failed for ${errors.length} file(s):\n${list}`);
+      const list = errors.map((e) => `- ${e.file}: ${e.message}`).join("\n");
+      throw new Error(
+        `Template validation failed for ${errors.length} file(s):\n${list}`,
+      );
     }
     expect(errors.length).toBe(0);
   });

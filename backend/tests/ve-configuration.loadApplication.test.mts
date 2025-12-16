@@ -60,7 +60,12 @@ describe("ProxmoxConfiguration.loadApplication", () => {
       let application = helper.readApplication("modbus2mqtt");
       application.installation = ["nonexistent-template.json"];
       const templateProcessor = config.getTemplateProcessor();
-      templateProcessor.loadApplication("modbus2mqtt", "installation", { host: "localhost", port: 22 } as any, "sh");
+      templateProcessor.loadApplication(
+        "modbus2mqtt",
+        "installation",
+        { host: "localhost", port: 22 } as any,
+        "sh",
+      );
     } catch (err) {
       expect(err).toBeInstanceOf(VEConfigurationError);
       const errorObj = err as VEConfigurationError;
@@ -98,7 +103,12 @@ describe("ProxmoxConfiguration.loadApplication", () => {
     helper.writeApplication(appName, app);
     try {
       const templateProcessor = config.getTemplateProcessor();
-      templateProcessor.loadApplication(appName, "installation", { host: "localhost", port: 22 } as any, "sh");
+      templateProcessor.loadApplication(
+        appName,
+        "installation",
+        { host: "localhost", port: 22 } as any,
+        "sh",
+      );
     } catch (err: any) {
       expect((err as any).message).toMatch(/Endless recursion detected/);
     }
@@ -120,7 +130,12 @@ describe("ProxmoxConfiguration.loadApplication", () => {
     helper.writeApplication(appName, app);
     try {
       const templateProcessor = config.getTemplateProcessor();
-      templateProcessor.loadApplication(appName, "installation", { host: "localhost", port: 22 } as any, "sh");
+      templateProcessor.loadApplication(
+        appName,
+        "installation",
+        { host: "localhost", port: 22 } as any,
+        "sh",
+      );
     } catch (err: any) {
       // Validation error is acceptable here when script is missing
       expect(err.message).toMatch(/error|Script file not found/i);
@@ -170,14 +185,23 @@ describe("ProxmoxConfiguration.loadApplication", () => {
     helper.writeApplication(appName, app);
     try {
       const templateProcessor = config.getTemplateProcessor();
-      templateProcessor.loadApplication(appName, "installation", { host: "localhost", port: 22 } as any,"sh");
+      templateProcessor.loadApplication(
+        appName,
+        "installation",
+        { host: "localhost", port: 22 } as any,
+        "sh",
+      );
     } catch (err: any) {
       // Expect a validation error or specific undefined parameter message
       expect(err.message).toMatch(/Validation error|Command uses variable/i);
       const details = (err as any).details || [];
       if (Array.isArray(details) && details.length > 0) {
-        const messages = details.map((d: any) => d.passed_message || d.message || "");
-        const hasPatternMsg = messages.some((m: string) => /must match pattern/i.test(m));
+        const messages = details.map(
+          (d: any) => d.passed_message || d.message || "",
+        );
+        const hasPatternMsg = messages.some((m: string) =>
+          /must match pattern/i.test(m),
+        );
         expect(hasPatternMsg).toBe(true);
       }
     }

@@ -9,7 +9,7 @@ import { StorageContext } from "@src/storagecontext.mjs";
 
 // New test cases are implemented here using overridable execCommand method.
 let index = 0;
-const dummyVE: IVEContext = { host: "localhost", port: 22 }as IVEContext;
+const dummyVE: IVEContext = { host: "localhost", port: 22 } as IVEContext;
 StorageContext.setInstance("local");
 describe("VeExecution", () => {
   it("should resolve variables from outputs, inputs, and defaults in all combinations", () => {
@@ -446,7 +446,11 @@ describe("VeExecution", () => {
       }
     }
     const commands: ICommand[] = [
-      { command: 'echo "{\"vm_id\": 123}"', name: "emit-vmid", execute_on: "ve" },
+      {
+        command: 'echo "{\"vm_id\": 123}"',
+        name: "emit-vmid",
+        execute_on: "ve",
+      },
     ];
     const exec = new TestExec(commands, [], dummyVE, new Map());
     let received: any = undefined;
@@ -478,8 +482,8 @@ describe("VeExecution", () => {
       }
     }
     const commands: ICommand[] = [
-      { command: "echo \"first\"", name: "first", execute_on: "ve" },
-      { command: "echo \"second\"", name: "second", execute_on: "ve" },
+      { command: 'echo "first"', name: "first", execute_on: "ve" },
+      { command: 'echo "second"', name: "second", execute_on: "ve" },
     ];
     const exec = new FailingExec(commands, [], dummyVE, new Map());
     let finishedCalled = false;

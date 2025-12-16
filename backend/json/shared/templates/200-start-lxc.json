@@ -13,6 +13,6 @@
   "commands": [
     {
       "script": "lxc-start.sh"
-     }
+    }
   ]
 }

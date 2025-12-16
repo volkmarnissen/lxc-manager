@@ -7,7 +7,7 @@ import * as path from "path";
 import { StorageContext } from "@src/storagecontext.mjs";
 import { IVEContext } from "@src/backend-types.mjs";
 describe("ProxmoxExecution shell quoting", () => {
-  const dummySSH:IVEContext = { host: "localhost", port: 22 } as IVEContext;
+  const dummySSH: IVEContext = { host: "localhost", port: 22 } as IVEContext;
   const defaults = new Map<string, string | number | boolean>();
   const inputs: { id: string; value: string | number | boolean }[] = [];
 
@@ -54,11 +54,7 @@ describe("ProxmoxExecution shell quoting", () => {
       };
     };
     exec.run = function () {
-      const msg = this.runOnVeHost(
-        command.command!,
-        command,
-        10000,
-      );
+      const msg = this.runOnVeHost(command.command!, command, 10000);
       return {
         lastSuccessfull: msg.exitCode === 0 ? 0 : -1,
         inputs: [],
@@ -86,14 +82,13 @@ describe("ProxmoxExecution shell quoting", () => {
       [{ id: "vm_id", value: "dummy" }],
       dummySSH,
       defaults,
-      "sh"
+      "sh",
     );
     (exec as any).ssh = { host: "localhost", port: 22 };
     exec.run = function () {
       let lastSuccess = -1;
       try {
-        this.runOnLxc("dummy", command.command!, command, 10000
-        );
+        this.runOnLxc("dummy", command.command!, command, 10000);
         expect(this.outputs.get("mocked")).toBe(true);
         lastSuccess = 0;
       } catch {

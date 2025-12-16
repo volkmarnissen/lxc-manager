@@ -18,7 +18,8 @@ describe("ProxmoxConfiguration script path resolution", () => {
   beforeAll(async () => {
     helper = new ProxmoxTestHelper();
     await helper.setup();
-    appDir = path.join(helper.jsonDir, "applications", appName);
+    // IMPORTANT: StorageContext now only uses dynamic localPath. Ensure we write into local/applications.
+    appDir = path.join(helper.localDir, "applications", appName);
     scriptsDir = path.join(appDir, "scripts");
     appJsonPath = path.join(appDir, "application.json");
     templateDir = path.join(appDir, "templates");
@@ -31,7 +32,7 @@ describe("ProxmoxConfiguration script path resolution", () => {
       appJsonPath,
       JSON.stringify({
         name: appName,
-        installation: ["install.json"],
+        installation: ["install.json", "010-get-latest-os-template.json"],
       }),
     );
     fs.writeFileSync(
@@ -52,9 +53,24 @@ describe("ProxmoxConfiguration script path resolution", () => {
 
   it("should resolve script path in commands", () => {
     const templateProcessor = helper.createTemplateProcessor();
-    const result = templateProcessor.loadApplication(appName, "installation",helper.createStorageContext().getCurrentVEContext()!,"sh");
+    const result = templateProcessor.loadApplication(
+      appName,
+      "installation",
+      { host: "localhost", port: 22 } as any,
+      "sh",
+    );
     const scriptCmd = result.commands.find((cmd) => cmd.script !== undefined);
     expect(scriptCmd).toBeDefined();
     expect(scriptCmd!.script).toBe(scriptPath);
+
+    // Also verify shared template from backend/json/shared/templates is picked up
+    const expectedSharedScript = path.join(
+      __dirname,
+      "../json/shared/scripts/get-latest-os-template.sh",
+    );
+    const sharedCmd = result.commands.find(
+      (cmd) => cmd.script === expectedSharedScript,
+    );
+    expect(sharedCmd).toBeDefined();
   });
 });

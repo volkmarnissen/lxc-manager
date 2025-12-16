@@ -17,7 +17,12 @@ describe("Context file encryption", () => {
     const filePath = makeTempFile();
     const ctx = new Context(filePath);
     // write some content
-    ctx.set("ve_test", { host: "example", port: 22, current: true, data: { token: "abc" } });
+    ctx.set("ve_test", {
+      host: "example",
+      port: 22,
+      current: true,
+      data: { token: "abc" },
+    });
     const raw = fs.readFileSync(filePath, "utf-8");
     expect(raw.startsWith("enc:")).toBe(true);
 
@@ -37,10 +42,17 @@ describe("Context file encryption", () => {
     const secretFile = path.join(dir, "secret.txt");
 
     const ctx = new Context(filePath);
-    ctx.set("ve_test", { host: "example", port: 22, current: true, data: { token: "abc" } });
+    ctx.set("ve_test", {
+      host: "example",
+      port: 22,
+      current: true,
+      data: { token: "abc" },
+    });
 
     // overwrite secret.txt with a different key
-    const differentKey = Buffer.from("different-secret-key-32-bytes!!!!").toString("base64");
+    const differentKey = Buffer.from(
+      "different-secret-key-32-bytes!!!!",
+    ).toString("base64");
     fs.writeFileSync(secretFile, differentKey, "utf-8");
 
     let threw = false;
@@ -50,7 +62,8 @@ describe("Context file encryption", () => {
       const loaded = ctxWrong.get("ve_test") as any;
       // If it did not throw, content should not match original
       if (loaded) {
-        const same = loaded?.host === "example" && loaded?.data?.token === "abc";
+        const same =
+          loaded?.host === "example" && loaded?.data?.token === "abc";
         expect(same).toBe(false);
       }
     } catch (e) {

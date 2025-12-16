@@ -1,19 +1,22 @@
 import path, { dirname, join } from "path";
 import { fileURLToPath } from "url";
-import { JsonError, JsonValidator } from "./jsonvalidator.mjs";
-import { readdirSync, statSync, existsSync, readFileSync } from "fs";
+import { JsonValidator } from "./jsonvalidator.mjs";
+import { readdirSync, statSync, existsSync } from "fs";
 import {
   IConfiguredPathes,
   IContext,
+  IReadApplicationOptions,
   IVEContext,
   IVMContext,
   VEConfigurationError,
+  VELoadApplicationError,
   storageKey as storageContextKey,
 } from "./backend-types.mjs";
 import { TemplateProcessor } from "./templateprocessor.mjs";
 import { IApplicationWeb, ISsh } from "./types.mjs";
 import { Context } from "./context.mjs";
 import { Ssh } from "./ssh.mjs";
+import { ApplicationLoader } from "./apploader.mjs";
 
 const baseSchemas: string[] = ["templatelist.schema.json"];
 
@@ -24,10 +27,10 @@ export class VMContext implements IVMContext {
     this.data = data.data;
   }
   public vmid: number;
-  public vekey: string;  
+  public vekey: string;
   public data: any;
   getKey(): string {
-    return `vm_${this.vmid}`; 
+    return `vm_${this.vmid}`;
   }
 }
 
@@ -65,21 +68,26 @@ export class StorageContext extends Context implements IContext {
   jsonValidator: JsonValidator;
   private jsonPath: string;
   private schemaPath: string;
-  constructor(
-    private localPath: string ) {
+  private pathes: IConfiguredPathes;
+  constructor(localPath: string) {
     super(join(localPath, "storagecontext.json"));
-    const backendDirname = join( dirname(fileURLToPath(import.meta.url)), "..");
-    this.jsonPath = path.join(localPath, "json");
+    const backendDirname = join(dirname(fileURLToPath(import.meta.url)), "..");
+    this.pathes = {
+      localPath: localPath,
+      jsonPath: path.join(backendDirname, "json"),
+      schemaPath: path.join(backendDirname, "schemas"),
+    };
+    this.jsonPath = path.join(backendDirname, "json");
     this.schemaPath = path.join(backendDirname, "schemas");
     this.jsonValidator = new JsonValidator(this.schemaPath, baseSchemas);
     this.loadContexts("vm", VMContext);
     this.loadContexts("ve", VEContext);
   }
   getLocalPath(): string {
-    return this.localPath;
+    return this.pathes.localPath;
   }
   getJsonPath(): string {
-    return this.jsonPath;
+    return this.pathes.jsonPath;
   }
   getKey(): string {
     // return `storage_${this.localPath.replace(/[\/\\:]/g, "_")}`;
@@ -90,7 +98,7 @@ export class StorageContext extends Context implements IContext {
   }
   getAllAppNames(): Map<string, string> {
     const allApps = new Map<string, string>();
-    [this.localPath, this.jsonPath].forEach((jPath) => {
+    [this.pathes.localPath, this.pathes.jsonPath].forEach((jPath) => {
       const appsDir = path.join(jPath, "applications");
       if (existsSync(appsDir))
         readdirSync(appsDir)
@@ -107,91 +115,32 @@ export class StorageContext extends Context implements IContext {
     return allApps;
   }
   getTemplateProcessor(): TemplateProcessor {
-    let pathes: IConfiguredPathes = {
-      localPath: this.localPath,
-      jsonPath: this.jsonPath,
-      schemaPath: this.schemaPath,
-    };
-    return new TemplateProcessor(pathes, this);
+    return new TemplateProcessor(this.pathes, this);
   }
   listApplications(): IApplicationWeb[] {
     const applications: IApplicationWeb[] = [];
-    for (const [appName, appDir] of this.getAllAppNames()) {
-      try {
-        const appData = JSON.parse(
-          readFileSync(path.join(appDir, "application.json"), "utf-8"),
+    for (const [applicationName] of this.getAllAppNames()) {
+      const readOpts: IReadApplicationOptions = {
+        applicationHierarchy: [],
+        error: new VEConfigurationError("", applicationName),
+        taskTemplates: [],
+      };
+      const appLoader = new ApplicationLoader(this.pathes);
+      try{
+        let app = appLoader.readApplicationJson(applicationName, readOpts)
+        app.description = app.description || "No desription available";
+        applications.push( app as IApplicationWeb);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (e: Error | any) { 
+        // Errors are handled below
+      }
+      if (readOpts.error.details && readOpts.error.details.length > 0) {
+        throw new VELoadApplicationError(
+          "Load Application error",
+          applicationName,
+          undefined,
+          readOpts.error.details,
         );
-        let iconBase64: string | undefined = undefined;
-        const iconPath = path.join(appDir, "icon.png");
-        if (existsSync(iconPath)) {
-          const iconBuffer = readFileSync(iconPath);
-          iconBase64 = iconBuffer.toString("base64");
-        }
-        try {
-          const templateProcessor = this.getTemplateProcessor();
-          const veContext = this.getCurrentVEContext();
-          if (!veContext) {
-            throw new VEConfigurationError(
-              "VE context not set",
-              storageContextKey,
-            );
-          }
-          templateProcessor.loadApplication(appName, "installation", veContext);
-          applications.push({
-            name: appData.name,
-            description: appData.description,
-            icon: appData.icon,
-            iconContent: iconBase64,
-            id: appName,
-          });
-        } catch (err) {
-          // On error: attach application object with errors
-          if (err instanceof VEConfigurationError || err instanceof JsonError) {
-            if (err.details !== undefined && err.details!.length > 0)
-              applications.push({
-                name: appData.name,
-                description: appData.description,
-                icon: appData.icon,
-                iconContent: iconBase64,
-                id: appName,
-                errors: [err.toJSON()],
-              });
-            else {
-              applications.push({
-                name: appData.name,
-                description: appData.description,
-                icon: appData.icon,
-                iconContent: iconBase64,
-                id: appName,
-                errors: [err.toJSON()],
-              });
-            }
-          } else {
-            // Error loading application.json or other error
-            const errorApp = (err as any).application || {
-              name: appData.name || appName,
-              description: appData.description || "",
-              icon: appData.icon,
-              errors: [(err as any).message || "Unknown error"],
-            };
-            applications.push({
-              name: errorApp.name,
-              description: errorApp.description,
-              icon: errorApp.icon,
-              iconContent: iconBase64,
-              id: appName,
-              errors: errorApp.errors,
-            } as any);
-          }
-        }
-      } catch (err) {
-        // Error loading application.json
-        applications.push({
-          name: appName,
-          description: "",
-          id: appName,
-          errors: [(err as any).message || "Unknown error"],
-        });
       }
     }
     return applications;

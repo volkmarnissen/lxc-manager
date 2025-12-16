@@ -147,7 +147,11 @@ export class ProxmoxTestHelper {
   }
 
   createStorageContext(): StorageContext {
-    const storage = new StorageContext(this.localDir, this.jsonDir, this.schemaDir);
+    const storage = new StorageContext(
+      this.localDir,
+      this.jsonDir,
+      this.schemaDir,
+    );
     (StorageContext as any).instance = storage;
     return storage;
   }

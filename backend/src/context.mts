@@ -9,6 +9,10 @@ export class Context {
 
   constructor(filePath: string) {
     this.filePath = filePath;
+
+    if (!existsSync(path.dirname(this.filePath))) {
+      mkdirSync(path.dirname(this.filePath), { recursive: true });
+    }
     if (existsSync(filePath)) {
       const raw = readFileSync(filePath, "utf-8");
       const jsonText = raw.startsWith("enc:") ? this.decrypt(raw) : raw;
@@ -92,7 +96,10 @@ export class Context {
     const key = this.readOrCreateSecret();
     const iv = randomBytes(12);
     const cipher = createCipheriv("aes-256-gcm", key, iv);
-    const enc = Buffer.concat([cipher.update(plainText, "utf8"), cipher.final()]);
+    const enc = Buffer.concat([
+      cipher.update(plainText, "utf8"),
+      cipher.final(),
+    ]);
     const tag = cipher.getAuthTag();
     const packed = Buffer.concat([iv, tag, enc]).toString("base64");
     return `enc:${packed}`;
@@ -154,9 +161,6 @@ export class Context {
     try {
       const json = JSON.stringify(this.context, null, 2);
       const enc = this.encrypt(json);
-      if( ! existsSync( path.dirname(this.filePath))) {
-        mkdirSync( path.dirname(this.filePath), { recursive: true } );
-      }
       writeFileSync(this.filePath, enc, "utf-8");
     } catch {}
   }

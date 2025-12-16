@@ -51,12 +51,12 @@ export interface IVeExecuteMessage {
   result: string | null;
   exitCode: number;
   execute_on?: string;
-  error?: IJsonError|undefined;
+  error?: IJsonError | undefined;
   index?: number;
 }
 
 export type ParameterType = "string" | "number" | "boolean" | "enum";
-export type IParameterValue = string | number | boolean
+export type IParameterValue = string | number | boolean;
 
 export interface IParameter {
   id: string;
@@ -103,23 +103,23 @@ export interface IUnresolvedParametersResponse {
 }
 export interface ISshConfigsResponse {
   sshs: ISsh[];
-  key?: string| undefined;
+  key?: string | undefined;
 }
 export interface ISshConfigKeyResponse {
   key: string;
 }
 export interface ISshCheckResponse {
   permissionOk: boolean;
-  stderr?: string| undefined;
+  stderr?: string | undefined;
 }
 export interface ISetSshConfigResponse {
   success: boolean;
-  key?: string| undefined;
+  key?: string | undefined;
 }
 export interface IDeleteSshConfigResponse {
   success: boolean;
   deleted?: boolean;
-  key?: string| undefined;
+  key?: string | undefined;
 }
 export interface IPostVeConfigurationBody {
   params: { name: string; value: IParameterValue }[];

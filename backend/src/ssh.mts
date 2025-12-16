@@ -41,33 +41,47 @@ function readServicePublicKey(): string | null {
   return null;
 }
 
-function buildAppendCommand(pubKey: string, targetFile: string = "~/.ssh/authenticated_keys"): string {
+function buildAppendCommand(
+  pubKey: string,
+  targetFile: string = "~/.ssh/authenticated_keys",
+): string {
   // Use single quotes around key to avoid shell expansion; comments should not contain single quotes
   return `echo '${pubKey}' >>${targetFile}`;
 }
 
 export class Ssh {
-  static checkSshPermission(host: string, port?: number): { permissionOk: boolean; stderr?: string } {
+  static checkSshPermission(
+    host: string,
+    port?: number,
+  ): { permissionOk: boolean; stderr?: string } {
     try {
       const sshCmd = "ssh";
       const args = [
-        "-o", "BatchMode=yes",
-        "-o", "ConnectTimeout=2",
-        "-o", "StrictHostKeyChecking=no",
-        "-o", "UserKnownHostsFile=/dev/null",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=2",
+        "-o",
+        "StrictHostKeyChecking=no",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
       ];
       if (port && Number.isFinite(port)) {
         args.push("-p", String(port));
       }
       args.push(`root@${host}`, "true");
       const res = spawnSync(sshCmd, args, { encoding: "utf-8", timeout: 3000 });
-      const result: { permissionOk: boolean; stderr?: string } = { permissionOk: res.status === 0 };
+      const result: { permissionOk: boolean; stderr?: string } = {
+        permissionOk: res.status === 0,
+      };
       if (typeof res.stderr === "string" && res.stderr.length > 0) {
         result.stderr = res.stderr;
       }
       return result;
     } catch (err: any) {
-      const result: { permissionOk: boolean; stderr?: string } = { permissionOk: false };
+      const result: { permissionOk: boolean; stderr?: string } = {
+        permissionOk: false,
+      };
       if (err?.message) result.stderr = String(err.message);
       return result;
     }

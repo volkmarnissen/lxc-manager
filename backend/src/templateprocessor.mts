@@ -64,7 +64,7 @@ export class TemplateProcessor extends EventEmitter {
     applicationName: string,
     task: TaskType,
     veContext: IVEContext,
-    sshCommand?: string
+    sshCommand?: string,
   ): ITemplateProcessorLoadResult {
     const readOpts: IReadApplicationOptions = {
       applicationHierarchy: [],
@@ -106,7 +106,8 @@ export class TemplateProcessor extends EventEmitter {
     }
     application!.id = applicationName;
     // 3. Get template list for the task
-    const templates: (ITemplateReference|string)[] | undefined = readOpts.taskTemplates.find(t => t.task === task)?.templates;
+    const templates: (ITemplateReference | string)[] | undefined =
+      readOpts.taskTemplates.find((t) => t.task === task)?.templates;
 
     if (!templates) {
       const appBase = {
@@ -128,7 +129,9 @@ export class TemplateProcessor extends EventEmitter {
     const scriptPathes = readOpts.applicationHierarchy.map((appDir) =>
       path.join(appDir, "scripts"),
     );
-    templatePathes.push(path.join(this.pathes.localPath, "shared", "templates"));
+    templatePathes.push(
+      path.join(this.pathes.localPath, "shared", "templates"),
+    );
     templatePathes.push(path.join(this.pathes.jsonPath, "shared", "templates"));
     scriptPathes.push(path.join(this.pathes.localPath, "shared", "scripts"));
     scriptPathes.push(path.join(this.pathes.jsonPath, "shared", "scripts"));
@@ -178,9 +181,7 @@ export class TemplateProcessor extends EventEmitter {
       webuiTemplates: webuiTemplates,
     };
   }
-  private extractTemplateName(
-    template: ITemplateReference | string,
-  ): string {
+  private extractTemplateName(template: ITemplateReference | string): string {
     if (typeof template === "string") {
       return template;
     } else {
@@ -201,9 +202,13 @@ export class TemplateProcessor extends EventEmitter {
       return;
     }
     opts.visitedTemplates.add(this.extractTemplateName(opts.template));
-    const tmplPath = this.findInPathes(opts.templatePathes, this.extractTemplateName(opts.template));
+    const tmplPath = this.findInPathes(
+      opts.templatePathes,
+      this.extractTemplateName(opts.template),
+    );
     if (!tmplPath) {
-      const msg = `Template file not found: ${opts.template} (searched in: ${opts.templatePathes.join(", ")}` +
+      const msg =
+        `Template file not found: ${opts.template} (searched in: ${opts.templatePathes.join(", ")}` +
         ', requested in: ${opts.requestedIn ?? "unknown"}${opts.parentTemplate ? ", parent template: " + opts.parentTemplate : ""})';
       opts.errors.push(new JsonError(msg));
       this.emit("message", {
@@ -247,7 +252,10 @@ export class TemplateProcessor extends EventEmitter {
     // Mark outputs as resolved BEFORE adding parameters
     for (const out of tmplData.outputs ?? []) {
       if (undefined == opts.resolvedParams.find((p) => p.id === out.id)) {
-        opts.resolvedParams.push({ id: out.id, template: this.extractTemplateName(opts.template) });
+        opts.resolvedParams.push({
+          id: out.id,
+          template: this.extractTemplateName(opts.template),
+        });
       }
     }
 
@@ -273,63 +281,64 @@ export class TemplateProcessor extends EventEmitter {
         const pparm: IParameterWithTemplate = {
           ...param,
           template: this.extractTemplateName(opts.template),
-          templatename: tmplData.name || this.extractTemplateName(opts.template),
+          templatename:
+            tmplData.name || this.extractTemplateName(opts.template),
         };
         if (param.type === "enum" && (param as any).enumValuesTemplate) {
           // Load enum values from another template (mocked execution):
           const enumTmplName = (param as any).enumValuesTemplate;
           opts.webuiTemplates?.push(enumTmplName);
-            // Prefer reusing the same processing logic by invoking #processTemplate
-            // on the referenced enum template; capture its commands and parse payload.
-            const tmpCommands: ICommand[] = [];
-            const tmpParams: IParameterWithTemplate[] = [];
-            const tmpErrors: IJsonError[] = [];
-            const tmpResolved: IResolvedParam[] = [];
-            const tmpWebui: string[] = [];
-            this.#processTemplate({
-              ...opts,
-              template: enumTmplName,
-              templatename: enumTmplName,
-              commands: tmpCommands,
-              parameters: tmpParams,
-              errors: tmpErrors,
-              resolvedParams: tmpResolved,
-              webuiTemplates: tmpWebui,
-              parentTemplate: this.extractTemplateName(opts.template),
-            });
-            // Try executing via VeExecution to respect execution semantics; collect errors
-            try {
-              const context = opts.veContext!;
-              const ve = new VeExecution(
-                tmpCommands,
-                [],
-                context ?? null,
-                undefined,
-                opts.sshCommand ?? "ssh",
-              );
-              const rc = ve.run(null);
-              if (rc && Array.isArray(rc.outputs) && rc.outputs.length > 0) {
-                // If outputs is an array of {name, value}, map names as enum strings
-                const first = rc.outputs[0];
-                if (first && typeof first === "object" && "name" in first) {
-                  pparm.enumValues = rc.outputs.map((o) => String(o.name));
-                }
+          // Prefer reusing the same processing logic by invoking #processTemplate
+          // on the referenced enum template; capture its commands and parse payload.
+          const tmpCommands: ICommand[] = [];
+          const tmpParams: IParameterWithTemplate[] = [];
+          const tmpErrors: IJsonError[] = [];
+          const tmpResolved: IResolvedParam[] = [];
+          const tmpWebui: string[] = [];
+          this.#processTemplate({
+            ...opts,
+            template: enumTmplName,
+            templatename: enumTmplName,
+            commands: tmpCommands,
+            parameters: tmpParams,
+            errors: tmpErrors,
+            resolvedParams: tmpResolved,
+            webuiTemplates: tmpWebui,
+            parentTemplate: this.extractTemplateName(opts.template),
+          });
+          // Try executing via VeExecution to respect execution semantics; collect errors
+          try {
+            const context = opts.veContext!;
+            const ve = new VeExecution(
+              tmpCommands,
+              [],
+              context ?? null,
+              undefined,
+              opts.sshCommand ?? "ssh",
+            );
+            const rc = ve.run(null);
+            if (rc && Array.isArray(rc.outputs) && rc.outputs.length > 0) {
+              // If outputs is an array of {name, value}, map names as enum strings
+              const first = rc.outputs[0];
+              if (first && typeof first === "object" && "name" in first) {
+                pparm.enumValues = rc.outputs.map((o) => String(o.name));
               }
-            } catch (e: any) {
-              const err = e instanceof JsonError
+            }
+          } catch (e: any) {
+            const err =
+              e instanceof JsonError
                 ? e
                 : new JsonError(String(e?.message ?? e));
-              opts.errors?.push(err);
-              this.emit("message", {
-                stderr: err.message,
-                result: null,
-                exitCode: -1,
-                command: String(enumTmplName),
-                execute_on: undefined,
-                index: 0,
-              });
-            }
-
+            opts.errors?.push(err);
+            this.emit("message", {
+              stderr: err.message,
+              result: null,
+              exitCode: -1,
+              command: String(enumTmplName),
+              execute_on: undefined,
+              index: 0,
+            });
+          }
         }
 
         opts.parameters.push(pparm);
