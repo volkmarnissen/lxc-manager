@@ -177,56 +177,60 @@ export class VeExecution extends EventEmitter {
         if (Number.isFinite(firstJsonIdx) && firstJsonIdx > 0) {
           cleaned = cleaned.slice(firstJsonIdx);
         }
-        const parsed = JSON.parse(cleaned);
-        // Validate against schema; may be one of:
-        // - IOutput
-        // - IOutput[]
-        // - Array<{name, value}>
-        const outputsJson = this.validator.serializeJsonWithSchema<any>(
-          parsed,
-          "outputs",
-          "Outputs " + tmplCommand.name,
-        );
-
-        if (Array.isArray(outputsJson)) {
-          const first = outputsJson[0];
-          if (
-            first &&
-            typeof first === "object" &&
-            "name" in first &&
-            !("id" in first)
-          ) {
-            // name/value array: pass through 1:1 to outputsRaw and also map for substitutions
-            this.outputsRaw = outputsJson as {
-              name: string;
-              value: string | number | boolean;
-            }[];
-            for (const nv of this.outputsRaw) {
-              this.outputs.set(nv.name, nv.value);
+        if(cleaned.length != 0) {
+          const parsed = JSON.parse(cleaned);
+          // Validate against schema; may be one of:
+          // - IOutput
+          // - IOutput[]
+          // - Array<{name, value}>
+          const outputsJson = this.validator.serializeJsonWithSchema<any>(
+            parsed,
+            "outputs",
+            "Outputs " + tmplCommand.name,
+          );
+  
+          if (Array.isArray(outputsJson)) {
+            const first = outputsJson[0];
+            if (
+              first &&
+              typeof first === "object" &&
+              "name" in first &&
+              !("id" in first)
+            ) {
+              // name/value array: pass through 1:1 to outputsRaw and also map for substitutions
+              this.outputsRaw = outputsJson as {
+                name: string;
+                value: string | number | boolean;
+              }[];
+              for (const nv of this.outputsRaw) {
+                this.outputs.set(nv.name, nv.value);
+              }
+            } else {
+              // Array of outputObject {id, value}
+              for (const entry of outputsJson as IOutput[]) {
+                if (entry.value !== undefined)
+                  this.outputs.set(entry.id, entry.value);
+                if ((entry as any).default !== undefined)
+                  this.defaults.set(entry.id, (entry as any).default as any);
+              }
             }
-          } else {
-            // Array of outputObject {id, value}
-            for (const entry of outputsJson as IOutput[]) {
-              if (entry.value !== undefined)
-                this.outputs.set(entry.id, entry.value);
-              if ((entry as any).default !== undefined)
-                this.defaults.set(entry.id, (entry as any).default as any);
-            }
+          } else if (typeof outputsJson === "object" && outputsJson !== null) {
+            const obj = outputsJson as IOutput;
+            if (obj.value !== undefined) this.outputs.set(obj.id, obj.value);
+            if ((obj as any).default !== undefined)
+              this.defaults.set(obj.id, (obj as any).default as any);
           }
-        } else if (typeof outputsJson === "object" && outputsJson !== null) {
-          const obj = outputsJson as IOutput;
-          if (obj.value !== undefined) this.outputs.set(obj.id, obj.value);
-          if ((obj as any).default !== undefined)
-            this.defaults.set(obj.id, (obj as any).default as any);
         }
+
       } catch (e) {
         msg.index = index;
         msg.commandtext = stdout;
+        msg.stderr = stderr;
         throw e;
       }
-    } catch {
+    } catch (e:any)  {
       msg.index = index;
-      msg.error = undefined;
+      msg.error = new JsonError( e.message);
       msg.exitCode = -1;
       this.emit("message", msg);
       throw new Error("An error occurred during command execution.");

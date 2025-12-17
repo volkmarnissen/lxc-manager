@@ -50,6 +50,9 @@
           <strong>{{ msg.command }}</strong>
           <span class="exit-code">Exit code: {{ msg.exitCode }}</span>
         </div>
+        @if (msg.error?.message) {
+          <div class="error-message">{{ msg.error.message }}</div>
+        }
         @if (msg.stderr) {
           <pre class="error-stderr">{{ msg.stderr }}</pre>
         }

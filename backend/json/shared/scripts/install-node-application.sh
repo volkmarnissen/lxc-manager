@@ -22,14 +22,14 @@ set -eu
 
 # Install the package globally
 if [ "$VERSION" = "latest" ] || [ -z "$VERSION" ]; then
-  npm install -g "$PACKAGE"
+  npm install -g "$PACKAGE" >&2
 else
-  npm install -g "$PACKAGE@$VERSION"
+  npm install -g "$PACKAGE@$VERSION" >&2
 fi
 
 # Output path to node-red's settings.json
 SETTINGS_PATH="/root/.node-red/settings.js"
-echo "settings_path=$SETTINGS_PATH"
+echo "{ \"id\": \"settings_path\", \"value\": \"$SETTINGS_PATH\" }"
 
 exit 0
 

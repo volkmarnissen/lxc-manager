@@ -141,7 +141,7 @@ export class VeConfigurationDialog implements OnInit {
       if (innerError) {
         const name = innerError['name'] || 'Error';
         const message = innerError['message'] || '';
-        const details = innerError['details'] as Array<Record<string, unknown>> | undefined;
+        const details = innerError['details'] as Record<string, unknown>[] | undefined;
         
         let result = `${prefix}\n\n${name}: ${message}`;
         if (details && Array.isArray(details)) {

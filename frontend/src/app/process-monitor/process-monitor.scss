@@ -65,6 +65,15 @@
   margin-left: auto;
 }
 
+.error-message {
+  color: #c62828;
+  font-weight: 500;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: #fff;
+  border-radius: 4px;
+}
+
 .error-stderr {
   background: #fff;
   border-radius: 4px;
