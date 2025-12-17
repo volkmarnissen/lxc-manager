@@ -1,5 +1,5 @@
 import { NgZone, OnDestroy, Component, OnInit, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CommonModule } from '@angular/common';
@@ -9,7 +9,7 @@ import { VeConfigurationService } from '../ve-configuration.service';
 @Component({
   selector: 'app-process-monitor',
   standalone: true,
-  imports: [CommonModule, MatTooltipModule, MatExpansionModule],
+  imports: [CommonModule, MatTooltipModule, MatExpansionModule, RouterLink],
   templateUrl: './process-monitor.html',
   styleUrl: './process-monitor.scss',
 })
@@ -49,18 +49,7 @@ export class ProcessMonitor implements OnInit, OnDestroy {
   }
 
   private checkAllFinished() {
-    if (!this.messages || this.messages.length === 0) return;
-    
-    const allFinished = this.messages.every(group => 
-      group.messages.some(msg => msg.finished)
-    );
-    
-    if (allFinished) {
-      // Navigate to applications list after short delay
-      setTimeout(() => {
-        this.router.navigate(['/applications']);
-      }, 2000);
-    }
+    // No longer auto-navigate - user can view logs and navigate manually
   }
 
   private mergeMessages(newMsgs: IVeExecuteMessagesResponse) {

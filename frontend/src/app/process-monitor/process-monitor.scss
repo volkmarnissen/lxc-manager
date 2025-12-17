@@ -55,6 +55,22 @@
   font-weight: bold;
 }
 
+.back-btn {
+  margin-left: auto;
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-decoration: none;
+  
+  &:hover {
+    background: #388e3c;
+  }
+}
+
 .error-block {
   background: #ffebee;
   border: 1px solid #f44336;
