@@ -38,9 +38,7 @@
   ],
   "commands": [
     {
-      "name": "Secure MariaDB",
-      "script": "secure-mariadb.sh",
-      "description": "Run mariadb-secure-installation with provided settings"
+      "script": "secure-mariadb.sh"
     }
   ]
 }

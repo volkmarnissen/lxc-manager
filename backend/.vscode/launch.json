@@ -23,6 +23,9 @@
             "request": "launch",
             "sourceMaps": true,
             "cwd": "${workspaceFolder}",
+            "args": ["--local", "${workspaceFolder}/examples",
+            "--storageContextFilePath", "~/lxc-manager/examples/storagecontext.json", "--secretsFilePath", "~/lxc-manager/examples/secret.txt"],
+
             "trace": true,
             "outFiles": [
                 "${workspaceFolder}/dist/**/*.mjs",

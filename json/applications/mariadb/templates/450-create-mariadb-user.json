@@ -1,6 +1,6 @@
 {
   "execute_on": "lxc",
-  "name": "Create MariaDB User and Database",
+  "name": "Create MariaDB User / Database",
   "description": "Create a MariaDB user and database with full permissions",
   "parameters": [
     {
@@ -31,6 +31,7 @@
       "type": "string",
       "default": "%",
       "required": false,
+      "advanced": true,
       "description": "Host from which the user can connect (use % for any host, localhost for local only)"
     },
     {
@@ -44,9 +45,7 @@
   ],
   "commands": [
     {
-      "name": "Create User and Database",
-      "script": "create-mariadb-user.sh",
-      "description": "Create MariaDB user and database with full permissions"
+      "script": "create-mariadb-user.sh"
     }
   ]
 }

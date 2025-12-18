@@ -175,16 +175,27 @@ export class VeConfigurationDialog implements OnInit {
           return `${prefix}: ${errorMessage}`;
         }
         
-        // Handle nested error object structure
+        // Handle nested error object structure (VEConfigurationError with details)
         const innerError = errorMessage as Record<string, unknown> | undefined;
         if (innerError && typeof innerError === 'object') {
           const name = innerError['name'] || 'Error';
           const message = innerError['message'] || '';
-          const details = innerError['details'] as Record<string, unknown>[] | undefined;
+          const details = innerError['details'] as Array<Record<string, unknown>> | undefined;
           
           let result = `${prefix}\n\n${name}: ${message}`;
           if (details && Array.isArray(details)) {
-            result += '\n\nDetails:\n' + details.map(d => `• ${d['message']}`).join('\n');
+            result += '\n\nDetails:\n' + details.map(d => {
+              const detailName = d['name'] || '';
+              const detailMessage = d['message'] || '';
+              const detailLine = d['line'] ? ` (line ${d['line']})` : '';
+              if (detailName && detailMessage) {
+                return `• ${detailName}: ${detailMessage}${detailLine}`;
+              } else if (detailMessage) {
+                return `• ${detailMessage}${detailLine}`;
+              } else {
+                return `• ${JSON.stringify(d)}`;
+              }
+            }).join('\n');
           }
           return result;
         }

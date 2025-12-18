@@ -4,7 +4,6 @@
   "description": "Add MariaDB to OpenRC default runlevel",
   "commands": [
     {
-      "name": "Enable MariaDB",
       "command": "rc-update add mariadb default >&2 && echo '[{\"id\": \"mariadb_enabled\", \"value\": \"true\"}]'"
     }
   ]
