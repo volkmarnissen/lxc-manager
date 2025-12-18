@@ -166,23 +166,38 @@ export class VeConfigurationDialog implements OnInit {
     if (!err) return prefix;
     try {
       const errObj = err as Record<string, unknown>;
-      const errorBody = errObj['error'] as Record<string, unknown> | undefined;
-      const innerError = errorBody?.['error'] as Record<string, unknown> | undefined;
+      const errorBody = errObj['error'] as Record<string, unknown> | string | undefined;
       
-      if (innerError) {
-        const name = innerError['name'] || 'Error';
-        const message = innerError['message'] || '';
-        const details = innerError['details'] as Record<string, unknown>[] | undefined;
-        
-        let result = `${prefix}\n\n${name}: ${message}`;
-        if (details && Array.isArray(details)) {
-          result += '\n\nDetails:\n' + details.map(d => `• ${d['message']}`).join('\n');
-        }
-        return result;
-      }
+      // Handle case where errorBody.error is a string (e.g., { success: false, error: "VE context not found" })
       if (errorBody && typeof errorBody === 'object') {
+        const errorMessage = errorBody['error'];
+        if (typeof errorMessage === 'string' && errorMessage.length > 0) {
+          return `${prefix}: ${errorMessage}`;
+        }
+        
+        // Handle nested error object structure
+        const innerError = errorMessage as Record<string, unknown> | undefined;
+        if (innerError && typeof innerError === 'object') {
+          const name = innerError['name'] || 'Error';
+          const message = innerError['message'] || '';
+          const details = innerError['details'] as Record<string, unknown>[] | undefined;
+          
+          let result = `${prefix}\n\n${name}: ${message}`;
+          if (details && Array.isArray(details)) {
+            result += '\n\nDetails:\n' + details.map(d => `• ${d['message']}`).join('\n');
+          }
+          return result;
+        }
+        
+        // Fallback: stringify the error body
         return `${prefix}:\n${JSON.stringify(errorBody, null, 2)}`;
       }
+      
+      // Handle case where errorBody is a string directly
+      if (typeof errorBody === 'string') {
+        return `${prefix}: ${errorBody}`;
+      }
+      
       if (errObj['message']) {
         return `${prefix}: ${errObj['message']}`;
       }

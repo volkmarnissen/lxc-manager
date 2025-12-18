@@ -1,0 +1,24 @@
+{
+  "execute_on": "ve",
+  "name": "Set Parameters",
+  "description": "Set application-specific parameters for MariaDB",
+  "parameters": [
+    {
+      "id": "hostname",
+      "name": "Hostname",
+      "type": "string",
+      "default": "mariadb",
+      "required": true,
+      "description": "Hostname for the MariaDB container"
+    }
+  ],
+  "commands": [
+    {
+      "command": "echo '[{\"id\":\"ostype\",\"value\":\"alpine\"},{\"id\":\"packages\",\"value\":\"mariadb mariadb-client\"}]'"
+    }
+  ],
+  "outputs": [
+    { "id": "ostype" },
+    { "id": "packages" }
+  ]
+}
