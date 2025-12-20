@@ -1,11 +1,11 @@
 {
-  "execute_on": "ve",
-  "name": "310-create-user",
-  "description": "Create a user inside the LXC container with specified username, uid, gid, and optional mountpoint write check. Calls create-user.sh with template variables.",
+  "execute_on": "lxc",
+  "name": "Create User on LXC Container",
+  "description": "Create a user inside the LXC container with specified username, optional uid, and optional gid. If uid/gid are not provided, the system will assign them automatically. Calls create-user.sh with template variables.",
   "commands": [
     {
       "script": "create-user.sh",
-      "description": "Create a user inside the LXC container with specified username, uid, gid, and optional mountpoint write check. Calls create-user.sh with template variables."
+      "description": "Create a user inside the LXC container with specified username, optional uid, and optional gid. Calls create-user.sh with template variables."
     }
   ],
   "parameters": [
@@ -20,21 +20,15 @@
       "id": "uid",
       "name": "UID",
       "type": "string",
-      "description": "The UID for the user",
-      "required": true
+      "advanced": true,
+      "description": "Optional: The UID for the user. If not provided, the system will assign one automatically."
     },
     {
       "id": "gid",
       "name": "GID",
       "type": "string",
-      "description": "The GID for the user",
-      "required": true
-    },
-    {
-      "id": "mountpoint",
-      "name": "Mountpoint",
-      "type": "string",
-      "description": "Optional: The mountpoint to check for write access. Can be empty if not needed."
+      "advanced": true,
+      "description": "Optional: The GID for the user. If not provided, the system will assign one automatically." 
     }
   ]
 }

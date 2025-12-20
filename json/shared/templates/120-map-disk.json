@@ -30,15 +30,17 @@
       "id": "uid",
       "name": "UID for mount directory",
       "type": "string",
-      "required": true,
-      "description": "UID to set for the mount directory and bind mount."
+      "required": false,
+      "advanced": true,
+      "description": "Optional: UID to set for the mount directory and bind mount. If not provided, default permissions will be used."
     },
     {
       "id": "gid",
       "name": "GID for mount directory",
       "type": "string",
-      "required": true,
-      "description": "GID to set for the mount directory and bind mount."
+      "required": false,
+      "advanced": true,
+      "description": "Optional: GID to set for the mount directory and bind mount. If not provided, default permissions will be used."
     }
   ],
   "commands": [

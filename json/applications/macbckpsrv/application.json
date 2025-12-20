@@ -6,6 +6,7 @@
     "010-get-latest-os-template.json",
     "100-create-lxc.json",
     "120-map-disk.json",
+    "121-map-zfs-pool.json",
     "200-start-lxc.json",
     "310-create-user.json",
     "320-install-samba.json"

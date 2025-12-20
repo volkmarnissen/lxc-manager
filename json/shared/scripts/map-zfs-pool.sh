@@ -15,19 +15,20 @@
 VMID="{{ vm_id}}"
 STORAGE_SELECTION="{{ storage_selection}}"
 MOUNTPOINT="{{ mountpoint}}"
-UID="{{ uid}}"
-GID="{{ gid}}"
+UID_VALUE="{{ uid}}"
+GID_VALUE="{{ gid}}"
 
-# Check that all parameters are not empty
-if [ -z "$VMID" ] || [ -z "$STORAGE_SELECTION" ] || [ -z "$MOUNTPOINT" ] || [ -z "$UID" ] || [ -z "$GID" ]; then
-  echo "Error: All parameters (vm_id, storage_selection, mountpoint, uid, gid) must be set and not empty!" >&2
+# Check that required parameters are not empty
+if [ -z "$VMID" ] || [ -z "$STORAGE_SELECTION" ] || [ -z "$MOUNTPOINT" ]; then
+  echo "Error: Required parameters (vm_id, storage_selection, mountpoint) must be set and not empty!" >&2
   exit 1
 fi
 
 # Parse storage selection: must be zfs:...
+# If not zfs:, this template is not responsible - skip silently
 if ! echo "$STORAGE_SELECTION" | grep -q "^zfs:"; then
-  echo "Error: Invalid storage selection for ZFS pool mapping. Must start with 'zfs:'" >&2
-  exit 1
+  echo "Note: This is not a ZFS pool selection (expected 'zfs:...'), skipping map-zfs-pool." >&2
+  exit 0
 fi
 
 POOL_NAME=$(echo "$STORAGE_SELECTION" | sed 's/^zfs://')
@@ -107,18 +108,29 @@ CONTAINER_DIR="$POOL_MOUNTPOINT/$SUBDIR_NAME"
 echo "Creating directory $CONTAINER_DIR under ZFS pool mountpoint..." >&2
 mkdir -p "$CONTAINER_DIR" >&2
 
-# 9. Set permissions on the container directory
-chown "$UID:$GID" "$CONTAINER_DIR" >&2
+# 9. Set permissions on the container directory if uid/gid are provided
+if [ -n "$UID_VALUE" ] && [ -n "$GID_VALUE" ] && [ "$UID_VALUE" != "" ] && [ "$GID_VALUE" != "" ]; then
+  chown "$UID_VALUE:$GID_VALUE" "$CONTAINER_DIR" >&2
+fi
 
 # 10. Set up bind-mount in container only if not already present
 # Bind mount the container directory to the mountpoint inside the container
+# Note: uid/gid options are not supported by pct set for mount points
+# Permissions are set via chown on the host directory (step 9)
 if ! pct config "$VMID" | grep -q "^$MP:"; then
-  pct set "$VMID" -$MP "$CONTAINER_DIR,mp=$MOUNTPOINT,uid=$UID,gid=$GID" >&2
+  MOUNT_OPTIONS="$CONTAINER_DIR,mp=$MOUNTPOINT"
+  if ! pct set "$VMID" -$MP "$MOUNT_OPTIONS" >&2; then
+    echo "Error: Failed to set mount point $MP in container $VMID" >&2
+    exit 1
+  fi
 fi
 
 # 11. Restart container if it was running before
 if [ "$WAS_RUNNING" -eq 1 ]; then
-  pct start "$VMID" >&2
+  if ! pct start "$VMID" >&2; then
+    echo "Error: Failed to restart container $VMID" >&2
+    exit 1
+  fi
 fi
 
 echo "ZFS pool $POOL_NAME successfully mapped to container $VMID: $CONTAINER_DIR -> $MOUNTPOINT" >&2

@@ -14,12 +14,12 @@
 VMID="{{ vm_id}}"
 STORAGE_SELECTION="{{ storage_selection}}"
 MOUNTPOINT="{{ mountpoint}}"
-UID="{{ uid}}"
-GID="{{ gid}}"
+UID_VALUE="{{ uid}}"
+GID_VALUE="{{ gid}}"
 
-# Check that all parameters are not empty
-if [ -z "$VMID" ] || [ -z "$STORAGE_SELECTION" ] || [ -z "$MOUNTPOINT" ] || [ -z "$UID" ] || [ -z "$GID" ]; then
-  echo "Error: All parameters (vm_id, storage_selection, mountpoint, uid, gid) must be set and not empty!" >&2
+# Check that required parameters are not empty
+if [ -z "$VMID" ] || [ -z "$STORAGE_SELECTION" ] || [ -z "$MOUNTPOINT" ]; then
+  echo "Error: Required parameters (vm_id, storage_selection, mountpoint) must be set and not empty!" >&2
   exit 1
 fi
 
@@ -35,10 +35,10 @@ else
   exit 1
 fi
 
-# For ZFS pools, redirect to zfs pool mapping (this should not happen if UI filters correctly)
+# For ZFS pools, this template is not responsible - skip silently
 if [ "$STORAGE_TYPE" = "zfs" ]; then
-  echo "Error: ZFS pools should be mapped using the map-zfs-pool template, not map-disk." >&2
-  exit 1
+  echo "Note: ZFS pools should be mapped using the map-zfs-pool template, skipping map-disk." >&2
+  exit 0
 fi
 
 
@@ -92,16 +92,27 @@ if ! mountpoint -q "$MOUNTPOINT" || ! mount | grep -q "on $MOUNTPOINT "; then
   fi
 fi
 
-# 7. Set permissions
-chown "$UID:$GID" "$MOUNTPOINT" 1>&2
+# 7. Set permissions if uid/gid are provided
+if [ -n "$UID_VALUE" ] && [ -n "$GID_VALUE" ] && [ "$UID_VALUE" != "" ] && [ "$GID_VALUE" != "" ]; then
+  chown "$UID_VALUE:$GID_VALUE" "$MOUNTPOINT" 1>&2
+fi
 
 
 # 8. Set up bind-mount in container only if not already present
+# Note: uid/gid options are not supported by pct set for mount points
+# Permissions are set via chown on the host directory (step 7)
 if ! pct config "$VMID" | grep -q "^$MP:"; then
-  pct set "$VMID" -$MP "$MOUNTPOINT,mp=$MOUNTPOINT,uid=$UID,gid=$GID" 1>&2
+  MOUNT_OPTIONS="$MOUNTPOINT,mp=$MOUNTPOINT"
+  if ! pct set "$VMID" -$MP "$MOUNT_OPTIONS" 1>&2; then
+    echo "Error: Failed to set mount point $MP in container $VMID" >&2
+    exit 1
+  fi
 fi
 
 # 9. Restart container if it was running before
 if [ "$WAS_RUNNING" -eq 1 ]; then
-  pct start "$VMID" 1>&2
+  if ! pct start "$VMID" 1>&2; then
+    echo "Error: Failed to restart container $VMID" >&2
+    exit 1
+  fi
 fi

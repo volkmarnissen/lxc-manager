@@ -79,13 +79,7 @@ export class WebAppVE {
           .json({ success: false, error: "Invalid parameters" });
       }
       try {
-        // 1. Save configuration in local/<application>.config.json
-        const localDir = path.join(process.cwd(), "local");
-        if (!fs.existsSync(localDir)) fs.mkdirSync(localDir);
-        const configPath = path.join(localDir, `${application}.config.json`);
-        fs.writeFileSync(configPath, JSON.stringify(params, null, 2), "utf-8");
-
-        // 2. Load application (provides commands)
+        // Load application (provides commands)
         const storageContext = StorageContext.getInstance();
         const ctx: IVEContext | null =
           storageContext.getVEContextByKey(veContextKey);

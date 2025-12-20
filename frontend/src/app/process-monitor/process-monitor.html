@@ -30,9 +30,14 @@
   <ul class="success-list">
     @for (msg of group.messages; track msg.index) {
       @if (msg.exitCode === 0) {
-        <li [matTooltip]="msg.stderr" [matTooltipDisabled]="!msg.stderr" matTooltipPosition="right" matTooltipClass="stderr-tooltip">
+        <li>
           <span class="success-icon">✓</span>
-          {{ msg.command }}
+          <span class="command-text">{{ msg.command }}</span>
+          @if (msg.stderr) {
+            <button mat-icon-button type="button" (click)="openStderrDialog(msg)" class="info-button" [attr.aria-label]="'Show stderr output for ' + msg.command">
+              <mat-icon>info</mat-icon>
+            </button>
+          }
         </li>
       }
     }

@@ -1,15 +1,18 @@
 import { NgZone, OnDestroy, Component, OnInit, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
 import { IVeExecuteMessagesResponse, ISingleExecuteMessagesResponse } from '../../shared/types';
 import { VeConfigurationService } from '../ve-configuration.service';
+import { StderrDialogComponent } from './stderr-dialog.component';
 
 @Component({
   selector: 'app-process-monitor',
   standalone: true,
-  imports: [CommonModule, MatTooltipModule, MatExpansionModule, RouterLink],
+  imports: [CommonModule, MatExpansionModule, MatIconModule, MatButtonModule, RouterLink],
   templateUrl: './process-monitor.html',
   styleUrl: './process-monitor.scss',
 })
@@ -19,6 +22,7 @@ export class ProcessMonitor implements OnInit, OnDestroy {
   private veConfigurationService = inject(VeConfigurationService);
   private router = inject(Router);
   private zone = inject(NgZone);
+  private dialog = inject(MatDialog);
 
   ngOnInit() {
     this.startPolling();
@@ -100,6 +104,20 @@ export class ProcessMonitor implements OnInit, OnDestroy {
       },
       error: (err) => {
         console.error('Restart failed:', err);
+      }
+    });
+  }
+
+  openStderrDialog(msg: any): void {
+    if (!msg.stderr) return;
+    
+    this.dialog.open(StderrDialogComponent, {
+      width: '700px',
+      maxWidth: '90vw',
+      data: {
+        command: msg.command || msg.commandtext || 'Unknown command',
+        stderr: msg.stderr,
+        exitCode: msg.exitCode
       }
     });
   }
