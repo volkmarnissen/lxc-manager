@@ -370,7 +370,10 @@ export class VeExecution extends EventEmitter {
       command,
       (vmctx as any).data || {},
     );
-    execCmd = this.replaceVarsWithContext(execCmd, this.outputs || {});
+    execCmd = this.replaceVarsWithContext(
+      execCmd,
+      Object.fromEntries(this.outputs) || {},
+    );
     await this.runOnLxc(vmctx.vmid, execCmd, tmplCommand);
   }
 
@@ -407,7 +410,61 @@ export class VeExecution extends EventEmitter {
       // Reset raw outputs for this command iteration
       let rawStr = "";
       try {
-        if (cmd.script !== undefined) {
+        if (cmd.properties !== undefined) {
+          // Handle properties: replace variables in values, set as outputs
+          try {
+            if (Array.isArray(cmd.properties)) {
+              // Array of {id, value} objects
+              for (const entry of cmd.properties) {
+                if (entry && typeof entry === "object" && entry.id && entry.value !== undefined) {
+                  let value = entry.value;
+                  // Replace variables in value if it's a string
+                  if (typeof value === "string") {
+                    value = this.replaceVars(value);
+                  }
+                  // Only set if value is a primitive type (not array)
+                  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+                    this.outputs.set(entry.id, value);
+                  }
+                }
+              }
+            } else if (cmd.properties && typeof cmd.properties === "object") {
+              // Single object with id and value
+              if (cmd.properties.id && cmd.properties.value !== undefined) {
+                let value = cmd.properties.value;
+                // Replace variables in value if it's a string
+                if (typeof value === "string") {
+                  value = this.replaceVars(value);
+                }
+                // Only set if value is a primitive type (not array)
+                if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+                  this.outputs.set(cmd.properties.id, value);
+                }
+              }
+            }
+            // Emit success message
+            this.emit("message", {
+              stderr: "",
+              result: JSON.stringify(cmd.properties),
+              exitCode: 0,
+              command: cmd.name || "properties",
+              execute_on: cmd.execute_on,
+              index: msgIndex++,
+            } as IVeExecuteMessage);
+            continue; // Skip execution, only set properties
+          } catch (err: any) {
+            const msg = `Failed to process properties: ${err?.message || err}`;
+            this.emit("message", {
+              stderr: msg,
+              result: null,
+              exitCode: -1,
+              command: cmd.name || "properties",
+              execute_on: cmd.execute_on,
+              index: msgIndex++,
+            } as IVeExecuteMessage);
+            continue;
+          }
+        } else if (cmd.script !== undefined) {
           // Read script file, replace variables, then execute
           rawStr = fs.readFileSync(cmd.script, "utf-8");
         } else if (cmd.command !== undefined) {

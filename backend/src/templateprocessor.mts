@@ -222,6 +222,36 @@ export class TemplateProcessor extends EventEmitter {
           (tmplData.outputs as any)[index] = { id: output };
         }
       });
+      
+      // Extract outputs from properties commands
+      // If a command has properties, all IDs in properties are automatically outputs
+      for (const cmd of tmplData.commands ?? []) {
+        if (cmd.properties !== undefined) {
+          const propertyIds: string[] = [];
+          
+          if (Array.isArray(cmd.properties)) {
+            // Array of {id, value} objects
+            for (const prop of cmd.properties) {
+              if (prop && typeof prop === "object" && prop.id) {
+                propertyIds.push(prop.id);
+              }
+            }
+          } else if (cmd.properties && typeof cmd.properties === "object" && cmd.properties.id) {
+            // Single object with id and value
+            propertyIds.push(cmd.properties.id);
+          }
+          
+          // Add property IDs as outputs if not already present
+          for (const propId of propertyIds) {
+            if (!tmplData.outputs?.some((out) => out.id === propId)) {
+              if (!tmplData.outputs) {
+                tmplData.outputs = [];
+              }
+              tmplData.outputs.push({ id: propId });
+            }
+          }
+        }
+      }
     } catch (e: any) {
       opts.errors.push(e);
       this.emit("message", {

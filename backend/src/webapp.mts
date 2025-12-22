@@ -17,9 +17,10 @@ import { fileURLToPath } from "node:url";
 import fs from "fs";
 import { StorageContext } from "./storagecontext.mjs";
 import { Ssh } from "./ssh.mjs";
-import { IVEContext } from "./backend-types.mjs";
+import { IVEContext, VEConfigurationError } from "./backend-types.mjs";
 import { ITemplateProcessorLoadResult } from "./templateprocessor.mjs";
 import { WebAppVE } from "./webapp-ve.mjs";
+import { JsonError } from "./jsonvalidator.mjs";
 export class VEWebApp {
   app: express.Application;
   public httpServer: http.Server;
@@ -29,6 +30,27 @@ export class VEWebApp {
     statusCode: number = 200,
   ) {
     res.status(statusCode).json(payload);
+  }
+
+  /**
+   * Determines the appropriate HTTP status code for an error.
+   * Returns 422 (Unprocessable Entity) for validation/configuration errors,
+   * 500 (Internal Server Error) for unexpected server errors.
+   */
+  private getErrorStatusCode(err: unknown): number {
+    // Check if error is a validation/configuration error
+    if (err instanceof JsonError || err instanceof VEConfigurationError) {
+      return 422; // Unprocessable Entity - validation/configuration error
+    }
+    // Check if error has a name property indicating it's a validation error
+    if (err && typeof err === 'object' && 'name' in err) {
+      const errorName = (err as { name?: string }).name;
+      if (errorName === 'JsonError' || errorName === 'VEConfigurationError' || errorName === 'ValidateJsonError') {
+        return 422;
+      }
+    }
+    // Default to 500 for unexpected errors
+    return 500;
   }
   constructor(storageContext: StorageContext) {
     this.app = express();
@@ -287,8 +309,9 @@ export class VEWebApp {
           unresolvedParameters: unresolved,
         });
       } catch (err: any) {
+        const statusCode = this.getErrorStatusCode(err);
         return res
-          .status(500)
+          .status(statusCode)
           .json({ success: false, error: err || "Unknown error" });
       }
     });
@@ -298,7 +321,7 @@ export class VEWebApp {
         const payload: IApplicationsResponse = applications;
         res.json(payload).status(200);
       } catch (err: any) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: err || "Unknown error" });
       }
     });
     this.app.get(ApiUri.TemplateDetailsForApplication, async (req, res) => {

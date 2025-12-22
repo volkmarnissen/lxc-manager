@@ -3,6 +3,7 @@ import path from "node:path";
 import { StorageContext } from "./storagecontext.mjs";
 import { VEWebApp } from "./webapp.mjs";
 import { exec as execCommand } from "./lxc-exec.mjs";
+import { validateAllJson } from "./validateAllJson.mjs";
 import type { TaskType } from "./types.mjs";
 
 interface ParsedArgs {
@@ -154,6 +155,10 @@ async function runExecCommand(
   );
 }
 
+async function runValidateCommand() {
+  await validateAllJson();
+}
+
 function printHelp() {
   console.log("LXC Manager - Manage LXC containers and applications");
   console.log("");
@@ -165,6 +170,9 @@ function printHelp() {
   console.log(
     "    Execute a task for a specific application in an LXC container",
   );
+  console.log("");
+  console.log("  validate");
+  console.log("    Validate all templates and applications against their schemas");
   console.log("");
   console.log("  (no command)");
   console.log("    Start the web application server");
@@ -209,6 +217,9 @@ function printHelp() {
   console.log("  lxc-manager");
   console.log("  lxc-manager --local ./my-local");
   console.log("");
+  console.log("  # Validate templates and applications");
+  console.log("  lxc-manager validate");
+  console.log("");
   console.log("  # Execute installation task");
   console.log("  lxc-manager exec node-red installation ./params.json");
   console.log(
@@ -246,7 +257,10 @@ async function main() {
     }
 
     // Handle commands
-    if (args.command === "exec") {
+    if (args.command === "validate") {
+      await runValidateCommand();
+      return;
+    } else if (args.command === "exec") {
       if (!args.application || !args.task || !args.parametersFile) {
         console.error(
           "Usage: lxc-manager exec <application> <task> <parameters file> [options]",
@@ -326,7 +340,8 @@ async function main() {
       console.error(`Unknown command: ${args.command}`);
       console.error("");
       console.error("Available commands:");
-      console.error("  exec    Execute a task for a specific application");
+      console.error("  exec     Execute a task for a specific application");
+      console.error("  validate Validate all templates and applications");
       console.error("");
       console.error("Usage (start web app):");
       console.error("  lxc-manager [options]");

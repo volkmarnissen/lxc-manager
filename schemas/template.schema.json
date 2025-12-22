@@ -81,17 +81,101 @@
         "if": { "type": "string" },
         "command": { "type": "string" },
         "script": { "type": "string" },
-        "schema": { "type": "string" },
+        "properties": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "value": {
+                  "oneOf": [
+                    { "type": ["string", "boolean", "number"] },
+                    {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          { "type": "string" },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "name": { "type": "string" },
+                              "value": { "type": ["string", "number", "boolean"] }
+                            },
+                            "required": ["name", "value"],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": { "type": "string" },
+                              "value": { "type": ["string", "number", "boolean"] }
+                            },
+                            "required": ["id", "value"],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              "required": ["id", "value"],
+              "additionalProperties": false
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string" },
+                  "value": {
+                    "oneOf": [
+                      { "type": ["string", "boolean", "number"] },
+                      {
+                        "type": "array",
+                        "items": {
+                          "oneOf": [
+                            { "type": "string" },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "name": { "type": "string" },
+                                "value": { "type": ["string", "number", "boolean"] }
+                              },
+                              "required": ["name", "value"],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string" },
+                                "value": { "type": ["string", "number", "boolean"] }
+                              },
+                              "required": ["id", "value"],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                "required": ["id", "value"],
+                "additionalProperties": false
+              }
+            }
+          ]
+        },
         "template": { "type": "string" }
       },
       "oneOf": [
         { "required": ["command"] },
         { "required": ["script"] },
-        { "required": ["schema"] },
+        { "required": ["properties"] },
         { "required": ["template"] }
       ],
       "errorMessage": {
-        "oneOf": "Exactly one of 'command', 'script' or 'schema' must be present."
+        "oneOf": "Exactly one of 'command', 'script' or 'properties' must be present."
       },
       "additionalProperties": false
     }

@@ -1,30 +1,23 @@
 {
-  "name": "Map Disk to LXC Container",
-  "description": "Mounts a block device (by UUID) from the Proxmox host into an LXC container as a bind mount, with UID/GID mapping.\n\nThis template can be called independently of the LXC container's state (running or stopped) and is safe to call multiple times (idempotent), e.g. before using the share.",
+  "name": "Mount Disk on Host",
+  "description": "Mounts a block device (by UUID) on the Proxmox host.\n\nThis template only mounts the device on the host. To bind mount it into a container, use the bind-host template afterwards.\n\nThis template can be called independently and is safe to call multiple times (idempotent).",
   "execute_on": "ve",
   "parameters": [
-    {
-      "id": "vm_id",
-      "name": "ID of the LXC Container",
-      "type": "string",
-      "required": true,
-      "description": "ID of the LXC container to which the disk will be mapped."
-    },
     {
       "id": "storage_selection",
       "name": "Storage Selection",
       "type": "enum",
       "required": true,
       "enumValuesTemplate": "list-available-storage.json",
-      "description": "Select storage to mount. Filesystems are prefixed with 'uuid:', ZFS pools with 'zfs:'."
+      "description": "Select storage to mount. Only filesystems prefixed with 'uuid:' are supported."
     },
     {
       "id": "mountpoint",
-      "name": "Mount point host & container",
+      "name": "Mount point on host",
       "type": "string",
       "required": true,
       "default": "/mnt/backupdisk",
-      "description": "Mount point on the Proxmox host and inside the container."
+      "description": "Mount point on the Proxmox host where the device will be mounted."
     },
     {
       "id": "uid",
@@ -32,7 +25,7 @@
       "type": "string",
       "required": false,
       "advanced": true,
-      "description": "Optional: UID to set for the mount directory and bind mount. If not provided, default permissions will be used."
+      "description": "Optional: UID to set for the mount directory. If not provided, default permissions will be used."
     },
     {
       "id": "gid",
@@ -40,13 +33,18 @@
       "type": "string",
       "required": false,
       "advanced": true,
-      "description": "Optional: GID to set for the mount directory and bind mount. If not provided, default permissions will be used."
+      "description": "Optional: GID to set for the mount directory. If not provided, default permissions will be used."
+    }
+  ],
+  "outputs": [
+    {
+      "id": "host_path"
     }
   ],
   "commands": [
     {
-      "script": "map-disk.sh",
-      "description": "Executes the script to map the disk by UUID and set up the bind mount in the container."
+      "script": "mount-disk.sh",
+      "description": "Executes the script to mount the disk by UUID on the host."
     }
   ]
 }

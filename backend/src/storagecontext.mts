@@ -9,7 +9,6 @@ import {
   IVEContext,
   IVMContext,
   VEConfigurationError,
-  VELoadApplicationError,
   storageKey as storageContextKey,
 } from "./backend-types.mjs";
 import { TemplateProcessor } from "./templateprocessor.mjs";
@@ -144,15 +143,10 @@ export class StorageContext extends Context implements IContext {
         applications.push(app as IApplicationWeb);
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (e: Error | any) {
-        // Errors are handled below
+         // Errors are handled below
       }
-      if (readOpts.error.details && readOpts.error.details.length > 0) {
-        throw new VELoadApplicationError(
-          "Load Application error",
-          applicationName,
-          undefined,
-          readOpts.error.details,
-        );
+      if (readOpts.error.details && readOpts.error.details.length > 0 && applications.length > 0) {
+        applications[applications.length - 1]!.errors = readOpts.error.details;
       }
     }
     return applications;

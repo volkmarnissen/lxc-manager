@@ -2,7 +2,7 @@
   "$id": "outputs",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Outputs",
-  "description": "Schema for outputs: either a single object with id and value, an array of such objects, or a plain array of name/value objects.",
+  "description": "Schema for outputs: either a single object with id and value, an array of such objects, or a plain array of name/value objects. The value property can also be an array containing strings, objects with name/value, or objects with id/value.",
   "oneOf": [
     { "$ref": "#/$defs/outputObject" },
     {
@@ -31,6 +31,15 @@
                       "value": { "type": ["string", "number", "boolean"] }
                     },
                     "required": ["name", "value"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string" },
+                      "value": { "type": ["string", "number", "boolean"] }
+                    },
+                    "required": ["id", "value"],
                     "additionalProperties": false
                   }
                 ]

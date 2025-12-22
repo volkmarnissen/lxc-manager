@@ -9,11 +9,43 @@ if [ -z "$VMID" ]; then
   exit 2
 fi
 
-# Start container; send output to stderr as requested
-pct start "$VMID" 1>&2 || {
-  echo "Failed to start container $VMID" >&2
+# Check container status first
+CONTAINER_STATUS=$(pct status "$VMID" 2>/dev/null | grep -o "status: [a-z]*" | cut -d' ' -f2 || echo "unknown")
+echo "Container $VMID current status: $CONTAINER_STATUS" >&2
+
+# If container doesn't exist or is in a bad state, provide diagnostic info
+if [ "$CONTAINER_STATUS" = "unknown" ] || [ -z "$CONTAINER_STATUS" ]; then
+  echo "Error: Container $VMID does not exist or cannot be accessed" >&2
+  echo "Diagnostic information:" >&2
+  pct list 2>&1 | grep -E "(VMID|$VMID)" >&2 || echo "No containers found" >&2
   exit 1
-}
+fi
+
+# If container is already running, exit successfully
+if [ "$CONTAINER_STATUS" = "running" ]; then
+  echo "Container $VMID is already running" >&2
+  echo '[{"id":"started","value":"true"}]'
+  exit 0
+fi
+
+# Try to start the container
+echo "Attempting to start container $VMID..." >&2
+if ! pct start "$VMID" 2>&1; then
+  # Capture the original error message
+  START_ERROR=$(pct start "$VMID" 2>&1)
+  echo "Failed to start container $VMID" >&2
+  echo "" >&2
+  echo "=== Original error message ===" >&2
+  echo "$START_ERROR" >&2
+  echo "" >&2
+  echo "=== Diagnostic information ===" >&2
+  echo "Container status:" >&2
+  pct status "$VMID" >&2
+  echo "" >&2
+  echo "Container configuration:" >&2
+  pct config "$VMID" >&2 2>&1 || echo "Could not read container configuration" >&2
+  exit 1
+fi
 
 # Emit a simple JSON output for consistency
 echo '[{"id":"started","value":"true"}]'

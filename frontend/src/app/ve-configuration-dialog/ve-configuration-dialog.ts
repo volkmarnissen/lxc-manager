@@ -1,7 +1,7 @@
 
 // ...existing code...
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef, MatDialog } from '@angular/material/dialog';
 
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,8 +11,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { IApplicationWeb, IParameter, IParameterValue } from '../../shared/types';
+import { IApplicationWeb, IParameter, IParameterValue, IJsonError } from '../../shared/types';
 import { VeConfigurationService } from '../ve-configuration.service';
+import { ErrorDialog } from '../applications-list/error-dialog';
 import type { NavigationExtras } from '@angular/router';
 @Component({
   selector: 'app-ve-configuration-dialog',
@@ -37,17 +38,15 @@ export class VeConfigurationDialog implements OnInit {
   unresolvedParameters: IParameter[] = [];
   groupedParameters: Record<string, IParameter[]> = {};
   loading = signal(true);
-  error = signal<string | null>(null);
+  hasError = signal(false);
   showAdvanced = signal(false);
   private configService: VeConfigurationService = inject(VeConfigurationService);
   public dialogRef: MatDialogRef<VeConfigurationDialog> = inject(MatDialogRef<VeConfigurationDialog>);
+  private dialog = inject(MatDialog);
   private fb: FormBuilder = inject(FormBuilder);
   public data = inject(MAT_DIALOG_DATA) as { app: IApplicationWeb };
   constructor(  ) {
     this.form = this.fb.group({});
-  }
-  getGroupNames(): string[] {
-    return Object.keys(this.groupedParameters);
   }
   ngOnInit(): void {
     // For demo purposes: use 'installation' as the default task, can be extended
@@ -72,8 +71,11 @@ export class VeConfigurationDialog implements OnInit {
         this.loading.set(false);
       },
       error: (err: unknown) => {
-        this.error.set(this.formatError('Failed to load parameters', err));
+        const errors = this.convertErrorToJsonErrors('Failed to load parameters', err);
+        this.showErrorDialog(errors);
         this.loading.set(false);
+        this.hasError.set(true);
+        // Note: Dialog remains open so user can see the error and close manually
       }
     });
   }
@@ -99,7 +101,12 @@ export class VeConfigurationDialog implements OnInit {
         this.form.get(paramId)?.setValue(base64);
         this.form.get(paramId)?.markAsTouched();
       } catch (error) {
-        this.error.set(`Failed to read file: ${error}`);
+        const errors: IJsonError[] = [{
+          name: 'FileReadError',
+          message: `Failed to read file: ${error}`,
+          details: undefined
+        } as IJsonError];
+        this.showErrorDialog(errors);
       }
     }
   }
@@ -135,7 +142,8 @@ export class VeConfigurationDialog implements OnInit {
         this.configService['router'].navigate(['/monitor'], extras);
       },
       error: (err: unknown) => {
-        this.error.set(this.formatError('Failed to install configuration', err));
+        const errors = this.convertErrorToJsonErrors('Failed to install configuration', err);
+        this.showErrorDialog(errors);
         this.loading.set(false);
       }
     });
@@ -170,59 +178,134 @@ export class VeConfigurationDialog implements OnInit {
     return Object.keys(this.groupedParameters);
   }
 
-  private formatError(prefix: string, err: unknown): string {
-    if (!err) return prefix;
+  private convertErrorToJsonErrors(prefix: string, err: unknown): IJsonError[] {
+    if (!err) {
+      return [{
+        name: 'Error',
+        message: prefix,
+        details: undefined
+      } as IJsonError];
+    }
+
     try {
       const errObj = err as Record<string, unknown>;
+      // HTTP errors from Angular HttpClient have the response body in the 'error' property
+      // Backend returns: { success: false, error: <error object> }
       const errorBody = errObj['error'] as Record<string, unknown> | string | undefined;
       
-      // Handle case where errorBody.error is a string (e.g., { success: false, error: "VE context not found" })
+      // Handle case where errorBody is an object (from HTTP error response)
       if (errorBody && typeof errorBody === 'object') {
-        const errorMessage = errorBody['error'];
-        if (typeof errorMessage === 'string' && errorMessage.length > 0) {
-          return `${prefix}: ${errorMessage}`;
+        // Check if errorBody has nested 'error' property (from backend response structure)
+        const nestedError = errorBody['error'] as Record<string, unknown> | undefined;
+        
+        // If nested error exists and is an object, use it (this is the actual error structure)
+        if (nestedError && typeof nestedError === 'object') {
+          const name = (nestedError['name'] as string) || 'Error';
+          const message = (nestedError['message'] as string) || '';
+          const details = nestedError['details'] as Record<string, unknown>[] | undefined;
+          
+          const convertedDetails: IJsonError[] | undefined = details && Array.isArray(details)
+            ? details.map(d => ({
+                name: (d['name'] as string) || undefined,
+                message: (d['message'] as string) || JSON.stringify(d),
+                line: d['line'] as number | undefined,
+                details: d['details'] ? this.convertDetailsRecursive(d['details'] as Record<string, unknown>[]) : undefined
+              } as IJsonError))
+            : undefined;
+          
+          return [{
+            name: name,
+            message: prefix ? `${prefix}: ${message}` : message,
+            details: convertedDetails
+          } as IJsonError];
         }
         
-        // Handle nested error object structure (VEConfigurationError with details)
-        const innerError = errorMessage as Record<string, unknown> | undefined;
-        if (innerError && typeof innerError === 'object') {
-          const name = innerError['name'] || 'Error';
-          const message = innerError['message'] || '';
-          const details = innerError['details'] as Array<Record<string, unknown>> | undefined;
+        // If errorBody itself has name/message/details (direct error object), use it
+        if (errorBody['name'] || errorBody['message']) {
+          const name = (errorBody['name'] as string) || 'Error';
+          const message = (errorBody['message'] as string) || '';
+          const details = errorBody['details'] as Record<string, unknown>[] | undefined;
           
-          let result = `${prefix}\n\n${name}: ${message}`;
-          if (details && Array.isArray(details)) {
-            result += '\n\nDetails:\n' + details.map(d => {
-              const detailName = d['name'] || '';
-              const detailMessage = d['message'] || '';
-              const detailLine = d['line'] ? ` (line ${d['line']})` : '';
-              if (detailName && detailMessage) {
-                return `• ${detailName}: ${detailMessage}${detailLine}`;
-              } else if (detailMessage) {
-                return `• ${detailMessage}${detailLine}`;
-              } else {
-                return `• ${JSON.stringify(d)}`;
-              }
-            }).join('\n');
-          }
-          return result;
+          const convertedDetails: IJsonError[] | undefined = details && Array.isArray(details)
+            ? details.map(d => ({
+                name: (d['name'] as string) || undefined,
+                message: (d['message'] as string) || JSON.stringify(d),
+                line: d['line'] as number | undefined,
+                details: d['details'] ? this.convertDetailsRecursive(d['details'] as Record<string, unknown>[]) : undefined
+              } as IJsonError))
+            : undefined;
+          
+          return [{
+            name: name,
+            message: prefix ? `${prefix}: ${message}` : message,
+            details: convertedDetails
+          } as IJsonError];
+        }
+        
+        // Handle case where errorBody.error is a string
+        const errorMessage = errorBody['error'];
+        if (typeof errorMessage === 'string' && errorMessage.length > 0) {
+          return [{
+            name: 'Error',
+            message: `${prefix}: ${errorMessage}`,
+            details: undefined
+          } as IJsonError];
         }
         
         // Fallback: stringify the error body
-        return `${prefix}:\n${JSON.stringify(errorBody, null, 2)}`;
+        return [{
+          name: 'Error',
+          message: `${prefix}: ${JSON.stringify(errorBody)}`,
+          details: undefined
+        } as IJsonError];
       }
       
       // Handle case where errorBody is a string directly
       if (typeof errorBody === 'string') {
-        return `${prefix}: ${errorBody}`;
+        return [{
+          name: 'Error',
+          message: `${prefix}: ${errorBody}`,
+          details: undefined
+        } as IJsonError];
       }
       
+      // Handle case where err has a message property (direct Error object)
       if (errObj['message']) {
-        return `${prefix}: ${errObj['message']}`;
+        return [{
+          name: 'Error',
+          message: `${prefix}: ${errObj['message']}`,
+          details: undefined
+        } as IJsonError];
       }
-      return `${prefix}:\n${JSON.stringify(err, null, 2)}`;
+      
+      // Final fallback
+      return [{
+        name: 'Error',
+        message: `${prefix}: ${JSON.stringify(err)}`,
+        details: undefined
+      } as IJsonError];
     } catch {
-      return `${prefix}: ${String(err)}`;
+      return [{
+        name: 'Error',
+        message: `${prefix}: ${String(err)}`,
+        details: undefined
+      } as IJsonError];
     }
+  }
+
+  private convertDetailsRecursive(details: Record<string, unknown>[]): IJsonError[] {
+    return details.map(d => ({
+      name: (d['name'] as string) || undefined,
+      message: (d['message'] as string) || JSON.stringify(d),
+      line: d['line'] as number | undefined,
+      details: d['details'] ? this.convertDetailsRecursive(d['details'] as Record<string, unknown>[]) : undefined
+    } as IJsonError));
+  }
+
+  private showErrorDialog(errors: IJsonError[]): void {
+    this.dialog.open(ErrorDialog, { 
+      data: { errors }, 
+      panelClass: 'error-dialog-panel' 
+    });
   }
 }

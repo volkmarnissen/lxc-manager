@@ -11,8 +11,7 @@
 
 <form [formGroup]="form" (ngSubmit)="save()">
 	@if (!loading()) {
-		@if (!error()) {
-			<div class="group-container">
+		<div class="group-container">
 				@for (groupName of groupNames; track groupName) {
 					@if (isGroupVisible(groupName)) {
 					<div class="param-group">
@@ -94,19 +93,17 @@
 					<span class="toggle-text">{{ showAdvanced() ? 'Hide' : 'Show' }} Advanced Options</span>
 				</div>
 			}
-			<div class="dialog-actions">
-				<button mat-stroked-button color="primary" type="button" (click)="close()">Cancel</button>
-				<button mat-flat-button color="accent" type="submit" [disabled]="form.invalid || loading()">Install</button>
-			</div>
+			@if (hasError()) {
+				<div class="dialog-actions">
+					<button mat-stroked-button color="primary" type="button" (click)="close()">Close</button>
+				</div>
+			} @else {
+				<div class="dialog-actions">
+					<button mat-stroked-button color="primary" type="button" (click)="close()">Cancel</button>
+					<button mat-flat-button color="accent" type="submit" [disabled]="form.invalid || loading()">Install</button>
+				</div>
+			}
 		}
-		@if (error()) {
-			<div class="error-box">
-				<strong>Error</strong>
-				<pre>{{ error() }}</pre>
-				<button mat-stroked-button color="warn" type="button" (click)="close()">Close</button>
-			</div>
-		}
-	}
 	@if (loading()) {
 		<div>Loading parameters ...</div>
 	}

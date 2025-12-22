@@ -35,11 +35,17 @@ export type TaskType =
   | "upgrade"
   | "webui";
 // Generated from template.schema.json
+export interface IOutputObject {
+  id: string;
+  value?: string | number | boolean | Array<string | { name: string; value: string | number | boolean } | { id: string; value: string | number | boolean }>;
+}
+
 export interface ICommand {
   name: string;
   command?: string;
   script?: string;
   template?: string;
+  properties?: IOutputObject | IOutputObject[];
   description?: string;
   execute_on?: string;
 }

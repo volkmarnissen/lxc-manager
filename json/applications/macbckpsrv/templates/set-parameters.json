@@ -50,16 +50,44 @@
       "default": "1000",
       "description": "GID for the user and mount permissions. Will be used consistently on VE host and LXC container.",
       "advanced": true
+    },
+    {
+      "id": "share_name",
+      "name": "Share Name",
+      "type": "string",
+      "default": "backup",
+      "description": "Name of the Samba share for Time Machine backups.",
+      "advanced": true
     }
   ],
   "commands": [
     {
-      "command": "echo '[{\"id\":\"ostype\",\"value\":\"debian\"}]'"
+      "properties": [
+        {
+          "id": "ostype",
+          "value": "debian"
+        },
+        {
+          "id": "oci_image",
+          "value": "timjdfletcher/samba-timemachine:timemachine-v3.6.1"
+        },
+        {
+          "id": "uid",
+          "value": "{{uid}}"
+        },
+        {
+          "id": "gid",
+          "value": "{{gid}}"
+        },
+        {
+          "id": "volumes",
+          "value": "data=timemachine"
+        },
+        {
+          "id": "envs",
+          "value": "USERNAME={{username}}\nPASSWORD={{password}}\nSHARE_NAME={{share_name}}"
+        }
+      ]
     }
-  ],
-  "outputs": [
-    { "id": "ostype" },
-    { "id": "uid" },
-    { "id": "gid" }
   ]
 }

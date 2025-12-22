@@ -76,7 +76,7 @@ export class VeConfigurationService {
   }
   getApplications(): Observable<IApplicationWeb[]> {
     VeConfigurationService.setRouter(this.router);
-    return this.get<IApplicationsResponse>(ApiUri.Applications);
+    return this.http.get<IApplicationsResponse>(ApiUri.Applications);
   }
 
   getUnresolvedParameters(application: string, task: string): Observable<IUnresolvedParametersResponse> {

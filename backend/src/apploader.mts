@@ -77,10 +77,23 @@ export class ApplicationLoader {
     const validator = this.storage.getJsonValidator();
     let appData: IApplication;
     try {
-      appData = validator.serializeJsonFileWithSchema<IApplication>(
-        appFile,
-        "application",
-      );
+      try{
+        appData = validator.serializeJsonFileWithSchema<IApplication>(
+          appFile,
+          "application",
+        );
+      } catch (e: Error | any) {
+        appData = {
+          id: application,
+          name: application
+        }
+        if (opts.error && Array.isArray(opts.error.details)) {
+          opts.error.details.push(e);
+        }else{
+          opts.error.details = [e];
+        }
+      }
+
       appData.id = appName;
 
       // Save the first application in the hierarchy

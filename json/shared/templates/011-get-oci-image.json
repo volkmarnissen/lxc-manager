@@ -1,21 +1,21 @@
 {
   "execute_on": "ve",
   "name": "Get OCI Image",
-  "description": "Download and prepare OCI image for Proxmox 9.1",
+  "description": "Find OCI image in Proxmox storage (must be downloaded manually via Web UI until pveam download supports OCI)",
   "parameters": [
     {
       "id": "oci_image",
       "name": "OCI Image",
       "type": "string",
       "required": true,
-      "description": "OCI image reference (e.g., docker://alpine:latest, docker://debian:bookworm, oci://ghcr.io/owner/repo:latest, oci://registry.example.com/image:tag)"
+      "description": "OCI image reference (e.g., docker://alpine:latest, docker://debian:bookworm, oci://ghcr.io/owner/repo:latest). Used to search for the image in storage."
     },
     {
       "id": "storage",
       "name": "Storage",
       "type": "string",
       "default": "local",
-      "description": "Storage where the OCI image should be stored",
+      "description": "Storage where the OCI image should be located",
       "advanced": true
     }
   ],

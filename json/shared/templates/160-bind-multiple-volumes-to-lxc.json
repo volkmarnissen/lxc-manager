@@ -1,0 +1,35 @@
+{
+  "name": "Bind Multiple Volumes to LXC",
+  "description": "Binds multiple host directories to an LXC container.\n\nFor each volume entry (key=value format, one per line), creates a bind mount from <host_path>/<key> to /<value> in the container.\n\nThis template can be called independently of the LXC container's state (running or stopped) and is safe to call multiple times (idempotent).",
+  "execute_on": "ve",
+  "parameters": [
+    {
+      "id": "vm_id",
+      "name": "ID of the LXC Container",
+      "type": "string",
+      "required": true,
+      "description": "ID of the LXC container to which the volumes will be bound."
+    },
+    {
+      "id": "host_path",
+      "name": "Host Path Base",
+      "type": "string",
+      "required": true,
+      "description": "Base path on the Proxmox host. Volume directories will be created at <host_path>/<volume-key>."
+    },
+    {
+      "id": "volumes",
+      "name": "Volumes",
+      "type": "string",
+      "required": true,
+      "description": "Volume mappings in key=value format, one per line. Each line creates a bind mount from <host_path>/<key> to /<value> in the container. Example:\nvolume1=/var/lib/myapp/data\nvolume2=/var/lib/myapp/logs"
+    }
+  ],
+  "commands": [
+    {
+      "script": "bind-multiple-volumes-to-lxc.sh",
+      "description": "Executes the script to bind multiple volumes in the container."
+    }
+  ]
+}
+

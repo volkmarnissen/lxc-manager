@@ -938,3 +938,4 @@ volume2=/var/lib/myapp/logs`;
     expect(volumeLines[1]).toMatch(/^volume\d+=/);
   });
 });
+

@@ -186,30 +186,3 @@ button {
     letter-spacing: 0.02em;
   }
 }
-
-.error-box {
-  background: #ffebee;
-  border: 1px solid #f44336;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin: 1rem;
-  text-align: center;
-  
-  strong {
-    color: #c62828;
-    font-size: 1.1rem;
-  }
-  
-  pre {
-    background: #fff;
-    border-radius: 4px;
-    padding: 1rem;
-    margin: 1rem 0;
-    white-space: pre-wrap;
-    word-break: break-word;
-    text-align: left;
-    font-size: 0.9rem;
-    max-height: 200px;
-    overflow-y: auto;
-  }
-}
