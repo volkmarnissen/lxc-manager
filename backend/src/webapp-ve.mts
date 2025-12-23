@@ -172,7 +172,7 @@ export class WebAppVE {
                     existingMsg.exitCode = msg.exitCode;
                     // Reset error flag if exitCode is 0 (success)
                     if (msg.exitCode === 0) {
-                      existingMsg.error = false;
+                      existingMsg.error = undefined;
                     }
                   }
                   // Update error flag if explicitly provided
@@ -206,7 +206,7 @@ export class WebAppVE {
                     lastMsg.exitCode = msg.exitCode;
                     // Reset error flag if exitCode is 0 (success)
                     if (msg.exitCode === 0) {
-                      lastMsg.error = false;
+                      lastMsg.error = undefined;
                     }
                   }
                   // Update error flag if explicitly provided
