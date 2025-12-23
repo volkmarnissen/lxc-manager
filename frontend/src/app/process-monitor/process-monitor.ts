@@ -1,11 +1,11 @@
 import { NgZone, OnDestroy, Component, OnInit, inject } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
-import { IVeExecuteMessagesResponse, ISingleExecuteMessagesResponse } from '../../shared/types';
+import { IVeExecuteMessagesResponse, ISingleExecuteMessagesResponse, IParameterValue, IVeExecuteMessage } from '../../shared/types';
 import { VeConfigurationService } from '../ve-configuration.service';
 import { StderrDialogComponent } from './stderr-dialog.component';
 
@@ -21,10 +21,19 @@ export class ProcessMonitor implements OnInit, OnDestroy {
   private pollInterval?: number;
   private veConfigurationService = inject(VeConfigurationService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private zone = inject(NgZone);
   private dialog = inject(MatDialog);
+  private storedParams: Record<string, { name: string; value: IParameterValue }[]> = {};
 
   ngOnInit() {
+    // Get original parameters from navigation state
+    // Try getCurrentNavigation first (during navigation), then history.state (after navigation)
+    const navigation = this.router.getCurrentNavigation();
+    const state = (navigation?.extras?.state || history.state) as { originalParams?: { name: string; value: IParameterValue }[], restartKey?: string } | null;
+    if (state?.originalParams && state.restartKey) {
+      this.storedParams[state.restartKey] = state.originalParams;
+    }
     this.startPolling();
   }
 
@@ -108,7 +117,36 @@ export class ProcessMonitor implements OnInit, OnDestroy {
     });
   }
 
-  openStderrDialog(msg: any): void {
+  triggerRestartFull(group: ISingleExecuteMessagesResponse) {
+    if (!group.restartKey) return;
+    
+    // Get original parameters from stored state or navigation
+    const originalParams = this.storedParams[group.restartKey];
+    if (!originalParams) {
+      console.error('Original parameters not found for restart key:', group.restartKey);
+      alert('Original parameters not found. Please start installation again.');
+      return;
+    }
+    
+    this.veConfigurationService.restartExecutionFull(group, originalParams).subscribe({
+      next: () => {
+        // Clear old messages for this group to show fresh run
+        if (this.messages) {
+          const idx = this.messages.findIndex(
+            g => g.application === group.application && g.task === group.task
+          );
+          if (idx >= 0) {
+            this.messages.splice(idx, 1);
+          }
+        }
+      },
+      error: (err) => {
+        console.error('Full restart failed:', err);
+      }
+    });
+  }
+
+  openStderrDialog(msg: IVeExecuteMessage): void {
     if (!msg.stderr) return;
     
     this.dialog.open(StderrDialogComponent, {

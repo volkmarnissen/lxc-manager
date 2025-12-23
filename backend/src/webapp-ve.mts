@@ -157,6 +157,44 @@ export class WebAppVE {
             (g) => g.application === application && g.task === task,
           );
           if (existing) {
+            // Check if message with same index already exists
+            if (msg.index !== undefined) {
+              const existingMsg = existing.messages.find(m => m.index === msg.index);
+              if (existingMsg) {
+                // If this is a partial message, append stderr/stdout to existing message
+                if (msg.partial === true) {
+                  existingMsg.stderr = (existingMsg.stderr || "") + (msg.stderr || "");
+                  if (msg.result) {
+                    existingMsg.result = (existingMsg.result || "") + (msg.result || "");
+                  }
+                  // Update other fields if provided
+                  if (msg.exitCode !== undefined) existingMsg.exitCode = msg.exitCode;
+                  return; // Don't add as new message, just update existing
+                } else {
+                  // Non-partial message with same index: skip duplicate
+                  return;
+                }
+              }
+            }
+            // For partial messages without index, try to append to last message with same command name
+            if (msg.partial === true && msg.index === undefined) {
+              // Find last message with same command name
+              for (let i = existing.messages.length - 1; i >= 0; i--) {
+                const lastMsg = existing.messages[i];
+                if (lastMsg && lastMsg.command === msg.command) {
+                  // Append stderr/stdout to last message
+                  lastMsg.stderr = (lastMsg.stderr || "") + (msg.stderr || "");
+                  if (msg.result) {
+                    lastMsg.result = (lastMsg.result || "") + (msg.result || "");
+                  }
+                  // Update partial flag if not already set
+                  if (lastMsg.partial === undefined) {
+                    lastMsg.partial = true;
+                  }
+                  return; // Don't add as new message, just update existing
+                }
+              }
+            }
             existing.messages.push(msg);
           } else {
             this.messages.push({
@@ -285,6 +323,44 @@ export class WebAppVE {
           (g) => g.application === application && g.task === task,
         );
         if (existing) {
+          // Check if message with same index already exists
+          if (msg.index !== undefined) {
+            const existingMsg = existing.messages.find(m => m.index === msg.index);
+            if (existingMsg) {
+              // If this is a partial message, append stderr/stdout to existing message
+              if (msg.partial === true) {
+                existingMsg.stderr = (existingMsg.stderr || "") + (msg.stderr || "");
+                if (msg.result) {
+                  existingMsg.result = (existingMsg.result || "") + (msg.result || "");
+                }
+                // Update other fields if provided
+                if (msg.exitCode !== undefined) existingMsg.exitCode = msg.exitCode;
+                return; // Don't add as new message, just update existing
+              } else {
+                // Non-partial message with same index: skip duplicate
+                return;
+              }
+            }
+          }
+          // For partial messages without index, try to append to last message with same command name
+          if (msg.partial === true && msg.index === undefined) {
+            // Find last message with same command name
+            for (let i = existing.messages.length - 1; i >= 0; i--) {
+              const lastMsg = existing.messages[i];
+              if (lastMsg && lastMsg.command === msg.command) {
+                // Append stderr/stdout to last message
+                lastMsg.stderr = (lastMsg.stderr || "") + (msg.stderr || "");
+                if (msg.result) {
+                  lastMsg.result = (lastMsg.result || "") + (msg.result || "");
+                }
+                // Update partial flag if not already set
+                if (lastMsg.partial === undefined) {
+                  lastMsg.partial = true;
+                }
+                return; // Don't add as new message, just update existing
+              }
+            }
+          }
           existing.messages.push(msg);
         } else {
           this.messages.push({

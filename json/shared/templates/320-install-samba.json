@@ -1,22 +1,14 @@
 {
   "name": "Install/Configure Samba",
   "execute_on": "lxc",
-  "description": "Install and configure Samba for a given mountpoint and user, with Time Machine support. Calls install-samba.sh with template variables.",
+  "description": "Install and configure Samba with multiple shares. By default, creates Samba shares for all volumes from 'Bind Multiple Volumes to LXC' (160). Optionally, additional shares can be configured.\n\nShares are created from volumes in key=value format, where the container path /<value> becomes the Samba share with name <key>.",
   "commands": [
     {
       "script": "install-samba.sh",
-      "description": "Install and configure Samba for a given mountpoint and user, with Time Machine support. Calls install-samba.sh with template variables."
+      "description": "Install and configure Samba with multiple shares for volumes and optional additional shares."
     }
   ],
   "parameters": [
-    {
-      "id": "mountpoint",
-      "name": "Mountpoint",
-      "type": "string",
-      "description": "The mountpoint to share via Samba.",
-      "advanced": true,
-      "required": true
-    },
     {
       "id": "username",
       "name": "Username",
@@ -29,6 +21,36 @@
       "name": "Password",
       "type": "string",
       "description": "The password for the Samba user.",
+      "required": true,
+      "secure": true
+    },
+    {
+      "id": "volumes",
+      "name": "Volumes",
+      "type": "string",
+      "description": "Volume mappings from 'Bind Multiple Volumes to LXC' (160) in key=value format, one per line. Each volume will be automatically shared via Samba with share name <key> at container path /<value>. Example:\ndata=/timemachine\nlogs=/var/log/myapp\n\nIf not provided, no automatic shares will be created.",
+      "advanced": true
+    },
+    {
+      "id": "additional_shares",
+      "name": "Additional Shares",
+      "type": "string",
+      "default": "",
+      "description": "Additional Samba shares in share_name=path format, one per line. These are shares that are not part of the volumes from template 160. Example:\nbackup=/mnt/backup\npublic=/var/www/public\n\nIf not provided, no additional shares will be created.",
+      "advanced": true
+    },
+    {
+      "id": "uid",
+      "name": "UID",
+      "type": "string",
+      "description": "UID for setting permissions on Samba share directories. Should match the UID from 'Bind Multiple Volumes to LXC' (160) if volumes are used.",
+      "required": true
+    },
+    {
+      "id": "gid",
+      "name": "GID",
+      "type": "string",
+      "description": "GID for setting permissions on Samba share directories. Should match the GID from 'Bind Multiple Volumes to LXC' (160) if volumes are used.",
       "required": true
     }
   ]

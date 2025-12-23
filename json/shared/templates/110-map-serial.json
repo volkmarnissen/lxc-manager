@@ -3,19 +3,12 @@
 
   "name": "Map Serial Device",
   "description": "Map serial device to VM",
+  "skip_if_all_missing": ["serial_host"],
   "parameters": [
-    {
-      "id": "usb",
-      "name": "Enable USB Serial Device",
-      "type": "boolean",
-      "default": false,
-      "description": "Enable serial device assignment",
-      "required": false
-    },
+
     {
       "id": "serial_host",
       "name": "Path to USB Serial Device",
-      "if": "usb",
       "type": "string",
       "required": false,
       "default": "/dev/ttyUSB0",

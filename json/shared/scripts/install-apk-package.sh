@@ -1,11 +1,26 @@
 #!/bin/sh
-# Install APK packages inside Alpine LXC (runs inside the container)
+# Install packages inside LXC container (runs inside the container)
+# Supports both Alpine Linux (apk) and Debian/Ubuntu (apt)
+# Automatically detects OS type from /etc/os-release
 # Inputs (templated):
 #   {{ packages }}  (space-separated list, e.g. "openssh curl")
-# Accept an optional OSTYPE variable (default: alpine)
+#   {{ ostype }}   (optional fallback - "alpine", "debian", or "ubuntu")
 set -eu
-OSTYPE="${ostype:-alpine}"
 PACKAGES="{{ packages }}"
+
+# Auto-detect OS type from /etc/os-release
+# Falls back to {{ ostype }} parameter if os-release is not available
+if [ -f /etc/os-release ]; then
+  # Source the file to get ID variable
+  . /etc/os-release
+  OSTYPE="$ID"
+else
+  # Fallback to template parameter
+  OSTYPE="{{ ostype }}"
+  if [ -z "$OSTYPE" ] || [ "$OSTYPE" = "" ]; then
+    OSTYPE="alpine"
+  fi
+fi
 
 if [ -z "$PACKAGES" ]; then
   echo "Missing packages" >&2

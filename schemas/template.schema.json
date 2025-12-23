@@ -14,6 +14,12 @@
     "if": {
       "type": "boolean"
     },
+    "skip_if_all_missing": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "List of parameter IDs. If ALL of these are missing or empty, the template will be skipped. If at least one parameter is present, the template will be executed. If this property is present (and not empty), the template is considered optional."
+    },
     "name": {
       "type": "string",
       "maxLength": 30

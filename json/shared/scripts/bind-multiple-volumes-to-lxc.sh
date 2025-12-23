@@ -3,17 +3,21 @@
 # bind-multiple-volumes-to-lxc.sh: Binds multiple host directories to an LXC container.
 #
 # - Parses volumes (key=value format, one per line)
-# - For each volume, creates a bind mount from <host_path>/<key> to /<value> in the container
+# - For each volume, creates a bind mount from <base_path>/<hostname>/<key> to /<value> in the container
 #
 # All output is sent to stderr. Script is idempotent and can be run multiple times safely.
 
 VMID="{{ vm_id}}"
-HOST_PATH="{{ host_path}}"
+HOSTNAME="{{ hostname}}"
+HOST_MOUNTPOINT="{{ host_mountpoint}}"
+BASE_PATH="{{ base_path}}"
 VOLUMES="{{ volumes}}"
+UID_VALUE="{{ uid}}"
+GID_VALUE="{{ gid}}"
 
 # Check that required parameters are not empty
-if [ -z "$VMID" ] || [ -z "$HOST_PATH" ]; then
-  echo "Error: Required parameters (vm_id, host_path) must be set and not empty!" >&2
+if [ -z "$VMID" ] || [ -z "$HOSTNAME" ]; then
+  echo "Error: Required parameters (vm_id, hostname) must be set and not empty!" >&2
   exit 1
 fi
 
@@ -22,10 +26,27 @@ if [ -z "$VOLUMES" ]; then
   exit 1
 fi
 
-# Verify that the host path exists
+# Set default base_path if not provided
+if [ -z "$BASE_PATH" ] || [ "$BASE_PATH" = "" ]; then
+  BASE_PATH="volumes"
+fi
+
+# Construct the full host path: <host_mountpoint>/<base_path>/<hostname>
+# If host_mountpoint is not set, use /mnt/<base_path>/<hostname>
+if [ -n "$HOST_MOUNTPOINT" ] && [ "$HOST_MOUNTPOINT" != "" ]; then
+  HOST_PATH="$HOST_MOUNTPOINT/$BASE_PATH/$HOSTNAME"
+else
+  HOST_PATH="/mnt/$BASE_PATH/$HOSTNAME"
+fi
+
+# Create base path if it doesn't exist
+if [ ! -d "$(dirname "$HOST_PATH")" ]; then
+  mkdir -p "$(dirname "$HOST_PATH")" >&2
+fi
+
+# Create hostname-specific directory if it doesn't exist
 if [ ! -d "$HOST_PATH" ]; then
-  echo "Error: Host path '$HOST_PATH' does not exist!" >&2
-  exit 1
+  mkdir -p "$HOST_PATH" >&2
 fi
 
 # Helper function: Is container running?
@@ -72,13 +93,27 @@ while IFS= read -r line <&3; do
   [ -z "$VOLUME_KEY" ] && continue
   [ -z "$VOLUME_VALUE" ] && continue
   
-  # Construct paths
+  # Construct paths: <base_path>/<hostname>/<volume-key>
   SOURCE_PATH="$HOST_PATH/$VOLUME_KEY"
   CONTAINER_PATH="/$VOLUME_VALUE"
   
   # Create source directory if it doesn't exist
   if [ ! -d "$SOURCE_PATH" ]; then
     mkdir -p "$SOURCE_PATH" >&2
+  fi
+  
+  # Set permissions on the source directory if uid/gid are provided
+  if [ -n "$UID_VALUE" ] && [ -n "$GID_VALUE" ] && [ "$UID_VALUE" != "" ] && [ "$GID_VALUE" != "" ]; then
+    if chown "$UID_VALUE:$GID_VALUE" "$SOURCE_PATH" 2>/dev/null; then
+      echo "Set ownership of $SOURCE_PATH to $UID_VALUE:$GID_VALUE" >&2
+    else
+      echo "Warning: Failed to set ownership of $SOURCE_PATH to $UID_VALUE:$GID_VALUE" >&2
+    fi
+    if chmod 755 "$SOURCE_PATH" 2>/dev/null; then
+      echo "Set permissions of $SOURCE_PATH to 755" >&2
+    else
+      echo "Warning: Failed to set permissions of $SOURCE_PATH" >&2
+    fi
   fi
   
   # Check if mount already exists
@@ -120,6 +155,41 @@ if [ "$WAS_RUNNING" -eq 1 ]; then
   if ! pct start "$VMID" >&2; then
     echo "Error: Failed to restart container $VMID" >&2
     exit 1
+  fi
+fi
+
+# After container is running, try to set permissions inside the container
+# This is necessary for unprivileged containers where UID mapping may cause issues
+if [ -n "$UID_VALUE" ] && [ -n "$GID_VALUE" ] && [ "$UID_VALUE" != "" ] && [ "$GID_VALUE" != "" ]; then
+  if container_running; then
+    # Wait a moment for container to be fully ready
+    sleep 1
+    # Re-read volumes and set permissions in container
+    TMPFILE2=$(mktemp)
+    echo "$VOLUMES" > "$TMPFILE2"
+    while IFS= read -r line <&3; do
+      [ -z "$line" ] && continue
+      VOLUME_KEY=$(echo "$line" | cut -d'=' -f1)
+      VOLUME_VALUE=$(echo "$line" | cut -d'=' -f2-)
+      [ -z "$VOLUME_KEY" ] && continue
+      [ -z "$VOLUME_VALUE" ] && continue
+      CONTAINER_PATH="/$VOLUME_VALUE"
+      
+      # Try to set permissions inside container
+      # Use pct exec to run chown inside the container
+      if pct exec "$VMID" -- chown "$UID_VALUE:$GID_VALUE" "$CONTAINER_PATH" 2>/dev/null; then
+        echo "Set ownership of $CONTAINER_PATH in container to $UID_VALUE:$GID_VALUE" >&2
+      else
+        echo "Warning: Failed to set ownership of $CONTAINER_PATH in container (may be due to UID mapping in unprivileged container)" >&2
+        echo "Warning: You may need to set permissions on the host with the mapped UID" >&2
+      fi
+      if pct exec "$VMID" -- chmod 755 "$CONTAINER_PATH" 2>/dev/null; then
+        echo "Set permissions of $CONTAINER_PATH in container to 755" >&2
+      else
+        echo "Warning: Failed to set permissions of $CONTAINER_PATH in container" >&2
+      fi
+    done 3< "$TMPFILE2"
+    rm -f "$TMPFILE2"
   fi
 fi
 

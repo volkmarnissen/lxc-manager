@@ -118,7 +118,7 @@ describe("TemplateProcessor properties outputs generation", () => {
     );
 
     // Ensure global StorageContext instance is set
-    StorageContext.setInstance(testDir, secretFilePath);
+    StorageContext.setInstance(testDir, storageContextPath, secretFilePath);
     storage = StorageContext.getInstance();
     tp = storage.getTemplateProcessor();
   });

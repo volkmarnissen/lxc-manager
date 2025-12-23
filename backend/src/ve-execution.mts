@@ -7,7 +7,12 @@ import { spawn, SpawnOptionsWithoutStdio } from "node:child_process";
 function spawnAsync(
   cmd: string,
   args: string[],
-  options: SpawnOptionsWithoutStdio & { input?: string; timeout?: number },
+  options: SpawnOptionsWithoutStdio & { 
+    input?: string; 
+    timeout?: number;
+    onStdout?: (chunk: string) => void;
+    onStderr?: (chunk: string) => void;
+  },
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return new Promise((resolve) => {
     const proc = spawn(cmd, args, { ...options, stdio: "pipe" });
@@ -20,8 +25,20 @@ function spawnAsync(
       proc.stdin?.end();
     }
 
-    proc.stdout?.on("data", (d) => (stdout += d.toString()));
-    proc.stderr?.on("data", (d) => (stderr += d.toString()));
+    proc.stdout?.on("data", (d) => {
+      const chunk = d.toString();
+      stdout += chunk;
+      if (options.onStdout) {
+        options.onStdout(chunk);
+      }
+    });
+    proc.stderr?.on("data", (d) => {
+      const chunk = d.toString();
+      stderr += chunk;
+      if (options.onStderr) {
+        options.onStderr(chunk);
+      }
+    });
 
     if (options.timeout) {
       timeoutId = setTimeout(() => {
@@ -70,6 +87,8 @@ export class VeExecution extends EventEmitter {
   public outputs: Map<string, string | number | boolean> = new Map();
   private outputsRaw?: { name: string; value: string | number | boolean }[];
   private validator: JsonValidator;
+  private scriptTimeoutMs: number;
+  
   constructor(
     commands: ICommand[],
     inputs: { id: string; value: string | number | boolean }[],
@@ -84,19 +103,36 @@ export class VeExecution extends EventEmitter {
       this.inputs[inp.id] = inp.value;
     }
     this.validator = StorageContext.getInstance().getJsonValidator();
+    
+    // Get timeout from environment variable, default to 2 minutes (120000 ms)
+    const envTimeout = process.env.LXC_MANAGER_SCRIPT_TIMEOUT;
+    if (envTimeout) {
+      const parsed = parseInt(envTimeout, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        this.scriptTimeoutMs = parsed * 1000; // Convert seconds to milliseconds
+      } else {
+        this.scriptTimeoutMs = 120000; // Default 2 minutes
+      }
+    } else {
+      this.scriptTimeoutMs = 120000; // Default 2 minutes
+    }
   }
 
   /**
    * Executes a command on the Proxmox host via SSH, with timeout. Parses stdout as JSON and updates outputs.
-   * @param command The command to execute
-   * @param timeoutMs Timeout in milliseconds
+   * @param input The command to execute
+   * @param tmplCommand The template command
+   * @param timeoutMs Timeout in milliseconds (defaults to scriptTimeoutMs if not provided)
+   * @param remoteCommand Optional remote command to prepend
    */
   protected async runOnVeHost(
     input: string,
     tmplCommand: ICommand,
-    timeoutMs = 300000, // 5 minutes default for long-running commands like npm install
+    timeoutMs?: number, // Uses scriptTimeoutMs if not provided
     remoteCommand?: string[],
   ): Promise<IVeExecuteMessage> {
+    // Use provided timeout or fall back to scriptTimeoutMs
+    const actualTimeout = timeoutMs !== undefined ? timeoutMs : this.scriptTimeoutMs;
     const sshCommand = this.sshCommand;
     let sshArgs: string[] = [];
     if (sshCommand === "ssh") {
@@ -148,8 +184,32 @@ export class VeExecution extends EventEmitter {
 
     while (retryCount < maxRetries) {
       proc = await spawnAsync(sshCommand, sshArgs, {
-        timeout: timeoutMs,
+        timeout: actualTimeout,
         input: inputWithMarker,
+        onStdout: (chunk: string) => {
+          // Emit partial message for real-time output (especially useful for hanging scripts)
+          this.emit("message", {
+            command: tmplCommand.name || "streaming",
+            commandtext: input,
+            stderr: "",
+            result: chunk,
+            exitCode: -1, // Not finished yet
+            execute_on: tmplCommand.execute_on,
+            partial: true,
+          } as IVeExecuteMessage);
+        },
+        onStderr: (chunk: string) => {
+          // Emit partial message for real-time error output
+          this.emit("message", {
+            command: tmplCommand.name || "streaming",
+            commandtext: input,
+            stderr: chunk,
+            result: null,
+            exitCode: -1, // Not finished yet
+            execute_on: tmplCommand.execute_on,
+            partial: true,
+          } as IVeExecuteMessage);
+        },
       });
 
       // Exit 255 = SSH or lxc-attach connection issue, always retry
@@ -294,13 +354,14 @@ export class VeExecution extends EventEmitter {
    * Executes a command inside an LXC container via lxc-attach on the Proxmox host.
    * @param vm_id Container ID
    * @param command Command to execute
-   * @param timeoutMs Timeout in ms
+   * @param tmplCommand The template command
+   * @param timeoutMs Timeout in ms (defaults to scriptTimeoutMs if not provided)
    */
   protected async runOnLxc(
     vm_id: string | number,
     command: string,
     tmplCommand: ICommand,
-    timeoutMs = 300000, // 5 minutes default
+    timeoutMs?: number, // Uses scriptTimeoutMs if not provided
   ): Promise<IVeExecuteMessage> {
     // Pass command and arguments as array
     let lxcCmd: string[] | undefined = ["lxc-attach", "-n", String(vm_id)];
@@ -407,6 +468,21 @@ export class VeExecution extends EventEmitter {
     outerloop: for (let i = startIdx; i < this.commands.length; ++i) {
       const cmd = this.commands[i];
       if (!cmd || typeof cmd !== "object") continue;
+      
+      // Check if this is a skipped command (has "(skipped)" in name)
+      // Skipped commands should be immediately emitted with exitCode 0
+      if (cmd.name && cmd.name.includes("(skipped)")) {
+        this.emit("message", {
+          stderr: cmd.description || "Skipped: all required parameters missing",
+          result: null,
+          exitCode: 0,
+          command: cmd.name,
+          execute_on: cmd.execute_on,
+          index: msgIndex++,
+        } as IVeExecuteMessage);
+        continue; // Skip execution, already handled
+      }
+      
       // Reset raw outputs for this command iteration
       let rawStr = "";
       try {

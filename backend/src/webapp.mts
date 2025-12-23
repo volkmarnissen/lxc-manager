@@ -52,6 +52,58 @@ export class VEWebApp {
     // Default to 500 for unexpected errors
     return 500;
   }
+
+  /**
+   * Converts an error to a serializable JSON object.
+   * Uses toJSON() if available, otherwise extracts error properties.
+   */
+  private serializeError(err: unknown): any {
+    if (!err) {
+      return { message: "Unknown error" };
+    }
+
+    // If error has a toJSON method, use it
+    if (err && typeof err === 'object' && 'toJSON' in err && typeof (err as any).toJSON === 'function') {
+      return (err as any).toJSON();
+    }
+
+    // If it's an Error instance, extract properties
+    if (err instanceof Error) {
+      const errorObj: any = {
+        name: err.name,
+        message: err.message,
+      };
+      
+      // Add stack trace in development (optional)
+      if (process.env.NODE_ENV !== 'production' && err.stack) {
+        errorObj.stack = err.stack;
+      }
+
+      // If it's a JsonError or VEConfigurationError, try to get details
+      if (err instanceof JsonError || err instanceof VEConfigurationError) {
+        if ((err as any).details) {
+          errorObj.details = (err as any).details;
+        }
+        if ((err as any).filename) {
+          errorObj.filename = (err as any).filename;
+        }
+      }
+
+      return errorObj;
+    }
+
+    // For other types, try to convert to string or return as-is
+    if (typeof err === 'string') {
+      return { message: err };
+    }
+
+    // Last resort: try to serialize the object
+    try {
+      return JSON.parse(JSON.stringify(err));
+    } catch {
+      return { message: String(err) };
+    }
+  }
   constructor(storageContext: StorageContext) {
     this.app = express();
     this.httpServer = http.createServer(this.app);
@@ -310,9 +362,14 @@ export class VEWebApp {
         });
       } catch (err: any) {
         const statusCode = this.getErrorStatusCode(err);
+        const serializedError = this.serializeError(err);
         return res
           .status(statusCode)
-          .json({ success: false, error: err || "Unknown error" });
+          .json({ 
+            success: false, 
+            error: err instanceof Error ? err.message : String(err),
+            serializedError: serializedError 
+          });
       }
     });
     this.app.get(ApiUri.Applications, (req, res) => {
@@ -321,7 +378,11 @@ export class VEWebApp {
         const payload: IApplicationsResponse = applications;
         res.json(payload).status(200);
       } catch (err: any) {
-        res.status(500).json({ error: err || "Unknown error" });
+        const serializedError = this.serializeError(err);
+        res.status(500).json({ 
+          error: err instanceof Error ? err.message : String(err),
+          serializedError: serializedError 
+        });
       }
     });
     this.app.get(ApiUri.TemplateDetailsForApplication, async (req, res) => {

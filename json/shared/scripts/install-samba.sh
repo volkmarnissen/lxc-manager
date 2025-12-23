@@ -1,110 +1,123 @@
-
 #!/bin/sh
-# Installs Samba, configures a share for the given mountpoint, and enables access for the specified user.
+# Installs Samba and configures multiple shares.
+# By default, creates shares for all volumes from 'Bind Multiple Volumes to LXC' (160).
+# Optionally, additional shares can be configured.
 # Supports both Alpine Linux (apk) and Debian/Ubuntu (apt-get/apt).
 # All output is sent to stderr. No output on stdout.
 
 set -e
 
-MOUNTPOINT="{{ mountpoint }}"
 USERNAME="{{ username }}"
 PASSWORD="{{ password }}"
+VOLUMES="{{ volumes }}"
+ADDITIONAL_SHARES="{{ additional_shares }}"
+UID_VALUE="{{ uid }}"
+GID_VALUE="{{ gid }}"
 
-# Check that all parameters are not empty
-if [ -z "$MOUNTPOINT" ] || [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
-  echo "Error: All parameters (mountpoint, username, password) must be set and not empty!" >&2
-  exit 1
-fi
+# Global variables for service management
+SERVICE_CMD=""
+SERVICE_ENABLE_CMD=""
+SERVICE_STATUS_CMD=""
+SERVICE_IS_ACTIVE_CMD=""
+SHARE_COUNT=0
 
-# 1. Install samba and avahi (for macOS Time Machine Bonjour discovery) (detect package manager)
-if command -v apk >/dev/null 2>&1; then
-  # Alpine Linux
-  # Ensure samba-libs is installed (contains VFS modules like fruit and streams_xattr)
-  if ! apk add --no-cache samba samba-libs avahi dbus 1>&2; then
-    echo "Error: Failed to install Samba, Samba-libs, Avahi, or DBus" >&2
+# Detect service manager and set OS-specific command variables
+detect_service_manager() {
+  if command -v rc-service >/dev/null 2>&1; then
+    # Alpine Linux with OpenRC
+    SERVICE_CMD="rc-service"
+    SERVICE_ENABLE_CMD="rc-update add"
+    SERVICE_STATUS_CMD="rc-service status"
+    SERVICE_IS_ACTIVE_CMD="rc-service status"
+  elif command -v systemctl >/dev/null 2>&1; then
+    # Debian/Ubuntu with systemd
+    SERVICE_CMD="systemctl"
+    SERVICE_ENABLE_CMD="systemctl enable"
+    SERVICE_STATUS_CMD="systemctl status"
+    SERVICE_IS_ACTIVE_CMD="systemctl is-active --quiet"
+  elif command -v service >/dev/null 2>&1; then
+    # Fallback for sysvinit
+    SERVICE_CMD="service"
+    SERVICE_ENABLE_CMD="service enable"
+    SERVICE_STATUS_CMD="service status"
+    SERVICE_IS_ACTIVE_CMD="service status"
+  fi
+}
+
+# Check if Samba VFS modules are available (for Alpine Linux)
+check_samba_modules() {
+  if command -v apk >/dev/null 2>&1; then
+    # Alpine Linux: Check if VFS modules are available (required for Time Machine)
+    VFS_DIRS="/usr/lib/samba/vfs /usr/lib64/samba/vfs /usr/lib/x86_64-linux-gnu/samba/vfs"
+    MODULES_FOUND=0
+    for VFS_DIR in $VFS_DIRS; do
+      if [ -d "$VFS_DIR" ]; then
+        if [ -f "$VFS_DIR/fruit.so" ] && [ -f "$VFS_DIR/streams_xattr.so" ]; then
+          MODULES_FOUND=1
+          echo "Found Samba VFS modules in $VFS_DIR" >&2
+          break
+        fi
+      fi
+    done
+    if [ "$MODULES_FOUND" -eq 0 ]; then
+      echo "Warning: Samba VFS modules (fruit.so or streams_xattr.so) not found in standard locations" >&2
+      echo "Warning: macOS Time Machine may not work properly without these modules" >&2
+      echo "Warning: Checked directories: $VFS_DIRS" >&2
+    fi
+  fi
+}
+
+# Setup Samba user and password
+setup_samba_user() {
+  # Check if user exists (must be created beforehand)
+  if ! id "$USERNAME" >/dev/null 2>&1; then
+    echo "Error: User $USERNAME does not exist. Please create the user before running this script." >&2
     exit 1
   fi
-  # Check if VFS modules are available (required for Time Machine)
-  # Modules might be in different locations depending on Alpine version
-  VFS_DIRS="/usr/lib/samba/vfs /usr/lib64/samba/vfs /usr/lib/x86_64-linux-gnu/samba/vfs"
-  MODULES_FOUND=0
-  for VFS_DIR in $VFS_DIRS; do
-    if [ -d "$VFS_DIR" ]; then
-      if [ -f "$VFS_DIR/fruit.so" ] && [ -f "$VFS_DIR/streams_xattr.so" ]; then
-        MODULES_FOUND=1
-        echo "Found Samba VFS modules in $VFS_DIR" >&2
-        break
+  
+  # Verify user has correct UID/GID if provided
+  if [ -n "$UID_VALUE" ] && [ -n "$GID_VALUE" ] && [ "$UID_VALUE" != "" ] && [ "$GID_VALUE" != "" ]; then
+    local user_uid=$(id -u "$USERNAME" 2>/dev/null || echo "")
+    local user_gid=$(id -g "$USERNAME" 2>/dev/null || echo "")
+    
+    if [ -n "$user_uid" ] && [ -n "$user_gid" ]; then
+      if [ "$user_uid" != "$UID_VALUE" ] || [ "$user_gid" != "$GID_VALUE" ]; then
+        echo "Warning: User $USERNAME has UID:$user_uid GID:$user_gid, but expected $UID_VALUE:$GID_VALUE" >&2
+        echo "Warning: This may cause permission issues with bind mounts from the host." >&2
+        echo "Warning: Ensure the user is created with the correct UID/GID (e.g., via create-user template)." >&2
       fi
     fi
-  done
-  if [ "$MODULES_FOUND" -eq 0 ]; then
-    echo "Warning: Samba VFS modules (fruit.so or streams_xattr.so) not found in standard locations" >&2
-    echo "Warning: macOS Time Machine may not work properly without these modules" >&2
-    echo "Warning: Checked directories: $VFS_DIRS" >&2
   fi
-elif command -v apt-get >/dev/null 2>&1; then
-  # Debian/Ubuntu
-  if ! DEBIAN_FRONTEND=noninteractive apt-get update 1>&2; then
-    echo "Error: Failed to update package list" >&2
+
+  # Set samba password for user
+  if ! printf "%s\n%s\n" "$PASSWORD" "$PASSWORD" | smbpasswd -a -s "$USERNAME" 1>&2; then
+    echo "Error: Failed to set Samba password for user $USERNAME" >&2
     exit 1
   fi
-  if ! DEBIAN_FRONTEND=noninteractive apt-get install -y samba avahi-daemon 1>&2; then
-    echo "Error: Failed to install Samba or Avahi" >&2
-    exit 1
-  fi
-elif command -v apt >/dev/null 2>&1; then
-  # Debian/Ubuntu (newer versions use apt instead of apt-get)
-  if ! DEBIAN_FRONTEND=noninteractive apt update 1>&2; then
-    echo "Error: Failed to update package list" >&2
-    exit 1
-  fi
-  if ! DEBIAN_FRONTEND=noninteractive apt install -y samba avahi-daemon 1>&2; then
-    echo "Error: Failed to install Samba or Avahi" >&2
-    exit 1
-  fi
-else
-  echo "Error: No supported package manager found (apk, apt-get, or apt)" >&2
-  exit 1
-fi
+}
 
-
-# 2. Check if user exists (must be created beforehand)
-if ! id "$USERNAME" >/dev/null 2>&1; then
-  echo "Error: User $USERNAME does not exist. Please create the user before running this script." >&2
-  exit 1
-fi
-
-# 3. Set samba password for user
-if ! printf "%s\n%s\n" "$PASSWORD" "$PASSWORD" | smbpasswd -a -s "$USERNAME" 1>&2; then
-  echo "Error: Failed to set Samba password for user $USERNAME" >&2
-  exit 1
-fi
-
-# 4. Ensure mountpoint exists
-if [ ! -d "$MOUNTPOINT" ]; then
-  echo "Error: Mountpoint $MOUNTPOINT does not exist!" >&2
-  exit 1
-fi
-
-# Note: Extended attributes (xattr) support is required for macOS Time Machine
-# This is typically supported on ZFS, ext4, XFS, and other modern filesystems
-
-# 5. Configure global Samba settings for macOS Time Machine (only once)
-# Check if our global settings marker is already present to avoid duplicates
-GLOBAL_MARKER="fruit:model = MacSamba"
-if ! grep -q "$GLOBAL_MARKER" /etc/samba/smb.conf 2>/dev/null; then
-  # Backup original smb.conf
+# Configure global Samba settings for macOS Time Machine
+# Note: Shares will be appended to this file by create_all_shares()
+configure_global_samba() {
+  # Backup original smb.conf if it exists and hasn't been backed up yet
   if [ -f /etc/samba/smb.conf ] && [ ! -f /etc/samba/smb.conf.orig ]; then
     cp /etc/samba/smb.conf /etc/samba/smb.conf.orig 1>&2
   fi
-  
-  # Define global settings once (used in both branches below)
-  GLOBAL_SETTINGS_BLOCK="  workgroup = WORKGROUP
+
+  # Create a clean, new smb.conf with only our configuration
+  # This avoids issues with default shares like [homes], [printers], etc.
+  # Shares will be appended to this file by create_all_shares()
+  cat > /etc/samba/smb.conf <<EOF
+[global]
+  workgroup = WORKGROUP
   server role = standalone server
+  server string = Samba Time Machine Server
   security = user
+  map to guest = Never
+  guest ok = no
   wide links = yes
   unix extensions = no
-  vfs object = acl_xattr catia fruit streams_xattr
+  vfs objects = acl_xattr catia fruit streams_xattr
   fruit:nfc_aces = no
   fruit:aapl = yes
   fruit:model = MacSamba
@@ -112,39 +125,92 @@ if ! grep -q "$GLOBAL_MARKER" /etc/samba/smb.conf 2>/dev/null; then
   fruit:metadata = stream
   fruit:delete_empty_adfiles = yes
   fruit:veto_appledouble = no
-  spotlight = yes"
+  spotlight = yes
+  log file = /var/log/samba/log.%m
+  max log size = 1000
+  logging = file
+
+EOF
+
+  echo "Created clean Samba configuration file" >&2
+}
+
+# Create a single Samba share configuration and append to smb.conf
+create_share_config() {
+  local share_name="$1"
+  local share_path="$2"
   
-  # Find [global] section and add settings after it, or add [global] section if not exists
-  if grep -q '^\[global\]' /etc/samba/smb.conf 2>/dev/null; then
-    # [global] exists, add our settings after it using sed
-    # Convert newlines to \n for sed
-    GLOBAL_SETTINGS_SED=$(echo "$GLOBAL_SETTINGS_BLOCK" | sed 's/$/\\/')
-    sed -i "/^\[global\]/a\\
-$GLOBAL_SETTINGS_SED
-" /etc/samba/smb.conf 1>&2
-  else
-    # [global] doesn't exist, add it at the beginning
-    cat > /tmp/samba_global.conf <<GLOBAL_EOF
-[global]
-$GLOBAL_SETTINGS_BLOCK
-
-GLOBAL_EOF
-    cat /tmp/samba_global.conf /etc/samba/smb.conf > /tmp/smb.conf.new 1>&2
-    mv /tmp/smb.conf.new /etc/samba/smb.conf 1>&2
-    rm -f /tmp/samba_global.conf 1>&2
+  # Ensure share path starts with /
+  if [ "$(echo "$share_path" | cut -c1)" != "/" ]; then
+    share_path="/$share_path"
   fi
-fi
-
-# 6. Create share config in conf.d directory
-SHARE_NAME=$(basename "$MOUNTPOINT")
-CONF_DIR="/etc/samba/conf.d"
-CONF_FILE="$CONF_DIR/$SHARE_NAME.conf"
-
-mkdir -p "$CONF_DIR"
-
-cat > "$CONF_FILE" <<EOF
-[$SHARE_NAME]
-  path = $MOUNTPOINT
+  
+  # Ensure mountpoint exists
+  if [ ! -d "$share_path" ]; then
+    echo "Warning: Share path $share_path does not exist, creating it" >&2
+    mkdir -p "$share_path" >&2
+  fi
+  
+  # Set permissions on share path using provided uid/gid
+  # Note: For bind mounts from the host, permissions must be set on the host.
+  # This is a best-effort attempt to set them in the container as well.
+  if [ -n "$UID_VALUE" ] && [ -n "$GID_VALUE" ] && [ "$UID_VALUE" != "" ] && [ "$GID_VALUE" != "" ]; then
+    # Check if this is a bind mount (read-only filesystem or owned by nobody)
+    local current_uid=""
+    local current_gid=""
+    if [ -r "$share_path" ]; then
+      current_uid=$(stat -c "%u" "$share_path" 2>/dev/null || stat -f "%u" "$share_path" 2>/dev/null || echo "")
+      current_gid=$(stat -c "%g" "$share_path" 2>/dev/null || stat -f "%g" "$share_path" 2>/dev/null || echo "")
+    fi
+    
+    # Try to set ownership
+    if chown "$UID_VALUE:$GID_VALUE" "$share_path" 2>/dev/null; then
+      echo "Set ownership of $share_path to $UID_VALUE:$GID_VALUE" >&2
+    else
+      # If chown failed, it's likely a bind mount - check if permissions are already correct on host
+      if [ -n "$current_uid" ] && [ -n "$current_gid" ]; then
+        if [ "$current_uid" = "65534" ] || [ "$current_gid" = "65534" ]; then
+          echo "Warning: Share path $share_path appears to be a bind mount with incorrect permissions (UID:$current_uid GID:$current_gid)" >&2
+          echo "Warning: The directory on the host must have UID $UID_VALUE and GID $GID_VALUE" >&2
+          echo "Warning: Ensure the user in the container has UID $UID_VALUE and GID $GID_VALUE" >&2
+          echo "Warning: Then set permissions on the host: chown $UID_VALUE:$GID_VALUE <host-path>" >&2
+        elif [ "$current_uid" != "$UID_VALUE" ] || [ "$current_gid" != "$GID_VALUE" ]; then
+          echo "Warning: Share path $share_path has UID:$current_uid GID:$current_gid, but should be $UID_VALUE:$GID_VALUE" >&2
+          echo "Warning: This may be a bind mount. Set permissions on the host: chown $UID_VALUE:$GID_VALUE <host-path>" >&2
+        fi
+      else
+        echo "Warning: Failed to set ownership of $share_path to $UID_VALUE:$GID_VALUE" >&2
+        echo "Warning: This may be due to the directory being a bind mount from the host." >&2
+      fi
+    fi
+    
+    # Set permissions (rwx for owner, rwx for group, rx for others)
+    # Use 775 instead of 755 to allow group write access, which helps with force user
+    if chmod 775 "$share_path" 2>/dev/null; then
+      echo "Set permissions of $share_path to 775" >&2
+    else
+      echo "Warning: Failed to set permissions of $share_path. Permissions may be incorrect." >&2
+    fi
+    
+    # Additional check: verify the directory is writable
+    # Even with force user, Samba needs the directory to be writable
+    if [ ! -w "$share_path" ]; then
+      echo "Warning: Share path $share_path is not writable!" >&2
+      echo "Warning: Even with 'force user', Samba requires the directory to be writable." >&2
+      echo "Warning: This is likely because the directory is a bind mount with incorrect permissions on the host." >&2
+      echo "Warning: Fix on host: chown $UID_VALUE:$GID_VALUE <host-path> && chmod 775 <host-path>" >&2
+    fi
+  else
+    echo "Warning: UID/GID not provided. Cannot set permissions on $share_path." >&2
+    echo "Warning: Ensure permissions are set correctly, especially for bind mounts from the host." >&2
+  fi
+  
+  # Append share configuration directly to smb.conf
+  # Note: force user/group makes Samba run file operations as the specified user
+  # This requires the directory to be writable by that user or owned by that user
+  cat >> /etc/samba/smb.conf <<EOF
+[$share_name]
+  path = $share_path
   available = yes
   writable = yes
   guest ok = no
@@ -153,24 +219,110 @@ cat > "$CONF_FILE" <<EOF
   fruit:time machine = yes
   force user = $USERNAME
   force group = $USERNAME
+  create mask = 0664
+  directory mask = 0775
+
 EOF
+  
+  echo "Created Samba share '$share_name' at $share_path" >&2
+  SHARE_COUNT=$((SHARE_COUNT + 1))
+}
 
-# 7. Ensure include = /etc/samba/conf.d/*.conf in main smb.conf
-# Check if include line already exists (handle wildcards in grep)
-if ! grep -q 'include.*conf\.d' /etc/samba/smb.conf 2>/dev/null; then
-  # Add include line with proper newline
-  echo "" >> /etc/samba/smb.conf
-  echo "include = /etc/samba/conf.d/*.conf" >> /etc/samba/smb.conf
-fi
+# Process all shares (volumes and additional shares)
+create_all_shares() {
+  # Combine both sources
+  local all_shares=""
+  if [ -n "$VOLUMES" ]; then
+    all_shares="$VOLUMES"
+  fi
+  if [ -n "$ADDITIONAL_SHARES" ]; then
+    if [ -n "$all_shares" ]; then
+      all_shares="$all_shares"$'\n'"$ADDITIONAL_SHARES"
+    else
+      all_shares="$ADDITIONAL_SHARES"
+    fi
+  fi
 
-# 8. Configure Avahi for macOS Time Machine Bonjour discovery
-AVAHI_SERVICE_DIR="/etc/avahi/services"
-mkdir -p "$AVAHI_SERVICE_DIR"
+  if [ -z "$all_shares" ]; then
+    echo "Warning: No Samba shares to create. Provide 'volumes' or 'additional_shares' parameter." >&2
+    return
+  fi
 
-# Get hostname for avahi service
-HOSTNAME=$(hostname 2>/dev/null || echo "timemachine")
+  # Use a temporary file to avoid subshell issues
+  local tmpfile=$(mktemp)
+  echo "$all_shares" > "$tmpfile"
+  
+  while IFS= read -r line <&3; do
+    # Skip empty lines
+    [ -z "$line" ] && continue
+    
+    # Parse key=value format
+    local share_name=$(echo "$line" | cut -d'=' -f1)
+    local share_path=$(echo "$line" | cut -d'=' -f2-)
+    
+    # Skip if share name or path is empty
+    [ -z "$share_name" ] && continue
+    [ -z "$share_path" ] && continue
+    
+    create_share_config "$share_name" "$share_path"
+  done 3< "$tmpfile"
+  rm -f "$tmpfile"
 
-cat > "$AVAHI_SERVICE_DIR/samba.service" <<EOF
+  if [ "$SHARE_COUNT" -eq 0 ]; then
+    echo "Warning: No Samba shares were created. Provide 'volumes' or 'additional_shares' parameter." >&2
+  fi
+}
+
+# Configure Avahi for macOS Time Machine Bonjour discovery
+configure_avahi() {
+  local avahi_service_dir="/etc/avahi/services"
+  mkdir -p "$avahi_service_dir"
+
+  # Combine all shares for Avahi configuration
+  local all_shares=""
+  if [ -n "$VOLUMES" ]; then
+    all_shares="$VOLUMES"
+  fi
+  if [ -n "$ADDITIONAL_SHARES" ]; then
+    if [ -n "$all_shares" ]; then
+      all_shares="$all_shares"$'\n'"$ADDITIONAL_SHARES"
+    else
+      all_shares="$ADDITIONAL_SHARES"
+    fi
+  fi
+
+  if [ -z "$all_shares" ]; then
+    return
+  fi
+
+  # Build Avahi service configuration with all shares
+  local avahi_shares=""
+  local tmpfile=$(mktemp)
+  echo "$all_shares" > "$tmpfile"
+  while IFS= read -r line <&3; do
+    [ -z "$line" ] && continue
+    local share_name=$(echo "$line" | cut -d'=' -f1)
+    [ -z "$share_name" ] && continue
+    if [ -z "$avahi_shares" ]; then
+      avahi_shares="dk0=adVN=$share_name,adVF=0x82"
+    else
+      # Count existing shares to get next index
+      local share_index=$(echo "$avahi_shares" | grep -o "dk[0-9]*" | tail -1 | sed 's/dk//')
+      share_index=$((share_index + 1))
+      avahi_shares="$avahi_shares"$'\n'"      <txt-record>dk$share_index=adVN=$share_name,adVF=0x82</txt-record>"
+    fi
+  done 3< "$tmpfile"
+  rm -f "$tmpfile"
+
+  if [ -z "$avahi_shares" ]; then
+    return
+  fi
+
+  # Create Avahi service file
+  local first_share=$(echo "$avahi_shares" | head -1)
+  local remaining_shares=$(echo "$avahi_shares" | tail -n +2)
+  
+  cat > "$avahi_service_dir/samba.service" <<EOF
 <?xml version="1.0" standalone='no'?>
 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
 <service-group>
@@ -187,79 +339,239 @@ cat > "$AVAHI_SERVICE_DIR/samba.service" <<EOF
    <service>
       <type>_adisk._tcp</type>
       <txt-record>sys=waMa=0,adVF=0x100</txt-record>
-      <txt-record>dk0=adVN=$SHARE_NAME,adVF=0x82</txt-record>
+      <txt-record>$first_share</txt-record>
+EOF
+  
+  # Add remaining shares
+  if [ -n "$remaining_shares" ]; then
+    echo "$remaining_shares" | while IFS= read -r share; do
+      echo "      $share" >> "$avahi_service_dir/samba.service"
+    done
+  fi
+  
+  cat >> "$avahi_service_dir/samba.service" <<EOF
    </service>
 </service-group>
 EOF
+}
 
-# 9. Start DBus (required by Avahi on Alpine)
-if command -v dbus-daemon >/dev/null 2>&1 && [ ! -S /var/run/dbus/system_bus_socket ]; then
-  if command -v rc-service >/dev/null 2>&1; then
-    # Try to start dbus via OpenRC
-    rc-service dbus start >/dev/null 2>&1 || true
-  elif command -v service >/dev/null 2>&1; then
-    # Try to start dbus via sysvinit/systemd
-    service dbus start >/dev/null 2>&1 || true
-  fi
-fi
-
-# 10. Enable and start/restart Avahi (restart to reload service files)
-if command -v rc-service >/dev/null 2>&1; then
-  # Alpine Linux with OpenRC
-  rc-update add avahi-daemon default >/dev/null 2>&1 || true
-  rc-service avahi-daemon restart >/dev/null 2>&1 || rc-service avahi-daemon start >/dev/null 2>&1 || true
-elif command -v systemctl >/dev/null 2>&1; then
-  # Debian/Ubuntu with systemd
-  systemctl enable avahi-daemon >/dev/null 2>&1 || true
-  systemctl restart avahi-daemon >/dev/null 2>&1 || systemctl start avahi-daemon >/dev/null 2>&1 || true
-elif command -v service >/dev/null 2>&1; then
-  # Fallback for sysvinit
-  service avahi-daemon enable >/dev/null 2>&1 || true
-  service avahi-daemon restart >/dev/null 2>&1 || service avahi-daemon start >/dev/null 2>&1 || true
-fi
-
-# Verify Avahi is running
-if command -v systemctl >/dev/null 2>&1; then
-  if ! systemctl is-active --quiet avahi-daemon 2>/dev/null; then
-    echo "Warning: Avahi daemon may not be running. Time Machine discovery may not work." >&2
-  fi
-fi
-
-# 11. Restart samba
-RESTARTED=0
-if command -v rc-service >/dev/null 2>&1; then
-  if rc-service samba restart 1>&2; then
-    RESTARTED=1
-  fi
-fi
-
-if [ "$RESTARTED" -eq 0 ]; then
-  if command -v service >/dev/null 2>&1; then
-    if service samba restart 1>&2; then
-      RESTARTED=1
+# Start and enable services (DBus, Avahi, Samba)
+start_services() {
+  # Start DBus (required by Avahi on Alpine)
+  if command -v dbus-daemon >/dev/null 2>&1 && [ ! -S /var/run/dbus/system_bus_socket ]; then
+    if [ -n "$SERVICE_CMD" ]; then
+      $SERVICE_CMD dbus start >/dev/null 2>&1 || true
     fi
   fi
-fi
 
-if [ "$RESTARTED" -eq 0 ]; then
-  echo "Error: Failed to restart Samba service (rc-service and service commands failed)" >&2
+  # Enable and start/restart Avahi (restart to reload service files)
+  if [ -n "$SERVICE_CMD" ]; then
+    # Enable service (OpenRC uses different syntax)
+    if [ "$SERVICE_CMD" = "rc-service" ]; then
+      rc-update add avahi-daemon default >/dev/null 2>&1 || true
+    else
+      $SERVICE_ENABLE_CMD avahi-daemon >/dev/null 2>&1 || true
+    fi
+    
+    # Restart or start service
+    $SERVICE_CMD avahi-daemon restart >/dev/null 2>&1 || $SERVICE_CMD avahi-daemon start >/dev/null 2>&1 || true
+  fi
+
+  # Verify Avahi is running
+  if [ -n "$SERVICE_IS_ACTIVE_CMD" ]; then
+    if [ "$SERVICE_CMD" = "systemctl" ]; then
+      if ! $SERVICE_IS_ACTIVE_CMD avahi-daemon 2>/dev/null; then
+        echo "Warning: Avahi daemon may not be running. Time Machine discovery may not work." >&2
+      fi
+    else
+      # For other service managers, try to check status
+      if ! $SERVICE_STATUS_CMD avahi-daemon >/dev/null 2>&1; then
+        echo "Warning: Avahi daemon may not be running. Time Machine discovery may not work." >&2
+      fi
+    fi
+  fi
+
+  # Enable and restart Samba
+  local samba_service=""
+  if [ -n "$SERVICE_CMD" ]; then
+    # Determine service name based on OS and service manager
+    if [ "$SERVICE_CMD" = "rc-service" ]; then
+      # Alpine Linux with OpenRC: service name is "samba"
+      samba_service="samba"
+    elif [ "$SERVICE_CMD" = "systemctl" ]; then
+      # Debian/Ubuntu with systemd: service name is "smbd"
+      samba_service="smbd"
+    else
+      # Fallback: default to "smbd", will try "samba" if that fails
+      samba_service="smbd"
+    fi
+    
+    # Enable service (if not already enabled)
+    if [ "$SERVICE_CMD" = "rc-service" ]; then
+      rc-update add "$samba_service" default >/dev/null 2>&1 || true
+    elif [ "$SERVICE_CMD" = "systemctl" ]; then
+      $SERVICE_ENABLE_CMD "$samba_service" >/dev/null 2>&1 || true
+    fi
+    
+    # Restart service
+    if $SERVICE_CMD restart "$samba_service" 1>&2; then
+      return 0
+    elif [ "$samba_service" = "smbd" ] && $SERVICE_CMD restart samba 1>&2; then
+      # Fallback: try "samba" if "smbd" doesn't work
+      return 0
+    fi
+  fi
+
+  echo "Error: Failed to restart Samba service" >&2
+  if [ -n "$samba_service" ]; then
+    echo "Tried service name: $samba_service" >&2
+  else
+    echo "Tried service names: smbd, samba" >&2
+  fi
   exit 1
-fi
+}
+
+# Verify share permissions
+verify_share_permissions() {
+  # Use provided UID/GID
+  if [ -z "$UID_VALUE" ] || [ -z "$GID_VALUE" ] || [ "$UID_VALUE" = "" ] || [ "$GID_VALUE" = "" ]; then
+    echo "Warning: UID/GID not provided. Cannot verify permissions." >&2
+    return
+  fi
+  
+  local user_uid="$UID_VALUE"
+  local user_gid="$GID_VALUE"
+  
+  # Combine all shares
+  local all_shares=""
+  if [ -n "$VOLUMES" ]; then
+    all_shares="$VOLUMES"
+  fi
+  if [ -n "$ADDITIONAL_SHARES" ]; then
+    if [ -n "$all_shares" ]; then
+      all_shares="$all_shares"$'\n'"$ADDITIONAL_SHARES"
+    else
+      all_shares="$ADDITIONAL_SHARES"
+    fi
+  fi
+  
+  if [ -z "$all_shares" ]; then
+    return
+  fi
+  
+  # Check permissions for each share
+  local tmpfile=$(mktemp)
+  echo "$all_shares" > "$tmpfile"
+  local permission_issues=0
+  
+  while IFS= read -r line <&3; do
+    [ -z "$line" ] && continue
+    local share_path=$(echo "$line" | cut -d'=' -f2-)
+    [ -z "$share_path" ] && continue
+    
+    # Ensure share path starts with /
+    if [ "$(echo "$share_path" | cut -c1)" != "/" ]; then
+      share_path="/$share_path"
+    fi
+    
+    if [ ! -d "$share_path" ]; then
+      continue
+    fi
+    
+    # Check if we can write to the directory
+    if [ ! -w "$share_path" ]; then
+      echo "Warning: Share path $share_path is not writable by current user" >&2
+      permission_issues=$((permission_issues + 1))
+    fi
+    
+    # Check ownership (if possible)
+    local path_uid=""
+    local path_gid=""
+    if [ -r "$share_path" ]; then
+      path_uid=$(stat -c "%u" "$share_path" 2>/dev/null || stat -f "%u" "$share_path" 2>/dev/null || echo "")
+      path_gid=$(stat -c "%g" "$share_path" 2>/dev/null || stat -f "%g" "$share_path" 2>/dev/null || echo "")
+      
+      if [ -n "$path_uid" ] && [ -n "$path_gid" ]; then
+        if [ "$path_uid" != "$user_uid" ] || [ "$path_gid" != "$user_gid" ]; then
+          echo "Warning: Share path $share_path is owned by UID $path_uid:GID $path_gid, but should be $user_uid:$user_gid" >&2
+          echo "Warning: This may be a bind mount from the host. Set permissions on the host:" >&2
+          echo "Warning:   chown $user_uid:$user_gid <host-path>" >&2
+          echo "Warning:   chmod 755 <host-path>" >&2
+          permission_issues=$((permission_issues + 1))
+        fi
+      fi
+    fi
+  done 3< "$tmpfile"
+  rm -f "$tmpfile"
+  
+  if [ "$permission_issues" -gt 0 ]; then
+    echo "Warning: Found $permission_issues permission issue(s) with share paths." >&2
+    echo "Warning: If shares are bind mounts from the host (via 160-bind-multiple-volumes-to-lxc)," >&2
+    echo "Warning: you may need to set permissions on the host directories:" >&2
+    echo "Warning:   chown -R $UID_VALUE:$GID_VALUE <host-base-path>/<hostname>/<volume-key>" >&2
+    echo "Warning:   chmod -R 755 <host-base-path>/<hostname>/<volume-key>" >&2
+  fi
+}
 
 # Verify Samba configuration
-if command -v testparm >/dev/null 2>&1; then
-  if ! testparm -s >/dev/null 2>&1; then
-    echo "Warning: Samba configuration test failed. Please check the configuration." >&2
+verify_configuration() {
+  if command -v testparm >/dev/null 2>&1; then
+    # Test configuration syntax
+    echo "Testing Samba configuration syntax..." >&2
+    if ! testparm -s >/dev/null 2>&1; then
+      echo "Warning: Samba configuration test failed. Please check the configuration." >&2
+      return 1
+    fi
+    
+    # Show loaded shares for debugging
+    echo "Verifying loaded shares..." >&2
+    local loaded_shares=$(testparm -s 2>/dev/null | grep "^\[" | grep -v "^\[global\]" | sed 's/\[\(.*\)\]/\1/')
+    if [ -n "$loaded_shares" ]; then
+      echo "Loaded shares:" >&2
+      echo "$loaded_shares" | sed 's/^/  /' >&2
+    else
+      echo "  Warning: No shares found in Samba configuration" >&2
+    fi
   fi
-fi
+  
+  # Verify share permissions
+  verify_share_permissions
+}
 
-# Verify share is accessible
-if command -v smbclient >/dev/null 2>&1; then
-  echo "Samba share '$SHARE_NAME' configured at $MOUNTPOINT" >&2
-else
-  echo "Samba share '$SHARE_NAME' configured at $MOUNTPOINT" >&2
-fi
+# Print summary
+print_summary() {
+  echo "Successfully configured $SHARE_COUNT Samba share(s)" >&2
+  echo "Configuration file: /etc/samba/smb.conf" >&2
+  if [ "$SHARE_COUNT" -eq 0 ]; then
+    echo "Note: No shares were created. Provide 'volumes' or 'additional_shares' parameter." >&2
+  fi
+  echo "Note: If macOS Time Machine still shows 'necessary features not supported'," >&2
+  echo "      this may be an Alpine Linux compatibility issue. Consider using Debian/Ubuntu." >&2
+}
 
-echo "Configuration file: $CONF_FILE" >&2
-echo "Note: If macOS Time Machine still shows 'necessary features not supported'," >&2
-echo "      this may be an Alpine Linux compatibility issue. Consider using Debian/Ubuntu." >&2
+# Main execution
+main() {
+  # Check that required parameters are not empty
+  if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
+    echo "Error: Required parameters (username, password) must be set and not empty!" >&2
+    exit 1
+  fi
+  
+  if [ -z "$UID_VALUE" ] || [ -z "$GID_VALUE" ] || [ "$UID_VALUE" = "" ] || [ "$GID_VALUE" = "" ]; then
+    echo "Error: Required parameters (uid, gid) must be set and not empty!" >&2
+    exit 1
+  fi
+
+  detect_service_manager
+  check_samba_modules
+  setup_samba_user
+  configure_global_samba
+  create_all_shares
+  configure_avahi
+  start_services
+  verify_configuration
+  print_summary
+}
+
+# Run main function
+main

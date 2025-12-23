@@ -38,7 +38,9 @@ else
 fi
 
 # 1. Create group if not exists
+GROUP_CREATED=0
 if ! getent group "$USERNAME" >/dev/null 2>&1; then
+  GROUP_CREATED=1
   if [ -n "$GID_VALUE" ] && [ "$GID_VALUE" != "" ]; then
     # Check if GID is already in use
     if ! getent group "$GID_VALUE" >/dev/null 2>&1; then
@@ -49,6 +51,7 @@ if ! getent group "$USERNAME" >/dev/null 2>&1; then
       fi
     else
       # GID is in use, create group without specifying GID
+      echo "Warning: GID $GID_VALUE is already in use, creating group with auto-assigned GID" >&2
       $GROUPADD_CMD "$USERNAME" 1>&2
     fi
   else
@@ -60,7 +63,12 @@ fi
 # Get the actual GID of the group (may have been auto-assigned)
 ACTUAL_GID=$(getent group "$USERNAME" | cut -d: -f3)
 
+if [ "$GROUP_CREATED" -eq 1 ]; then
+  echo "Group '$USERNAME' created successfully with GID:$ACTUAL_GID" >&2
+fi
+
 # 2. Create user if not exists
+USER_CREATED=0
 if ! id -u "$USERNAME" >/dev/null 2>&1; then
   if [ -n "$UID_VALUE" ] && [ "$UID_VALUE" != "" ]; then
     # UID specified, use it
@@ -85,5 +93,17 @@ if ! id -u "$USERNAME" >/dev/null 2>&1; then
   # Alpine adduser creates it by default, Debian useradd -M doesn't, so always create it
   mkdir -p "/home/$USERNAME" 1>&2
   chown "$ACTUAL_UID:$ACTUAL_GID" "/home/$USERNAME" 1>&2
+  USER_CREATED=1
+fi
+
+# Get actual UID and GID (in case user already existed)
+ACTUAL_UID=$(id -u "$USERNAME" 2>/dev/null || echo "")
+ACTUAL_GID=$(id -g "$USERNAME" 2>/dev/null || echo "")
+
+# Output result
+if [ "$USER_CREATED" -eq 1 ]; then
+  echo "User '$USERNAME' created successfully with UID:$ACTUAL_UID GID:$ACTUAL_GID" >&2
+else
+  echo "User '$USERNAME' already exists with UID:$ACTUAL_UID GID:$ACTUAL_GID" >&2
 fi
 

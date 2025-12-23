@@ -1,0 +1,109 @@
+{
+  "execute_on": "ve",
+  "name": "Create and Configure LXC",
+  "description": "Creates LXC container and applies optional configurations (templates 101-199).\n\nThis template creates the container and then applies all optional configuration templates in the correct order. Each optional template will be automatically skipped if its required parameters are missing (via skip_if_all_missing).\n\nIf uid and gid are provided, UID/GID mapping will be automatically configured for unprivileged containers.\n\nTemplates included:\n- 100: Create LXC container (with optional UID/GID mapping)\n- 104: Compute Static IPs from prefixes\n- 105: Set Static IP for LXC\n- 106: Update /etc/hosts entries\n- 110: Map Serial Device\n- 120: Mount Disk on Host\n- 121: Mount ZFS Pool on Host\n- 160: Bind Multiple Volumes to LXC\n- 170: Set Environment Variables in LXC",
+  "parameters": [
+    {
+      "id": "vm_id",
+      "name": "ID of the virtual machine",
+      "type": "number",
+      "default": "",
+      "description": "ID of the virtual machine",
+      "advanced": true
+    },
+    {
+      "id": "template_path",
+      "name": "Path to the LXC template",
+      "type": "string",
+      "required": true,
+      "description": "Path to the LXC template (e.g. local:vztmpl/alpine-3.19-default_20231107_amd64.tar.xz). Auto-selected by installer for Alpine. Must be provided by 010-get-latest-os-template.json template."
+    },
+    {
+      "id": "disk_size",
+      "name": "Disk size",
+      "type": "string",
+      "default": "4",
+      "description": "Disk size for the container in GB",
+      "advanced": true
+    },
+    {
+      "id": "memory",
+      "name": "Memory in MB",
+      "type": "number",
+      "default": 512,
+      "description": "Memory for the container in MB",
+      "advanced": true
+    },
+    {
+      "id": "bridge",
+      "name": "Network bridge",
+      "type": "string",
+      "default": "vmbr0",
+      "description": "Network bridge to use",
+      "advanced": true
+    },
+    {
+      "id": "hostname",
+      "name": "Hostname",
+      "required": true,
+      "type": "string",
+      "description": "Hostname for the LXC container"
+    },
+    {
+      "id": "uid",
+      "name": "UID",
+      "type": "string",
+      "default": "1000",
+      "description": "UID for UID/GID mapping and permissions. If provided, will be mapped directly between host and container (1:1 mapping).",
+      "advanced": true
+    },
+    {
+      "id": "gid",
+      "name": "GID",
+      "type": "string",
+      "default": "1000",
+      "description": "GID for UID/GID mapping and permissions. If provided, will be mapped directly between host and container (1:1 mapping).",
+      "advanced": true
+    }
+  ],
+  "outputs": ["vm_id"],
+  "commands": [
+    {
+      "name": "Create LXC container",
+      "script": "create-lxc-container.sh"
+    },
+    {
+      "name": "Compute Static IPs",
+      "template": "104-lxc-static-ip-prefix.json"
+    },
+    {
+      "name": "Set Static IP for LXC",
+      "template": "105-set-static-ip-for-lxc.json"
+    },
+    {
+      "name": "Update /etc/hosts entries",
+      "template": "106-update-etc-hosts-on-ve.json"
+    },
+    {
+      "name": "Map Serial Device",
+      "template": "110-map-serial.json"
+    },
+    {
+      "name": "Mount Disk on Host",
+      "template": "120-mount-disk-on-host.json"
+    },
+    {
+      "name": "Mount ZFS Pool on Host",
+      "template": "121-mount-zfs-pool-on-host.json"
+    },
+    {
+      "name": "Bind Multiple Volumes to LXC",
+      "template": "160-bind-multiple-volumes-to-lxc.json"
+    },
+    {
+      "name": "Set Env Variables in LXC",
+      "template": "170-set-environment-variables-in-lxc.json"
+    }
+  ]
+}
+

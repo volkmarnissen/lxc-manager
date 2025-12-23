@@ -61,6 +61,7 @@ export interface IVeExecuteMessage {
   error?: IJsonError | undefined;
   index?: number;
   finished?: boolean;
+  partial?: boolean; // If true, this is a partial/streaming output chunk (process still running)
 }
 
 export type ParameterType = "string" | "number" | "boolean" | "enum";
@@ -85,6 +86,7 @@ export interface IParameter {
 export interface ITemplate {
   execute_on: "ve" | "lxc";
   if?: boolean;
+  skip_if_all_missing?: string[];
   name: string;
   description?: string;
   parameters?: IParameter[];

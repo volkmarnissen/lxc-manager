@@ -2,6 +2,7 @@
   "execute_on": "ve",
   "name": "Compute Static IPs",
   "description": "Optional step: Derive static IPv4/IPv6 from prefixes and VMID, emitting parameter overrides. Set prefixes in a shared previous step. This can take over the complete Ip configuration when used with the 'Static IP Address for LXC Container' template.",
+  "skip_if_all_missing": ["ip4_prefix", "ip6_prefix"],
   "parameters": [
     {
       "name": "vm_id",
@@ -14,22 +15,22 @@
       "id": "ip4_prefix",
       "type": "string",
       "description": "IPv4 prefix (e.g. 192.168.1)",
-      "if": "use_static_ip"
-    },
+      "advanced": true
+     },
     {
       "name": "ip4_cidr",
       "id": "ip4_cidr",
       "type": "string",
       "description": "IPv4 CIDR (e.g. 24)",
       "default": "24",
-      "if": "use_static_ip"
+      "advanced": true
     },
     {
       "name": "ip6_prefix",
       "id": "ip6_prefix",
       "type": "string",
       "description": "IPv6 prefix (e.g. 2001:db8::)",
-      "if": "use_static_ip"
+      "advanced": true
     },
     {
       "name": "ip6_cidr",
@@ -37,15 +38,15 @@
       "type": "string",
       "description": "IPv6 CIDR (e.g. 64)",
       "default": "64",
-      "if": "use_static_ip"
+      "advanced": true
     }
   ],
   "outputs": [
-    { "id": "use_static_ip", "default": true },
+    { "id": "use_static_ip"},
     { "id": "static_ip" },
     { "id": "static_ip6" }
   ],
   "commands": [
-    { "name": "lxc-static-ip-prefix", "script": "lxc-static-ip-prefix.sh" }
+    { "script": "lxc-static-ip-prefix.sh" }
   ]
 }

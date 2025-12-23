@@ -83,6 +83,6 @@ if [ -n "$UID_VALUE" ] && [ -n "$GID_VALUE" ] && [ "$UID_VALUE" != "" ] && [ "$G
 fi
 
 echo "Directory $CONTAINER_DIR successfully created under ZFS pool $POOL_NAME" >&2
-echo '{ "id": "host_path", "value": "'$CONTAINER_DIR'" }'
+echo '{ "id": "host_mountpoint", "value": "'$CONTAINER_DIR'" }'
 exit 0
 

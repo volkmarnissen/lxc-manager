@@ -137,8 +137,16 @@ export class VeConfigurationDialog implements OnInit {
     this.configService.postVeConfiguration(application, task, params).subscribe({
       next: (res) => {
         this.loading.set(false);
-        // Navigate to process monitor; pass restartKey if present
-        const extras: NavigationExtras = res.restartKey ? { queryParams: { restartKey: res.restartKey } } : {};
+        // Navigate to process monitor; pass restartKey and original parameters
+        const extras: NavigationExtras = {
+          queryParams: res.restartKey ? { restartKey: res.restartKey } : {},
+          state: { 
+            originalParams: params,
+            application: application,
+            task: task
+          }
+        };
+        this.dialogRef.close(this.form.value);
         this.configService['router'].navigate(['/monitor'], extras);
       },
       error: (err: unknown) => {
@@ -147,8 +155,6 @@ export class VeConfigurationDialog implements OnInit {
         this.loading.set(false);
       }
     });
-    this.dialogRef.close(this.form.value);
-    this.configService['router'].navigate(['/monitor']);
   }
 
   close(): void {
@@ -190,8 +196,17 @@ export class VeConfigurationDialog implements OnInit {
     try {
       const errObj = err as Record<string, unknown>;
       // HTTP errors from Angular HttpClient have the response body in the 'error' property
-      // Backend returns: { success: false, error: <error object> }
+      // Backend returns: { success: false, error: <error message>, serializedError: <error object> }
       const errorBody = errObj['error'] as Record<string, unknown> | string | undefined;
+      
+      // Log serializedError to console if available
+      // Angular HttpClient puts the response body in errObj['error']
+      if (errorBody && typeof errorBody === 'object') {
+        const serializedError = errorBody['serializedError'];
+        if (serializedError) {
+          console.error('Serialized Error:', serializedError);
+        }
+      }
       
       // Handle case where errorBody is an object (from HTTP error response)
       if (errorBody && typeof errorBody === 'object') {

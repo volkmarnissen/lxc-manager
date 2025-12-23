@@ -6,6 +6,11 @@
 # - Creates the mountpoint directory
 # - Mounts the device to the given mountpoint on the host (without fstab, with nofail)
 # - Sets permissions (uid/gid)
+# - If storage_selection is a ZFS pool (starts with "zfs:"), exits successfully
+#   (ZFS pools are handled by mount-zfs-pool.sh)
+#
+# This template only mounts the device on the host. To bind mount it into a container,
+# use a separate template (e.g., 130-bind-host.json or similar).
 #
 # All output is sent to stderr. Script is idempotent and can be run multiple times safely.
 
@@ -23,8 +28,8 @@ fi
 # If this is a ZFS pool, exit successfully (handled by mount-zfs-pool.sh)
 if echo "$STORAGE_SELECTION" | grep -q "^zfs:"; then
   echo "Storage selection is a ZFS pool, skipping disk mount (handled by mount-zfs-pool.sh)" >&2
-  # Output empty host_path as it will be set by mount-zfs-pool.sh
-  echo '[{ "id": "host_path", "value": ""}]' >&2
+  # Output empty host_mountpoint as it will be set by mount-zfs-pool.sh
+  echo '[{ "id": "host_mountpoint", "value": ""}]' >&2
   exit 0
 fi
 
@@ -61,6 +66,6 @@ if [ -n "$UID_VALUE" ] && [ -n "$GID_VALUE" ] && [ "$UID_VALUE" != "" ] && [ "$G
 fi
 
 echo "Device $DEV (UUID: $UUID) successfully mounted to $MOUNTPOINT" >&2
-echo '{ "id": "host_path", "value": "'$MOUNTPOINT'" }'
+echo '{ "id": "host_mountpoint", "value": "'$MOUNTPOINT'" }'
 exit 0
 

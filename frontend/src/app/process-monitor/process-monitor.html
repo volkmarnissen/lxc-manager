@@ -70,9 +70,14 @@
           <pre class="error-stderr">{{ msg.stderr }}</pre>
         }
         @if (group.restartKey) {
-          <button class="restart-btn" (click)="triggerRestart(group)">
-            ↻ Restart
-          </button>
+          <div class="restart-buttons">
+            <button class="restart-btn" (click)="triggerRestart(group)" title="Restart from last successful step">
+              ↻ Restart
+            </button>
+            <button class="restart-full-btn" (click)="triggerRestartFull(group)" title="Restart installation from beginning with same parameters">
+              ↻↻ Restart from Beginning
+            </button>
+          </div>
         }
       </div>
     }

@@ -1,6 +1,6 @@
 //
 
-import { ApiUri, ISsh, IApplicationsResponse, ISshConfigsResponse, ISshConfigKeyResponse, ISshCheckResponse, IUnresolvedParametersResponse, IDeleteSshConfigResponse, IPostVeConfigurationResponse, IPostVeConfigurationBody, IPostSshConfigResponse, IVeExecuteMessagesResponse } from '../shared/types';
+import { ApiUri, ISsh, IApplicationsResponse, ISshConfigsResponse, ISshConfigKeyResponse, ISshCheckResponse, IUnresolvedParametersResponse, IDeleteSshConfigResponse, IPostVeConfigurationResponse, IPostVeConfigurationBody, IPostSshConfigResponse, IVeExecuteMessagesResponse, ISingleExecuteMessagesResponse } from '../shared/types';
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -28,7 +28,12 @@ export class VeConfigurationService {
   static setRouter(router: Router) {
     VeConfigurationService._router = router;
   }
-  static handleError(err: Error & { error: {error?: string};errors?: Error; status?: number; message?: string }) {
+  static handleError(err: Error & { error: {error?: string; serializedError?: unknown};errors?: Error; status?: number; message?: string }) {
+    // Log serializedError to console if available
+    if (err?.error && typeof err.error === 'object' && 'serializedError' in err.error) {
+      console.error('Serialized Error:', err.error.serializedError);
+    }
+    
     let msg = '';
     if (err?.errors && Array.isArray(err.errors) && err.errors.length > 0) {
       msg = err.errors.join('\n');
@@ -141,5 +146,19 @@ export class VeConfigurationService {
     // Note: post() already replaces :veContext, so only replace :restartKey here
     const url = ApiUri.VeRestart.replace(':restartKey', encodeURIComponent(restartKey));
     return this.post<IPostVeConfigurationResponse, object>(url, {});
+  }
+
+  restartExecutionFull(group: ISingleExecuteMessagesResponse, params: VeConfigurationParam[]): Observable<IPostVeConfigurationResponse> {
+    if (!this.veContextKey) {
+      return throwError(() => new Error("VE context not set"));
+    }
+    
+    const application = group.application;
+    const task = group.task;
+    const url = ApiUri.VeConfiguration
+      .replace(':application', encodeURIComponent(application))
+      .replace(':task', encodeURIComponent(task));
+    
+    return this.post<IPostVeConfigurationResponse, IPostVeConfigurationBody>(url, { params });
   }
 }
