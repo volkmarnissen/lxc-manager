@@ -248,6 +248,7 @@ export class VeExecution extends EventEmitter {
         if (exitCode === 0) {
           msg.result = "OK";
           msg.index = index++;
+          msg.partial = false;
           this.emit("message", msg);
           return msg;
         } else {
@@ -260,6 +261,7 @@ export class VeExecution extends EventEmitter {
           msg.exitCode = exitCode;
           msg.command = tmplCommand.name;
           msg.commandtext = input;
+          msg.partial = false;
           this.emit("message", msg);
         }
       }
@@ -338,6 +340,7 @@ export class VeExecution extends EventEmitter {
       msg.index = index;
       msg.error = new JsonError(e.message);
       msg.exitCode = -1;
+      msg.partial = false;
       this.emit("message", msg);
       throw new Error("An error occurred during command execution.");
     }
@@ -346,6 +349,7 @@ export class VeExecution extends EventEmitter {
         `Command "${tmplCommand.name}" failed with exit code ${exitCode}: ${stderr}`,
       );
     } else msg.index = index++;
+    msg.partial = false;
     this.emit("message", msg);
     return msg;
   }
@@ -479,6 +483,7 @@ export class VeExecution extends EventEmitter {
           command: cmd.name,
           execute_on: cmd.execute_on,
           index: msgIndex++,
+          partial: false,
         } as IVeExecuteMessage);
         continue; // Skip execution, already handled
       }
@@ -534,6 +539,7 @@ export class VeExecution extends EventEmitter {
               command: cmd.name || "properties",
               execute_on: cmd.execute_on,
               index: msgIndex++,
+              partial: false,
             } as IVeExecuteMessage);
             continue; // Skip execution, only set properties
           } catch (err: any) {
@@ -545,6 +551,7 @@ export class VeExecution extends EventEmitter {
               command: cmd.name || "properties",
               execute_on: cmd.execute_on,
               index: msgIndex++,
+              partial: false,
             } as IVeExecuteMessage);
             continue;
           }
@@ -583,6 +590,7 @@ export class VeExecution extends EventEmitter {
                 command: cmd.name,
                 execute_on: cmd.execute_on,
                 index: msgIndex++,
+                partial: false,
               } as IVeExecuteMessage);
               break outerloop;
             }
@@ -612,6 +620,7 @@ export class VeExecution extends EventEmitter {
                   execute_on: cmd.execute_on,
                   host: hostname,
                   index: msgIndex++,
+                  partial: false,
                 } as unknown as IVeExecuteMessage);
                 break outerloop;
               }
@@ -625,6 +634,7 @@ export class VeExecution extends EventEmitter {
                 command: cmd.name,
                 execute_on: cmd.execute_on!,
                 index: msgIndex++,
+                partial: false,
               } as IVeExecuteMessage);
               break outerloop;
             }
@@ -681,6 +691,7 @@ export class VeExecution extends EventEmitter {
           command: cmd.name,
           execute_on: cmd.execute_on,
           index: msgIndex++,
+          partial: false,
         } as IVeExecuteMessage);
         // Set restartInfo even on error so restart is possible
         const vm_id = this.outputs.get("vm_id");
@@ -722,6 +733,7 @@ export class VeExecution extends EventEmitter {
         result: "All commands completed successfully",
         stderr: "",
         finished: true,
+        partial: false,
       } as IVeExecuteMessage);
 
       if (restartInfo == undefined) {
