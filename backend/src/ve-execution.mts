@@ -40,19 +40,30 @@ function spawnAsync(
       }
     });
 
+    let killTimeoutId: NodeJS.Timeout | undefined;
     if (options.timeout) {
       timeoutId = setTimeout(() => {
         proc.kill("SIGTERM");
+        // If process doesn't terminate within 2 seconds after SIGTERM, force kill with SIGKILL
+        killTimeoutId = setTimeout(() => {
+          try {
+            proc.kill("SIGKILL");
+          } catch {
+            // Process may already be dead, ignore
+          }
+        }, 2000);
       }, options.timeout);
     }
 
     proc.on("close", (exitCode) => {
       if (timeoutId) clearTimeout(timeoutId);
+      if (killTimeoutId) clearTimeout(killTimeoutId);
       resolve({ stdout, stderr, exitCode: exitCode ?? -1 });
     });
 
     proc.on("error", () => {
       if (timeoutId) clearTimeout(timeoutId);
+      if (killTimeoutId) clearTimeout(killTimeoutId);
       resolve({ stdout, stderr, exitCode: -1 });
     });
   });

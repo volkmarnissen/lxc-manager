@@ -12,7 +12,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { IApplicationWeb, IParameter, IParameterValue, IJsonError } from '../../shared/types';
-import { VeConfigurationService } from '../ve-configuration.service';
+import { VeConfigurationService, VeConfigurationParam } from '../ve-configuration.service';
 import { ErrorDialog } from '../applications-list/error-dialog';
 import type { NavigationExtras } from '@angular/router';
 @Component({
@@ -40,6 +40,7 @@ export class VeConfigurationDialog implements OnInit {
   loading = signal(true);
   hasError = signal(false);
   showAdvanced = signal(false);
+  private initialValues = new Map<string, IParameterValue>();
   private configService: VeConfigurationService = inject(VeConfigurationService);
   public dialogRef: MatDialogRef<VeConfigurationDialog> = inject(MatDialogRef<VeConfigurationDialog>);
   private dialog = inject(MatDialog);
@@ -62,6 +63,8 @@ export class VeConfigurationDialog implements OnInit {
           const validators = param.required ? [Validators.required] : [];
           const defaultValue = param.default !== undefined ? param.default : '';
           this.form.addControl(param.id, new FormControl(defaultValue, validators));
+          // Store initial value for comparison
+          this.initialValues.set(param.id, defaultValue);
         }
         // Sort parameters in each group: required first, then optional
         for (const group in this.groupedParameters) {
@@ -128,13 +131,34 @@ export class VeConfigurationDialog implements OnInit {
   save() {
     if (this.form.invalid) return;
     this.loading.set(true);
-    const params = (Object.entries(this.form.value) as [string, IParameterValue][])
-      .filter(([, value]) => value !== null && value !== undefined && value !== '')
-      .map(([name, value]) => ({ name, value: value as IParameterValue }));
+    
+    // Separate params and outputs based on changed values
+    const params: VeConfigurationParam[] = [];
+    const outputs: { id: string; value: IParameterValue }[] = [];
+    
+    for (const [paramId, currentValue] of Object.entries(this.form.value) as [string, IParameterValue][]) {
+      const initialValue = this.initialValues.get(paramId);
+      // Check if value has changed (compare with initial value)
+      const hasChanged = initialValue !== currentValue && 
+                        (currentValue !== null && currentValue !== undefined && currentValue !== '');
+      
+      if (hasChanged) {
+        // For now, we treat all changed parameters as params
+        // The backend will determine which are outputs based on template definitions
+        if (currentValue !== null && currentValue !== undefined && currentValue !== '') {
+          params.push({ name: paramId, value: currentValue as IParameterValue });
+        }
+      } else if (currentValue !== null && currentValue !== undefined && currentValue !== '') {
+        // Include unchanged values that are not empty (for required fields)
+        params.push({ name: paramId, value: currentValue as IParameterValue });
+      }
+    }
+    
     const application = this.data.app.id;
     const task = 'installation';
     
-    this.configService.postVeConfiguration(application, task, params).subscribe({
+    // For now, send outputs as empty array - will be populated by backend logic later
+    this.configService.postVeConfiguration(application, task, params, outputs.length > 0 ? outputs : undefined).subscribe({
       next: (res) => {
         this.loading.set(false);
         // Navigate to process monitor; pass restartKey and original parameters

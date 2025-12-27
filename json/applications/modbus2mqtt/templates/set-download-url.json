@@ -1,7 +1,7 @@
 {
   "execute_on": "lxc",
   "name": "Set download URLs",
-  "description": "Sets default download URL and public key for Modbus2Mqtt package",
+  "description": "Sets default download URL and public key for Modbus2Mqtt package and key for signature verification from GitHub",
   "outputs": ["packagerpubkeyurl", "packageurl"],
   "commands": [
     {

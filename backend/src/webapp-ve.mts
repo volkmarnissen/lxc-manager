@@ -240,11 +240,17 @@ export class WebAppVE {
       IPostVeConfigurationBody
     >(ApiUri.VeConfiguration, async (req, res) => {
       const { application, task, veContext: veContextKey } = req.params;
-      const { params } = req.body;
+      const { params, outputs } = req.body;
       if (!Array.isArray(params)) {
         return res
           .status(400)
           .json({ success: false, error: "Invalid parameters" });
+      }
+      // Accept outputs array if provided (not yet used in processing)
+      if (outputs !== undefined && !Array.isArray(outputs)) {
+        return res
+          .status(400)
+          .json({ success: false, error: "Invalid outputs" });
       }
       try {
         // Load application (provides commands)

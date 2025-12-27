@@ -418,6 +418,16 @@ export class TemplateProcessor extends EventEmitter {
             if (rc && Array.isArray(rc.outputs) && rc.outputs.length > 0) {
               // If outputs is an array of {name, value}, use it as enum values
               pparm.enumValues = rc.outputs;
+              // If only one enum value is available and no default is set, use it as default
+              if (rc.outputs.length === 1 && pparm.default === undefined) {
+                const singleValue = rc.outputs[0];
+                // Handle both string values and {name, value} objects
+                if (typeof singleValue === "string") {
+                  pparm.default = singleValue;
+                } else if (typeof singleValue === "object" && singleValue !== null && "value" in singleValue) {
+                  pparm.default = singleValue.value;
+                }
+              }
             }
           } catch (e: any) {
             const err =

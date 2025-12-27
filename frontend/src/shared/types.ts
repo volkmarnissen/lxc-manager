@@ -137,6 +137,7 @@ export interface IDeleteSshConfigResponse {
 }
 export interface IPostVeConfigurationBody {
   params: { name: string; value: IParameterValue }[];
+  outputs?: { id: string; value: IParameterValue }[];
 }
 export interface IPostSshConfigResponse {
   success: boolean;
