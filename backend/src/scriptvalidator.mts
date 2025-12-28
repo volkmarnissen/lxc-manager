@@ -107,4 +107,49 @@ export class ScriptValidator {
       }
     }
   }
+
+  /**
+   * Validates a library file: checks if it exists and if it contains template variables (which should not be in libraries).
+   */
+  validateLibrary(
+    libraryName: string,
+    errors: IJsonError[],
+    requestedIn?: string,
+    parentTemplate?: string,
+    scriptPathes?: string[],
+  ) {
+    if (!scriptPathes || scriptPathes.length === 0) {
+      errors.push(
+        new JsonError(
+          `Library validation failed: scriptPathes not provided (library: ${libraryName}, requested in: ${requestedIn ?? "unknown"}${parentTemplate ? ", parent template: " + parentTemplate : ""})`,
+        ),
+      );
+      return;
+    }
+
+    const libraryPath = this.findInPathes(scriptPathes, libraryName);
+    if (!libraryPath) {
+      errors.push(
+        new JsonError(
+          `Library file not found: ${libraryName} (searched in: ${scriptPathes.join(", ")}, requested in: ${requestedIn ?? "unknown"}${parentTemplate ? ", parent template: " + parentTemplate : ""})`,
+        ),
+      );
+      return;
+    }
+
+    // Check if library contains template variables (libraries should not contain variables)
+    try {
+      const libraryContent = fs.readFileSync(libraryPath, "utf-8");
+      const vars = this.extractTemplateVariables(libraryContent);
+      if (vars.length > 0) {
+        errors.push(
+          new JsonError(
+            `Library ${libraryName} contains template variables ({{ ${vars.join(", ")}} }), which is not allowed. Libraries should only contain function definitions without template variables.`,
+          ),
+        );
+      }
+    } catch (e) {
+      errors.push(new JsonError(`Failed to read library ${libraryName}: ${e}`));
+    }
+  }
 }

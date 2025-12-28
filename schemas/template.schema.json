@@ -87,6 +87,10 @@
         "if": { "type": "string" },
         "command": { "type": "string" },
         "script": { "type": "string" },
+        "library": {
+          "type": "string",
+          "description": "Optional: Path to library file (relative to scripts directory). Library will be prepended to script content."
+        },
         "properties": {
           "oneOf": [
             {

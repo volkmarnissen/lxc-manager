@@ -404,5 +404,208 @@ describe("VeExecutionCommandProcessor", () => {
     delete inputs["vm_id"];
     expect(processor.getVmId()).toBe("102");
   });
+
+  describe("Library support (Option 3)", () => {
+    it("should load script with library prepended", () => {
+      const libraryPath = path.join(testDir, "test-library.sh");
+      const scriptPath = path.join(testDir, "test-script.sh");
+      
+      // Create library with functions
+      fs.writeFileSync(libraryPath, "test_function() { echo 'library function'; }");
+      // Create script that uses library function
+      fs.writeFileSync(scriptPath, "test_function");
+
+      const outputs = new Map<string, string | number | boolean>();
+      const inputs: Record<string, string | number | boolean> = {};
+      const defaults = new Map<string, string | number | boolean>();
+      const variableResolver = new VariableResolver(
+        () => outputs,
+        () => inputs,
+        () => defaults,
+      );
+      const eventEmitter = new EventEmitter();
+      const messageEmitter = new VeExecutionMessageEmitter(eventEmitter);
+
+      const processor = new VeExecutionCommandProcessor({
+        outputs,
+        inputs,
+        variableResolver,
+        messageEmitter,
+        runOnLxc: async () => {
+          throw new Error("runOnLxc should not be called");
+        },
+        runOnVeHost: async () => {
+          throw new Error("runOnVeHost should not be called");
+        },
+        executeOnHost: async () => {
+          throw new Error("executeOnHost should not be called");
+        },
+        outputsRaw: undefined,
+        setOutputsRaw: () => {},
+      });
+
+      const cmd: ICommand = {
+        name: "test",
+        script: scriptPath,
+        libraryPath: libraryPath,
+        execute_on: "ve",
+      };
+
+      const content = processor.loadCommandContent(cmd);
+      expect(content).toContain("test_function() { echo 'library function'; }");
+      expect(content).toContain("test_function");
+      expect(content).toContain("# --- Script starts here ---");
+      // Library should come before script
+      const libraryIndex = content.indexOf("test_function()");
+      const scriptIndex = content.indexOf("test_function", libraryIndex + 1);
+      expect(libraryIndex).toBeLessThan(scriptIndex);
+    });
+
+    it("should throw error when library file not found", () => {
+      const scriptPath = path.join(testDir, "test-script.sh");
+      fs.writeFileSync(scriptPath, "echo test");
+
+      const outputs = new Map<string, string | number | boolean>();
+      const inputs: Record<string, string | number | boolean> = {};
+      const defaults = new Map<string, string | number | boolean>();
+      const variableResolver = new VariableResolver(
+        () => outputs,
+        () => inputs,
+        () => defaults,
+      );
+      const eventEmitter = new EventEmitter();
+      const messageEmitter = new VeExecutionMessageEmitter(eventEmitter);
+
+      const processor = new VeExecutionCommandProcessor({
+        outputs,
+        inputs,
+        variableResolver,
+        messageEmitter,
+        runOnLxc: async () => {
+          throw new Error("runOnLxc should not be called");
+        },
+        runOnVeHost: async () => {
+          throw new Error("runOnVeHost should not be called");
+        },
+        executeOnHost: async () => {
+          throw new Error("executeOnHost should not be called");
+        },
+        outputsRaw: undefined,
+        setOutputsRaw: () => {},
+      });
+
+      const cmd: ICommand = {
+        name: "test",
+        script: scriptPath,
+        libraryPath: path.join(testDir, "non-existent-library.sh"),
+        execute_on: "ve",
+      };
+
+      expect(() => processor.loadCommandContent(cmd)).toThrow(/Failed to read library file/);
+    });
+
+    it("should work without library when libraryPath is not specified", () => {
+      const scriptPath = path.join(testDir, "test-script.sh");
+      fs.writeFileSync(scriptPath, "echo test script");
+
+      const outputs = new Map<string, string | number | boolean>();
+      const inputs: Record<string, string | number | boolean> = {};
+      const defaults = new Map<string, string | number | boolean>();
+      const variableResolver = new VariableResolver(
+        () => outputs,
+        () => inputs,
+        () => defaults,
+      );
+      const eventEmitter = new EventEmitter();
+      const messageEmitter = new VeExecutionMessageEmitter(eventEmitter);
+
+      const processor = new VeExecutionCommandProcessor({
+        outputs,
+        inputs,
+        variableResolver,
+        messageEmitter,
+        runOnLxc: async () => {
+          throw new Error("runOnLxc should not be called");
+        },
+        runOnVeHost: async () => {
+          throw new Error("runOnVeHost should not be called");
+        },
+        executeOnHost: async () => {
+          throw new Error("executeOnHost should not be called");
+        },
+        outputsRaw: undefined,
+        setOutputsRaw: () => {},
+      });
+
+      const cmd: ICommand = {
+        name: "test",
+        script: scriptPath,
+        execute_on: "ve",
+      };
+
+      const content = processor.loadCommandContent(cmd);
+      expect(content).toBe("echo test script");
+      expect(content).not.toContain("# --- Script starts here ---");
+    });
+
+    it("should prepend library content before script that calls library function", () => {
+      const libraryPath = path.join(testDir, "test-library.sh");
+      const scriptPath = path.join(testDir, "test-script.sh");
+      
+      // Create library with function
+      fs.writeFileSync(libraryPath, "my_library_function() { echo 'from library'; }");
+      // Create script that calls library function
+      fs.writeFileSync(scriptPath, "my_library_function");
+
+      const outputs = new Map<string, string | number | boolean>();
+      const inputs: Record<string, string | number | boolean> = {};
+      const defaults = new Map<string, string | number | boolean>();
+      const variableResolver = new VariableResolver(
+        () => outputs,
+        () => inputs,
+        () => defaults,
+      );
+      const eventEmitter = new EventEmitter();
+      const messageEmitter = new VeExecutionMessageEmitter(eventEmitter);
+
+      const processor = new VeExecutionCommandProcessor({
+        outputs,
+        inputs,
+        variableResolver,
+        messageEmitter,
+        runOnLxc: async () => {
+          throw new Error("runOnLxc should not be called");
+        },
+        runOnVeHost: async () => {
+          throw new Error("runOnVeHost should not be called");
+        },
+        executeOnHost: async () => {
+          throw new Error("executeOnHost should not be called");
+        },
+        outputsRaw: undefined,
+        setOutputsRaw: () => {},
+      });
+
+      const cmd: ICommand = {
+        name: "test",
+        script: scriptPath,
+        libraryPath: libraryPath,
+        execute_on: "ve",
+      };
+
+      const content = processor.loadCommandContent(cmd);
+      // Library should be prepended
+      expect(content).toContain("my_library_function() { echo 'from library'; }");
+      // Script should be after library
+      expect(content).toContain("my_library_function");
+      expect(content).toContain("# --- Script starts here ---");
+      // Library should come before script marker
+      const libraryIndex = content.indexOf("my_library_function()");
+      const markerIndex = content.indexOf("# --- Script starts here ---");
+      const scriptCallIndex = content.indexOf("my_library_function", libraryIndex + 1);
+      expect(libraryIndex).toBeLessThan(markerIndex);
+      expect(markerIndex).toBeLessThan(scriptCallIndex);
+    });
+  });
 });
 

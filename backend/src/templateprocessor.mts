@@ -492,9 +492,31 @@ export class TemplateProcessor extends EventEmitter {
           opts.scriptPathes,
         );
         const scriptPath = this.findInPathes(opts.scriptPathes, cmd.script);
+        
+        // Validate and resolve library path if specified
+        let libraryPath: string | undefined = undefined;
+        if (cmd.library !== undefined) {
+          scriptValidator.validateLibrary(
+            cmd.library,
+            opts.errors,
+            opts.requestedIn,
+            opts.parentTemplate,
+            opts.scriptPathes,
+          );
+          libraryPath = this.findInPathes(opts.scriptPathes, cmd.library);
+          if (!libraryPath) {
+            opts.errors.push(
+              new JsonError(
+                `Library file not found: ${cmd.library} (for script: ${cmd.script}, requested in: ${opts.requestedIn ?? "unknown"}${opts.parentTemplate ? ", parent template: " + opts.parentTemplate : ""})`,
+              ),
+            );
+          }
+        }
+        
         opts.commands.push({
           ...cmd,
           script: scriptPath || cmd.script,
+          libraryPath: libraryPath,
           execute_on: tmplData.execute_on,
         });
       } else if (cmd.command !== undefined) {

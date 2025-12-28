@@ -93,11 +93,31 @@ export class VeExecutionCommandProcessor {
 
   /**
    * Loads command content from script file or command string.
+   * If a library is specified, it will be prepended to the script content.
    */
   loadCommandContent(cmd: ICommand): string | null {
     if (cmd.script !== undefined) {
-      // Read script file, replace variables, then execute
-      return fs.readFileSync(cmd.script, "utf-8");
+      // Read script file
+      let scriptContent: string;
+      try {
+        scriptContent = fs.readFileSync(cmd.script, "utf-8");
+      } catch (e) {
+        throw new Error(`Failed to read script file ${cmd.script}: ${e}`);
+      }
+
+      // If library is specified, load and prepend it
+      if (cmd.libraryPath !== undefined) {
+        let libraryContent: string;
+        try {
+          libraryContent = fs.readFileSync(cmd.libraryPath, "utf-8");
+        } catch (e) {
+          throw new Error(`Failed to read library file ${cmd.libraryPath}: ${e}`);
+        }
+        // Prepend library to script content
+        return `${libraryContent}\n\n# --- Script starts here ---\n${scriptContent}`;
+      }
+
+      return scriptContent;
     } else if (cmd.command !== undefined) {
       return cmd.command;
     }

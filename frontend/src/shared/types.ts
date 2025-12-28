@@ -44,6 +44,8 @@ export interface ICommand {
   name: string;
   command?: string;
   script?: string;
+  library?: string;
+  libraryPath?: string; // Internal: resolved full path to library file
   template?: string;
   properties?: IOutputObject | IOutputObject[];
   description?: string;
