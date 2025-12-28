@@ -1,7 +1,7 @@
 {
   "execute_on": "ve",
-  "name": "Map Serial Device",
-  "description": "Map serial device to VM",
+  "name": "Map Input Device",
+  "description": "Map input device (keyboard/mouse) to VM",
   "skip_if_all_missing": ["usb_bus_device"],
   "parameters": [
     {
@@ -24,7 +24,7 @@
       "type": "string",
       "required": false,
       "advanced": true,
-      "description": "Optional: UID of the user in the container who should have access to the serial device. If provided, permissions will be set on the host device (mapped UID = container UID + 100000)."
+      "description": "Optional: UID of the user in the container who should have access to the input device. If provided, permissions will be set on the host device (mapped UID = container UID + 100000)."
     },
     {
       "id": "gid",
@@ -32,22 +32,23 @@
       "type": "string",
       "required": false,
       "advanced": true,
-      "description": "Optional: GID of the group in the container who should have access to the serial device. If provided, permissions will be set on the host device (mapped GID = container GID + 100000)."
+      "description": "Optional: GID of the group in the container who should have access to the input device. If provided, permissions will be set on the host device (mapped GID = container GID + 100000)."
     },
     {
-      "id": "container_device_path",
-      "name": "Container Device Path",
+      "id": "container_device_paths",
+      "name": "Container Device Paths",
       "type": "string",
       "required": false,
       "advanced": true,
-      "description": "Optional: Container device path (default: /dev/ttyUSB0). The device will always be available at this path in the container, regardless of the host device path."
+      "description": "Optional: Comma-separated container device paths (default: auto-detect)"
     }
   ],
   "commands": [
     {
-      "name": "Map Serial Device",
-      "script": "map-serial-device.sh",
+      "name": "Map Input Device",
+      "script": "map-input-device.sh",
       "library": "usb-device-common.sh"
     }
   ]
 }
+

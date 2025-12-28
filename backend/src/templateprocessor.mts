@@ -494,7 +494,12 @@ export class TemplateProcessor extends EventEmitter {
         const scriptPath = this.findInPathes(opts.scriptPathes, cmd.script);
         
         // Validate and resolve library path if specified
-        let libraryPath: string | undefined = undefined;
+        const commandWithLibrary: ICommand = {
+          ...cmd,
+          script: scriptPath || cmd.script,
+          execute_on: tmplData.execute_on,
+        };
+        
         if (cmd.library !== undefined) {
           scriptValidator.validateLibrary(
             cmd.library,
@@ -503,22 +508,19 @@ export class TemplateProcessor extends EventEmitter {
             opts.parentTemplate,
             opts.scriptPathes,
           );
-          libraryPath = this.findInPathes(opts.scriptPathes, cmd.library);
+          const libraryPath = this.findInPathes(opts.scriptPathes, cmd.library);
           if (!libraryPath) {
             opts.errors.push(
               new JsonError(
                 `Library file not found: ${cmd.library} (for script: ${cmd.script}, requested in: ${opts.requestedIn ?? "unknown"}${opts.parentTemplate ? ", parent template: " + opts.parentTemplate : ""})`,
               ),
             );
+          } else {
+            commandWithLibrary.libraryPath = libraryPath;
           }
         }
         
-        opts.commands.push({
-          ...cmd,
-          script: scriptPath || cmd.script,
-          libraryPath: libraryPath,
-          execute_on: tmplData.execute_on,
-        });
+        opts.commands.push(commandWithLibrary);
       } else if (cmd.command !== undefined) {
         const scriptValidator = new ScriptValidator();
         scriptValidator.validateCommand(
