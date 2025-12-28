@@ -205,8 +205,156 @@ create_udev_rule() {
   return 0
 }
 
-# 9. check_container_stopped(vm_id)
-# Checks if container is stopped
+# 9a. setup_udev_rule_with_replug(rule_file, vendor_id, product_id, subsystem, mapped_uid, mapped_gid, mode, replug_script_path, vm_id, replug_params...)
+# Creates udev rule, adds ACTION=="add" rule for replug handler, reloads and triggers udev, executes replug script
+# Parameters:
+#   rule_file: Path to udev rule file
+#   vendor_id, product_id: USB device IDs
+#   subsystem: udev subsystem (tty, input, sound, etc.)
+#   mapped_uid, mapped_gid: Host UID/GID for permissions
+#   mode: Device permissions mode
+#   replug_script_path: Path to replug handler script (must already be installed)
+#   vm_id: VM/Container ID
+#   replug_params: Additional parameters to pass to replug script (space-separated, will be quoted)
+# Returns: 0 on success, 1 on error
+setup_udev_rule_with_replug() {
+  RULE_FILE="$1"
+  VENDOR_ID="$2"
+  PRODUCT_ID="$3"
+  SUBSYSTEM="$4"
+  MAPPED_UID="$5"
+  MAPPED_GID="$6"
+  MODE="$7"
+  REPLUG_SCRIPT_PATH="$8"
+  VM_ID="$9"
+  shift 9
+  REPLUG_PARAMS="$@"
+  
+  if [ ! -n "$VENDOR_ID" ] || [ ! -n "$PRODUCT_ID" ] || [ -z "$SUBSYSTEM" ] || [ -z "$RULE_FILE" ] || [ -z "$REPLUG_SCRIPT_PATH" ] || [ -z "$VM_ID" ]; then
+    return 1
+  fi
+  
+  # Create base udev rule for permissions
+  if ! create_udev_rule "$RULE_FILE" "$VENDOR_ID" "$PRODUCT_ID" "$SUBSYSTEM" "$MAPPED_UID" "$MAPPED_GID" "$MODE"; then
+    return 1
+  fi
+  
+  # Build replug script command with parameters (properly quoted)
+  REPLUG_CMD="$REPLUG_SCRIPT_PATH \"$VM_ID\" \"$VENDOR_ID\" \"$PRODUCT_ID\""
+  for PARAM in $REPLUG_PARAMS; do
+    REPLUG_CMD="$REPLUG_CMD \"$PARAM\""
+  done
+  
+  # Add ACTION=="add" rule to trigger replug handler
+  cat >> "$RULE_FILE" <<EOF
+
+# Auto-update LXC mapping on replug
+SUBSYSTEM=="$SUBSYSTEM", ATTRS{idVendor}=="$VENDOR_ID", ATTRS{idProduct}=="$PRODUCT_ID", ACTION=="add", RUN+="/bin/sh -c 'if [ -f $REPLUG_SCRIPT_PATH ]; then $REPLUG_CMD & fi'"
+EOF
+  
+  # Reload udev rules
+  if ! udevadm control --reload-rules >&2; then
+    echo "Warning: Failed to reload udev rules" >&2
+  fi
+  
+  # Trigger udev rules for current device
+  udevadm trigger --subsystem-match="$SUBSYSTEM" --attr-match=idVendor="$VENDOR_ID" --attr-match=idProduct="$PRODUCT_ID" --action=add >&2 || \
+  udevadm trigger --subsystem-match="$SUBSYSTEM" --attr-match=idVendor="$VENDOR_ID" --attr-match=idProduct="$PRODUCT_ID" >&2
+  
+  # Also trigger for USB subsystem (for permissions)
+  udevadm trigger --subsystem-match=usb --attr-match=idVendor="$VENDOR_ID" --attr-match=idProduct="$PRODUCT_ID" >&2
+  
+  # Execute replug handler directly for already connected device
+  # This ensures the LXC config is updated even if udev trigger doesn't work
+  if [ -f "$REPLUG_SCRIPT_PATH" ]; then
+    if ! "$REPLUG_SCRIPT_PATH" "$VM_ID" "$VENDOR_ID" "$PRODUCT_ID" $REPLUG_PARAMS >&2; then
+      echo "Error: Replug handler script failed" >&2
+      return 1
+    fi
+  fi
+  
+  return 0
+}
+
+# 8a. install_replug_handler(replug_script_path, replug_script_content)
+# Installs a replug handler script to /usr/local/bin
+# Parameters:
+#   replug_script_path: Full path to the replug script (e.g., /usr/local/bin/map-serial-device-replug.sh)
+#   replug_script_content: The content of the replug script (as a string, typically from a heredoc)
+# Returns: 0 on success, 1 on error
+install_replug_handler() {
+  REPLUG_SCRIPT="$1"
+  REPLUG_SCRIPT_CONTENT="$2"
+  
+  if [ -z "$REPLUG_SCRIPT" ] || [ -z "$REPLUG_SCRIPT_CONTENT" ]; then
+    echo "Error: install_replug_handler requires replug_script_path and replug_script_content" >&2
+    return 1
+  fi
+  
+  REPLUG_SCRIPT_DIR="/usr/local/bin"
+  
+  # Create directory if it doesn't exist
+  if [ ! -d "$REPLUG_SCRIPT_DIR" ]; then
+    mkdir -p "$REPLUG_SCRIPT_DIR" >&2
+  fi
+  
+  # Write replug script content to file
+  # The content comes from a quoted heredoc, so escaped backslashes (\$) are stored as literals
+  # We need to convert \$ back to $ when writing the file
+  # Use printf and sed to unescape $ variables (but preserve other escaped characters)
+  printf '%s\n' "$REPLUG_SCRIPT_CONTENT" | sed 's/\\\$/$/g' > "$REPLUG_SCRIPT"
+  
+  # Make script executable
+  chmod +x "$REPLUG_SCRIPT" >&2
+  
+  # Test syntax of generated script
+  if ! sh -n "$REPLUG_SCRIPT" >&2; then
+    echo "Error: Generated replug script has syntax errors" >&2
+    return 1
+  fi
+  
+  echo "Installed replug handler script at $REPLUG_SCRIPT" >&2
+  return 0
+}
+
+# 9. detect_vm_type(vm_id)
+# Detects if VM ID is LXC container or QEMU VM
+# Returns: "lxc", "qemu", or "unknown"
+detect_vm_type() {
+  VM_ID="$1"
+  if [ -f "/etc/pve/lxc/${VM_ID}.conf" ]; then
+    echo "lxc"
+    return 0
+  elif [ -f "/etc/pve/qemu-server/${VM_ID}.conf" ]; then
+    echo "qemu"
+    return 0
+  else
+    echo "unknown"
+    return 1
+  fi
+}
+
+# 10. check_vm_stopped(vm_id, vm_type)
+# Checks if VM/container is stopped
+# Parameters: vm_id, vm_type (lxc or qemu)
+# Returns: 1 if running, 0 if stopped
+check_vm_stopped() {
+  VM_ID="$1"
+  VM_TYPE="$2"
+  if [ "$VM_TYPE" = "lxc" ]; then
+    if pct status "$VM_ID" 2>&1 | grep -q 'status: running'; then
+      return 1
+    fi
+  elif [ "$VM_TYPE" = "qemu" ]; then
+    if qm status "$VM_ID" 2>&1 | grep -q 'status: running'; then
+      return 1
+    fi
+  fi
+  return 0
+}
+
+# 11. check_container_stopped(vm_id)
+# Checks if container is stopped (legacy function, use check_vm_stopped instead)
 # Returns: 1 if running, 0 if stopped
 check_container_stopped() {
   VM_ID="$1"
@@ -216,7 +364,19 @@ check_container_stopped() {
   return 0
 }
 
-# 10. get_next_dev_index(config_file)
+# 12. get_next_hostpci_slot(config_file)
+# Finds next free hostpci slot for QEMU VM
+# Returns: slot number (0, 1, 2, etc.)
+get_next_hostpci_slot() {
+  CONFIG_FILE="$1"
+  NEXT_SLOT=0
+  while grep -q "^hostpci${NEXT_SLOT}:" "$CONFIG_FILE" 2>/dev/null; do
+    NEXT_SLOT=$((NEXT_SLOT+1))
+  done
+  echo "$NEXT_SLOT"
+}
+
+# 13. get_next_dev_index(config_file)
 # Finds next free devX: index in config file
 # Returns: dev0, dev1, dev2, etc.
 get_next_dev_index() {
@@ -232,7 +392,7 @@ get_next_dev_index() {
   return 0
 }
 
-# 11. resolve_symlink(symlink_path)
+# 14. resolve_symlink(symlink_path)
 # Resolves symlink to actual path (supports multiple levels)
 # Returns: resolved path as string, empty on error
 resolve_symlink() {
@@ -272,7 +432,7 @@ resolve_symlink() {
   return 0
 }
 
-# 12. find_vendor_product_from_class_device(class_path, device_name)
+# 15. find_vendor_product_from_class_device(class_path, device_name)
 # Navigates from /sys/class/*/device up to find USB device with idVendor/idProduct
 # Sets VENDOR_ID and PRODUCT_ID variables
 # Returns: 0 on success, 1 on error
@@ -324,7 +484,7 @@ find_vendor_product_from_class_device() {
   return 1
 }
 
-# 13. find_usb_device_by_vendor_product(vendor_id, product_id, device_name, device_pattern)
+# 16. find_usb_device_by_vendor_product(vendor_id, product_id, device_name, device_pattern)
 # Finds USB device by matching vendor/product ID and device pattern
 # Sets USB_BUS and USB_DEVICE variables
 # Returns: 0 on success, 1 on error
@@ -379,7 +539,7 @@ find_usb_device_by_vendor_product() {
   return 1
 }
 
-# 14. extract_bus_device_from_sysfs_path(sysfs_path)
+# 17. extract_bus_device_from_sysfs_path(sysfs_path)
 # Extracts bus and device number from sysfs path name
 # Sets USB_BUS and USB_DEVICE variables
 # Returns: 0 on success, 1 on error
@@ -411,7 +571,7 @@ extract_bus_device_from_sysfs_path() {
   return 0
 }
 
-# 15. get_lsusb_description(bus, device)
+# 18. get_lsusb_description(bus, device)
 # Gets lsusb description for specific bus/device
 # Returns: description as string, empty on error
 get_lsusb_description() {
@@ -436,7 +596,7 @@ get_lsusb_description() {
   return 1
 }
 
-# 16. format_json_device_entry(name, value, is_first)
+# 19. format_json_device_entry(name, value, is_first)
 # Formats device entry for JSON array
 # Returns: JSON string
 format_json_device_entry() {
@@ -456,7 +616,7 @@ format_json_device_entry() {
   return 0
 }
 
-# 17. find_device_in_usb_interfaces(usb_device_path, device_name, device_pattern)
+# 20. find_device_in_usb_interfaces(usb_device_path, device_name, device_pattern)
 # Searches for device in base path and all interface paths
 # Returns: 0 if found, 1 if not found
 find_device_in_usb_interfaces() {
@@ -488,7 +648,7 @@ find_device_in_usb_interfaces() {
   return 1
 }
 
-# 18. find_tty_device(bus, device)
+# 21. find_tty_device(bus, device)
 # Finds tty device associated with USB bus/device
 # Returns: device path as string (e.g., /dev/ttyUSB0), empty on error
 find_tty_device() {

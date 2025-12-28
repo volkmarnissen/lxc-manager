@@ -1,7 +1,7 @@
 {
   "execute_on": "ve",
   "name": "Map Audio Device",
-  "description": "Map audio device (USB or PCI) to VM",
+  "description": "Map audio device (USB or PCI) to LXC container or VM",
   "skip_if_all_missing": ["audio_card"],
   "parameters": [
     {
@@ -16,7 +16,7 @@
       "name": "ID of the VM",
       "type": "string",
       "required": true,
-      "description": "ID of the VM to which the USB device will be assigned"
+      "description": "ID of the LXC container or VM to which the audio device will be assigned"
     },
     {
       "id": "uid",
@@ -24,7 +24,7 @@
       "type": "string",
       "required": false,
       "advanced": true,
-      "description": "Optional: UID of the user in the container who should have access to the audio device. If provided, permissions will be set on the host device (mapped UID = container UID + 100000)."
+      "description": "Optional: UID of the user in the container who should have access to the audio device (LXC only). If provided, permissions will be set on the host device (mapped UID = container UID + 100000). For VMs, this parameter is ignored."
     },
     {
       "id": "gid",
@@ -32,7 +32,7 @@
       "type": "string",
       "required": false,
       "advanced": true,
-      "description": "Optional: GID of the group in the container who should have access to the audio device. If provided, permissions will be set on the host device (mapped GID = container GID + 100000)."
+      "description": "Optional: GID of the group in the container who should have access to the audio device (LXC only). If provided, permissions will be set on the host device (mapped GID = container GID + 100000). For VMs, this parameter is ignored."
     },
     {
       "id": "container_device_paths",

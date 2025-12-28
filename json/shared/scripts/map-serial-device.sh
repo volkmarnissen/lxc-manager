@@ -42,19 +42,9 @@ FUNCTION_EOF
 # Define function in main script from variable
 eval "$UPDATE_LXC_CONFIG_FUNCTION"
 
-# Function to install replug handler script
-install_replug_handler() {
-  REPLUG_SCRIPT="$1"
-  REPLUG_SCRIPT_DIR="/usr/local/bin"
-  
-  # Create directory if it doesn't exist
-  if [ ! -d "$REPLUG_SCRIPT_DIR" ]; then
-    mkdir -p "$REPLUG_SCRIPT_DIR" >&2
-  fi
-  
-  # Install replug script (embedded in this script)
-  # Use unquoted heredoc to allow variable expansion, but escape variables that should be used in replug script
-  cat > "$REPLUG_SCRIPT" <<REPLUG_SCRIPT_EOF
+# Store replug script content in variable (used by setup_udev_rules)
+# Use quoted heredoc to prevent variable expansion in main script
+REPLUG_SCRIPT_CONTENT_SERIAL=$(cat <<'REPLUG_SCRIPT_EOF'
 #!/bin/sh
 # Replug handler for serial device mapping
 # Called by udev when USB serial device is plugged in
@@ -250,18 +240,7 @@ fi
 
 exit 0
 REPLUG_SCRIPT_EOF
-  
-  # Make script executable
-  chmod +x "$REPLUG_SCRIPT" >&2
-  
-  # Test syntax of generated script
-  if ! sh -n "$REPLUG_SCRIPT" >&2; then
-    echo "Error: Generated replug script has syntax errors" >&2
-    return 1
-  fi
-  
-  echo "Installed replug handler script at $REPLUG_SCRIPT" >&2
-}
+)
 
 # Global variables (shared between functions)
 CONTAINER_DEVICE_PATH=""
@@ -388,67 +367,34 @@ EOF
   
   # Create udev rule for permissions
   RULE_FILE="/etc/udev/rules.d/99-lxc-serial-{{ vm_id }}-${VENDOR_ID}-${PRODUCT_ID}.rules"
-  create_udev_rule "$RULE_FILE" "$VENDOR_ID" "$PRODUCT_ID" "tty" "$MAPPED_UID" "$MAPPED_GID" "0664"
   
-  # Install replug handler script
+  # Install replug handler script (must be done before setup_udev_rule_with_replug)
   REPLUG_SCRIPT="/usr/local/bin/map-serial-device-replug.sh"
-  install_replug_handler "$REPLUG_SCRIPT"
+  if ! install_replug_handler "$REPLUG_SCRIPT" "$REPLUG_SCRIPT_CONTENT_SERIAL"; then
+    echo "Error: Failed to install replug handler script" >&2
+    return 1
+  fi
   
-  # Add ACTION=="add" rule to trigger replug handler
-  cat >> "$RULE_FILE" <<EOF
-
-# Auto-update LXC mapping on replug
-SUBSYSTEM=="tty", ATTRS{idVendor}=="$VENDOR_ID", ATTRS{idProduct}=="$PRODUCT_ID", ACTION=="add", RUN+="/bin/sh -c 'if [ -f $REPLUG_SCRIPT ]; then $REPLUG_SCRIPT {{ vm_id }} $VENDOR_ID $PRODUCT_ID \"$CONTAINER_DEVICE_PATH\" \"$CONTAINER_UID\" \"$CONTAINER_GID\" & fi'"
-EOF
+  # Setup udev rule with replug handler using library function
+  if ! setup_udev_rule_with_replug "$RULE_FILE" "$VENDOR_ID" "$PRODUCT_ID" "tty" "$MAPPED_UID" "$MAPPED_GID" "0664" "$REPLUG_SCRIPT" "{{ vm_id }}" "$CONTAINER_DEVICE_PATH" "$CONTAINER_UID" "$CONTAINER_GID"; then
+    echo "Error: Failed to setup udev rule with replug handler" >&2
+    return 1
+  fi
 
   return 0
 }
 
 # Function to trigger udev rules and execute replug handler
+# Note: This function is now mostly redundant since setup_udev_rule_with_replug
+# already handles udev reload/trigger and replug execution. Kept for compatibility.
 trigger_udev_and_replug() {
-  if ! command -v udevadm >/dev/null 2>&1; then
-    echo "Warning: udevadm not found, skipping udev trigger" >&2
-    return 0
-  fi
-
-  if [ -z "$VENDOR_ID" ] || [ -z "$PRODUCT_ID" ]; then
-    echo "Error: VENDOR_ID or PRODUCT_ID is empty, cannot trigger udev rules" >&2
-    return 1
-  fi
-
-  if [ -z "$ACTUAL_HOST_DEVICE" ] || [ ! -e "$ACTUAL_HOST_DEVICE" ]; then
-    echo "Error: ACTUAL_HOST_DEVICE is empty or does not exist" >&2
-    return 1
-  fi
-
-  # Reload udev rules
-  if ! udevadm control --reload-rules >&2; then
-    echo "Error: Failed to reload udev rules" >&2
-    return 1
-  fi
-  
-  # Trigger udev rules for already connected device
-  # This will execute the ACTION=="add" rule for the current device
-  # Note: udevadm trigger with --action=add simulates an "add" event
-  udevadm trigger --subsystem-match=tty --attr-match=idVendor="$VENDOR_ID" --attr-match=idProduct="$PRODUCT_ID" --action=add >&2 || \
-  udevadm trigger --subsystem-match=tty --attr-match=idVendor="$VENDOR_ID" --attr-match=idProduct="$PRODUCT_ID" >&2
-  
-  # Also trigger for USB subsystem (for permissions)
-  udevadm trigger --subsystem-match=usb --attr-match=idVendor="$VENDOR_ID" --attr-match=idProduct="$PRODUCT_ID" >&2
-  
-  # Execute replug handler directly for already connected device
-  # This ensures the LXC config is updated even if udev trigger doesn't work
+  # setup_udev_rule_with_replug already handles everything, so this is a no-op
+  # But we verify the replug script exists for error reporting
   REPLUG_SCRIPT="/usr/local/bin/map-serial-device-replug.sh"
-  if [ -f "$REPLUG_SCRIPT" ] && [ -e "$ACTUAL_HOST_DEVICE" ]; then
-    if ! "$REPLUG_SCRIPT" "{{ vm_id }}" "$VENDOR_ID" "$PRODUCT_ID" "$CONTAINER_DEVICE_PATH" "$CONTAINER_UID" "$CONTAINER_GID" >&2; then
-      echo "Error: Replug handler script failed" >&2
-      return 1
-    fi
-  else
-    echo "Error: Replug script not found or device does not exist" >&2
+  if [ ! -f "$REPLUG_SCRIPT" ]; then
+    echo "Warning: Replug script not found at $REPLUG_SCRIPT" >&2
     return 1
   fi
-
   return 0
 }
 
@@ -470,14 +416,9 @@ main() {
   fi
 
   # Setup udev rules and configuration
+  # Note: setup_udev_rule_with_replug already handles udev reload/trigger and replug execution
   if ! setup_udev_rules; then
     echo "Error: Failed to setup udev rules" >&2
-    exit 1
-  fi
-
-  # Trigger udev rules and execute replug handler
-  if ! trigger_udev_and_replug; then
-    echo "Error: Failed to trigger udev rules or execute replug handler" >&2
     exit 1
   fi
 
