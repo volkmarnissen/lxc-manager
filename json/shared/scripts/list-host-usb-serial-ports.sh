@@ -30,7 +30,10 @@ if [ ! -d "/sys/bus/usb/devices" ]; then
 fi
 
 # Get USB serial device information
-# Use pattern /sys/bus/usb/devices/*/*/tty/* to find all tty devices directly
+# Use pattern /sys/bus/usb/devices/*/*/tty/* to find all tty devices
+# This pattern works for both:
+# - Flat: /sys/bus/usb/devices/1-4.4:1.0/tty/ttyACM0
+# - Nested: /sys/bus/usb/devices/1-3:1.0/ttyUSB0/tty/ttyUSB0
 FIRST=true
 printf '['
 
@@ -47,15 +50,38 @@ for TTY_SYSFS_PATH in /sys/bus/usb/devices/*/*/tty/*; do
     continue
   fi
   
-  # Navigate up to find USB device directory (two levels up from tty/*)
-  # Path: /sys/bus/usb/devices/1-3:1.0/tty/ttyUSB0 -> /sys/bus/usb/devices/1-3:1.0
+  # Navigate up to find USB device directory
+  # Handle both structures:
+  # - Flat: /sys/bus/usb/devices/1-4.4:1.0/tty/ttyACM0 -> /sys/bus/usb/devices/1-4.4:1.0
+  # - Nested: /sys/bus/usb/devices/1-3:1.0/ttyUSB0/tty/ttyUSB0 -> /sys/bus/usb/devices/1-3:1.0
   USB_INTERFACE_PATH=$(dirname "$(dirname "$TTY_SYSFS_PATH")")
+  
+  # If we're in a nested structure (e.g., .../ttyUSB0/tty/ttyUSB0), go up one more level
+  # Check if parent directory is a tty device name (ttyUSB*, ttyACM*)
+  PARENT_DIR=$(basename "$USB_INTERFACE_PATH")
+  if echo "$PARENT_DIR" | grep -qE '^tty(USB|ACM)'; then
+    USB_INTERFACE_PATH=$(dirname "$USB_INTERFACE_PATH")
+  fi
+  
   USB_DEVICE_PATH="$USB_INTERFACE_PATH"
   
   # Navigate up to base USB device if we're in an interface path (contains :)
-  # e.g., /sys/bus/usb/devices/1-3:1.0 -> /sys/bus/usb/devices/1-3
+  # Handle two cases:
+  # 1. Simple: /sys/bus/usb/devices/1-3:1.0 -> /sys/bus/usb/devices/1-3
+  # 2. Nested: /sys/bus/usb/devices/1-4.4/1-4.4:1.0 -> /sys/bus/usb/devices/1-4.4
   if echo "$USB_DEVICE_PATH" | grep -q ':'; then
-    USB_DEVICE_PATH=$(dirname "$USB_DEVICE_PATH")
+    DEVICE_BASENAME_WITH_INTERFACE=$(basename "$USB_DEVICE_PATH")
+    DEVICE_BASENAME_ONLY=$(echo "$DEVICE_BASENAME_WITH_INTERFACE" | sed 's/:.*$//')
+    PARENT_DIR=$(dirname "$USB_DEVICE_PATH")
+    PARENT_BASENAME=$(basename "$PARENT_DIR")
+    
+    # If parent basename matches the device basename (nested structure like 1-4.4/1-4.4:1.0)
+    if [ "$PARENT_BASENAME" = "$DEVICE_BASENAME_ONLY" ]; then
+      USB_DEVICE_PATH="$PARENT_DIR"
+    else
+      # Simple structure: just replace the basename
+      USB_DEVICE_PATH="$PARENT_DIR/$DEVICE_BASENAME_ONLY"
+    fi
   fi
   
   # Extract bus and device from path
@@ -79,27 +105,41 @@ for TTY_SYSFS_PATH in /sys/bus/usb/devices/*/*/tty/*; do
   USB_BUS=$((USB_BUS + 0))
   USB_DEVICE=$((USB_DEVICE + 0))
   
-  # Get vendor and product ID from USB device path
-  VENDOR_ID=$(cat "$USB_DEVICE_PATH/idVendor" 2>/dev/null | tr -d '\n\r' || echo "")
-  PRODUCT_ID=$(cat "$USB_DEVICE_PATH/idProduct" 2>/dev/null | tr -d '\n\r' || echo "")
+  # Get vendor and product ID from USB interface path first (more accurate for devices behind hubs)
+  # If not available, fall back to device path
+  VENDOR_ID=""
+  PRODUCT_ID=""
+  if [ -f "$USB_INTERFACE_PATH/idVendor" ] && [ -f "$USB_INTERFACE_PATH/idProduct" ]; then
+    VENDOR_ID=$(cat "$USB_INTERFACE_PATH/idVendor" 2>/dev/null | tr -d '\n\r' || echo "")
+    PRODUCT_ID=$(cat "$USB_INTERFACE_PATH/idProduct" 2>/dev/null | tr -d '\n\r' || echo "")
+  fi
+  
+  # Fallback to device path if interface path didn't have IDs
+  if [ -z "$VENDOR_ID" ] || [ -z "$PRODUCT_ID" ]; then
+    VENDOR_ID=$(cat "$USB_DEVICE_PATH/idVendor" 2>/dev/null | tr -d '\n\r' || echo "")
+    PRODUCT_ID=$(cat "$USB_DEVICE_PATH/idProduct" 2>/dev/null | tr -d '\n\r' || echo "")
+  fi
   
   # Get lsusb description
+  # Priority: Use vendor:product ID first (more reliable, handles hubs correctly)
+  # Then fallback to bus:device matching
   USB_INFO=""
   if [ -n "$VENDOR_ID" ] && [ -n "$PRODUCT_ID" ]; then
-    # Format bus and device with leading zeros for lsusb matching
-    BUS_FORMATTED=$(printf "%03d" "$USB_BUS" 2>/dev/null || echo "")
-    DEV_FORMATTED=$(printf "%03d" "$USB_DEVICE" 2>/dev/null || echo "")
-    if [ -n "$BUS_FORMATTED" ] && [ -n "$DEV_FORMATTED" ]; then
-      # Find lsusb line for this specific bus/device
-      LSUSB_LINE=$(lsusb | grep "^Bus $BUS_FORMATTED Device $DEV_FORMATTED:" || echo "")
-      if [ -n "$LSUSB_LINE" ]; then
-        USB_INFO=$(echo "$LSUSB_LINE" | sed 's/^Bus [0-9]* Device [0-9]*: ID //' || echo "")
-      fi
-    fi
+    # First try: use vendor:product ID to find the actual device
+    # This finds the device even if it's behind a hub (multiple devices with same VID:PID)
+    USB_INFO=$(lsusb -d "${VENDOR_ID}:${PRODUCT_ID}" 2>/dev/null | sed 's/^Bus [0-9]* Device [0-9]*: ID //' | head -n1 || echo "")
     
-    # Fallback: use vendor:product ID if lsusb didn't find exact match
+    # Fallback: try bus:device matching if vendor:product didn't work or found multiple
     if [ -z "$USB_INFO" ]; then
-      USB_INFO=$(lsusb -d "${VENDOR_ID}:${PRODUCT_ID}" 2>/dev/null | sed 's/^Bus [0-9]* Device [0-9]*: ID //' | head -n1 || echo "")
+      BUS_FORMATTED=$(printf "%03d" "$USB_BUS" 2>/dev/null || echo "")
+      DEV_FORMATTED=$(printf "%03d" "$USB_DEVICE" 2>/dev/null || echo "")
+      if [ -n "$BUS_FORMATTED" ] && [ -n "$DEV_FORMATTED" ]; then
+        # Find lsusb line for this specific bus/device
+        LSUSB_LINE=$(lsusb | grep "^Bus $BUS_FORMATTED Device $DEV_FORMATTED:" || echo "")
+        if [ -n "$LSUSB_LINE" ]; then
+          USB_INFO=$(echo "$LSUSB_LINE" | sed 's/^Bus [0-9]* Device [0-9]*: ID //' || echo "")
+        fi
+      fi
     fi
   fi
   
