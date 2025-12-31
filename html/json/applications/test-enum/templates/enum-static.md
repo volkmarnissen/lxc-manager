@@ -1,34 +1,27 @@
-# Start LXC Container
+# Static Enum
 
-Start existing LXC container on Proxmox host
+Provides a static enum parameter
 
-**Execution Target:** ve
+**Execution Target:** lxc
 
 ## Capabilities
 
 This template provides the following capabilities:
 
-- Checking if container exists
-- Starting the container if it's not already running
+- Executes command: `echo noop 1>&2`
 
 ## Used By Applications
 
 This template is used by the following applications (usage examples):
 
-- [alpine-packages](../../../alpine-packages.md)
-- [macbckpsrv](../../../macbckpsrv.md)
-- [mariadb](../../../mariadb.md)
-- [modbus2mqtt](../../../modbus2mqtt.md)
-- [mosquitto](../../../mosquitto.md)
-- [node-red](../../../node-red.md)
-- [phpmyadmin](../../../phpmyadmin.md)
+- [test-enum](../../../../test-enum.md)
 
 <!-- GENERATED_START:PARAMETERS -->
 ## Parameters
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `vm_id` | number | No | - | ID of the virtual machine |
+| `color` | enum | No | - |  |
 
 <!-- GENERATED_END:PARAMETERS -->
 
@@ -39,6 +32,6 @@ This template executes the following commands in order:
 
 | # | Command | Type | Details | Description |
 |---|---------|------|---------|-------------|
-| 1 | Unnamed Command | Script | `lxc-start.sh` | - |
+| 1 | Noop | Command | `echo noop 1>&2` | - |
 
 <!-- GENERATED_END:COMMANDS -->

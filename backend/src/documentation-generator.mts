@@ -450,7 +450,7 @@ export class DocumentationGenerator {
     
     const docPath = path.join(htmlTemplatesPath, docName);
 
-    const docContent = this.generateTemplateDoc(
+    const docContent = await this.generateTemplateDoc(
       templateName,
       templateData,
       applicationName,
@@ -818,13 +818,13 @@ export class DocumentationGenerator {
   /**
    * Generates template documentation content.
    */
-  private generateTemplateDoc(
+  private async generateTemplateDoc(
     templateName: string,
     templateData: ITemplate,
     applicationName: string,
     isShared: boolean,
     appPath: string,
-  ): string {
+  ): Promise<string> {
     const lines: string[] = [];
 
     // Title
@@ -840,6 +840,40 @@ export class DocumentationGenerator {
     // Execution Target
     if (templateData.execute_on) {
       lines.push(`**Execution Target:** ${templateData.execute_on}`);
+      lines.push("");
+    }
+
+    // Capabilities (extracted from script headers and template commands) - BEFORE Parameters
+    lines.push("## Capabilities");
+    lines.push("");
+    lines.push("This template provides the following capabilities:");
+    lines.push("");
+    
+    // Extract capabilities from script headers and template commands
+    const capabilities = this.extractCapabilities(templateData, templateName, appPath);
+    if (capabilities.length > 0) {
+      for (const capability of capabilities) {
+        lines.push(`- ${capability}`);
+      }
+    } else {
+      lines.push("- See template implementation for details");
+    }
+    lines.push("");
+
+    // Used By Applications (usage examples)
+    const usingApplications = await this.findApplicationsUsingTemplate(templateName);
+    if (usingApplications.length > 0) {
+      lines.push("## Used By Applications");
+      lines.push("");
+      lines.push("This template is used by the following applications (usage examples):");
+      lines.push("");
+      for (const appName of usingApplications) {
+        // Templates are in html/json/shared/templates/ or html/json/applications/<app>/templates/
+        // Applications are in html/, so we need ../../../ to go up three levels for shared templates
+        // For application-specific templates, we need ../../../../ to go up four levels
+        const linkPath = isShared ? `../../../${appName}.md` : `../../../../${appName}.md`;
+        lines.push(`- [${appName}](${linkPath})`);
+      }
       lines.push("");
     }
 
@@ -1013,22 +1047,6 @@ export class DocumentationGenerator {
       }
     }
 
-    // Capabilities (extracted from script headers and template commands)
-    lines.push("## Capabilities");
-    lines.push("");
-    lines.push("This template provides the following capabilities:");
-    lines.push("");
-    
-    // Extract capabilities from script headers and template commands
-    const capabilities = this.extractCapabilities(templateData, templateName, appPath);
-    if (capabilities.length > 0) {
-      for (const capability of capabilities) {
-        lines.push(`- ${capability}`);
-      }
-    } else {
-      lines.push("- See template implementation for details");
-    }
-    lines.push("");
 
     return lines.join("\n");
   }
@@ -1227,6 +1245,237 @@ export class DocumentationGenerator {
     }
     
     return capabilities;
+  }
+
+  /**
+   * Finds all applications that use a specific template (excluding skipped ones).
+   */
+  private async findApplicationsUsingTemplate(templateName: string): Promise<string[]> {
+    const usingApplications: string[] = [];
+    
+    try {
+      const storageContext = StorageContext.getInstance();
+      const allApps = storageContext.getAllAppNames();
+      
+      // Normalize template name (remove .json extension)
+      const normalizedTemplate = templateName.replace(/\.json$/, "");
+      
+      for (const [appName, appPath] of allApps) {
+        if (!appPath) continue;
+        
+        const appJsonPath = path.join(appPath, "application.json");
+        if (!fs.existsSync(appJsonPath)) continue;
+        
+        try {
+          const appData: IApplication = JSON.parse(
+            fs.readFileSync(appJsonPath, "utf-8"),
+          );
+          
+          // Check if template is used and not skipped
+          if (appData.installation) {
+            let templateFound = false;
+            
+            // First, check if template is directly in installation list
+            for (const templateRef of appData.installation) {
+              const refTemplateName = typeof templateRef === "string"
+                ? templateRef
+                : (templateRef as ITemplateReference).name;
+              
+              const normalizedRef = refTemplateName.replace(/\.json$/, "");
+              
+              if (normalizedRef === normalizedTemplate) {
+                templateFound = true;
+                break;
+              }
+            }
+            
+            // Also check referenced templates
+            if (!templateFound) {
+              for (const templateRef of appData.installation) {
+                const refTemplateName = typeof templateRef === "string"
+                  ? templateRef
+                  : (templateRef as ITemplateReference).name;
+                
+                const templatePath = path.join(appPath, "templates", refTemplateName);
+                const isShared = !fs.existsSync(templatePath);
+                const fullPath = isShared
+                  ? path.join(this.jsonPath, "shared", "templates", refTemplateName)
+                  : templatePath;
+                
+                if (fs.existsSync(fullPath)) {
+                  try {
+                    const templateData: ITemplate = JSON.parse(
+                      fs.readFileSync(fullPath, "utf-8"),
+                    );
+                    
+                    // Check if this template references the target template
+                    if (templateData.commands && Array.isArray(templateData.commands)) {
+                      for (const cmd of templateData.commands) {
+                        if (cmd && cmd.template) {
+                          const cmdTemplateName = cmd.template.replace(/\.json$/, "");
+                          if (cmdTemplateName === normalizedTemplate) {
+                            templateFound = true;
+                            break;
+                          }
+                        }
+                      }
+                    }
+                  } catch {
+                    // Ignore errors
+                  }
+                }
+                
+                if (templateFound) break;
+              }
+            }
+            
+            // If template is found, check if it's skipped
+            if (templateFound) {
+              // Load application commands to check if template is skipped
+              try {
+                const templateProcessor = new TemplateProcessor({
+                  jsonPath: this.jsonPath,
+                  localPath: this.localPath,
+                  schemaPath: this.schemaPath,
+                });
+                
+                const dummyVeContext: IVEContext = {
+                  host: "dummy",
+                  port: 22,
+                  getStorageContext: () => storageContext,
+                  getKey: () => "ve_dummy",
+                };
+                
+                const loaded = await templateProcessor.loadApplication(
+                  appName,
+                  "installation" as TaskType,
+                  dummyVeContext,
+                  "sh",
+                );
+                
+                const commands = loaded.commands || [];
+                
+                // Check if template is skipped using the same logic as in generateApplicationReadme
+                if (!this.isTemplateSkipped(normalizedTemplate, appPath, commands)) {
+                  usingApplications.push(appName);
+                }
+              } catch {
+                // If loading fails, include the application anyway (better to show than hide)
+                usingApplications.push(appName);
+              }
+            }
+          }
+        } catch {
+          // Ignore errors reading application
+        }
+      }
+    } catch {
+      // Ignore errors
+    }
+    
+    // Remove duplicates and sort
+    return [...new Set(usingApplications)].sort();
+  }
+
+  /**
+   * Checks if a template is fully skipped by checking if all its commands are skipped.
+   */
+  private isTemplateSkipped(
+    templateName: string,
+    appPath: string,
+    commands: ICommand[],
+  ): boolean {
+    // Try to find template file to get its commands
+    // Template name might not have .json extension, so try both
+    const templateNameWithExt = templateName.endsWith(".json") ? templateName : `${templateName}.json`;
+    const templatePath = path.join(appPath, "templates", templateNameWithExt);
+    const isShared = !fs.existsSync(templatePath);
+    const fullPath = isShared
+      ? path.join(this.jsonPath, "shared", "templates", templateNameWithExt)
+      : templatePath;
+    
+    if (!fs.existsSync(fullPath)) {
+      return false; // Template not found, can't determine skip status
+    }
+    
+    try {
+      const templateData: ITemplate = JSON.parse(
+        fs.readFileSync(fullPath, "utf-8"),
+      );
+      
+      // Get command names and script names from template
+      const templateCommandNames = new Set<string>();
+      const templateScriptNames = new Set<string>();
+      if (templateData.commands && Array.isArray(templateData.commands)) {
+        for (const cmd of templateData.commands) {
+          if (cmd && cmd.name) {
+            templateCommandNames.add(cmd.name);
+          }
+          if (cmd && cmd.script) {
+            // Extract script name without path and extension
+            const scriptName = cmd.script.replace(/^.*\//, "").replace(/\.sh$/, "");
+            templateScriptNames.add(scriptName);
+          }
+        }
+      }
+      
+      // If template has no command names but has a template name, use template name
+      // This handles cases where commands don't have explicit names
+      if (templateCommandNames.size === 0 && templateData.name) {
+        templateCommandNames.add(templateData.name);
+      }
+      
+      // If template has no commands or scripts, it can't be skipped
+      if (templateCommandNames.size === 0 && templateScriptNames.size === 0) {
+        return false;
+      }
+      
+      // Find matching commands in loaded commands
+      const matchingCommands: ICommand[] = [];
+      for (const cmd of commands) {
+        if (!cmd || !cmd.name) continue;
+        
+        // Check if command name matches (with or without "(skipped)" suffix)
+        const cmdBaseName = cmd.name.replace(/\s*\(skipped\)$/, "");
+        if (templateCommandNames.has(cmdBaseName)) {
+          matchingCommands.push(cmd);
+        } else if (templateScriptNames.size > 0) {
+          // If no command name match, try to match by script name
+          // Check if command description or name contains script name
+          const cmdDescription = (cmd.description || "").toLowerCase();
+          const cmdNameLower = cmdBaseName.toLowerCase();
+          for (const scriptName of templateScriptNames) {
+            const scriptNameLower = scriptName.toLowerCase();
+            // Match if script name appears in command name or description
+            if (cmdNameLower.includes(scriptNameLower) || cmdDescription.includes(scriptNameLower)) {
+              matchingCommands.push(cmd);
+              break;
+            }
+          }
+        }
+      }
+      
+      // Determine expected count: use command names if available, otherwise script names
+      const expectedCount = templateCommandNames.size > 0 
+        ? templateCommandNames.size 
+        : templateScriptNames.size;
+      
+      // If we found commands for this template, check if all are skipped
+      // Important: Only mark as skipped if we found ALL commands and ALL are skipped
+      if (matchingCommands.length > 0 && matchingCommands.length === expectedCount) {
+        const allSkipped = matchingCommands.every(cmd => 
+          cmd.name?.includes("(skipped)")
+        );
+        return allSkipped;
+      }
+      
+      // If we didn't find all commands, the template might not have been executed
+      // or some commands might be missing - don't mark as skipped
+      return false;
+    } catch {
+      // Ignore errors
+      return false;
+    }
   }
 
   /**

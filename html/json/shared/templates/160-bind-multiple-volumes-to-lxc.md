@@ -11,6 +11,27 @@ This template can be called independently of the LXC container's state (running 
 
 **Execution Target:** ve
 
+## Capabilities
+
+This template provides the following capabilities:
+
+- Parsing volumes (key=value format, one per line)
+- Creating host directories under <base_path>/<hostname>/<key>
+- Creating bind mounts from host to container paths
+- Setting proper ownership and permissions
+
+## Used By Applications
+
+This template is used by the following applications (usage examples):
+
+- [alpine-packages](../../../alpine-packages.md)
+- [macbckpsrv](../../../macbckpsrv.md)
+- [mariadb](../../../mariadb.md)
+- [modbus2mqtt](../../../modbus2mqtt.md)
+- [mosquitto](../../../mosquitto.md)
+- [node-red](../../../node-red.md)
+- [phpmyadmin](../../../phpmyadmin.md)
+
 <!-- GENERATED_START:PARAMETERS -->
 ## Parameters
 
@@ -39,12 +60,3 @@ This template executes the following commands in order:
 | 1 | Unnamed Command | Script | `bind-multiple-volumes-to-lxc.sh` | Executes the script to bind multiple volumes in the container. |
 
 <!-- GENERATED_END:COMMANDS -->
-
-## Capabilities
-
-This template provides the following capabilities:
-
-- Parsing volumes (key=value format, one per line)
-- Creating host directories under <base_path>/<hostname>/<key>
-- Creating bind mounts from host to container paths
-- Setting proper ownership and permissions

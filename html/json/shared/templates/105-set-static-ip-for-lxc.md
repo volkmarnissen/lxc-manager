@@ -4,6 +4,14 @@ Edit LXC network settings for a container with static IPs.
 
 **Execution Target:** ve
 
+## Capabilities
+
+This template provides the following capabilities:
+
+- Updating LXC container network configuration
+- Setting IPv4 and/or IPv6 addresses
+- Configuring gateway settings
+
 <!-- GENERATED_START:PARAMETERS -->
 ## Parameters
 
@@ -31,11 +39,3 @@ This template executes the following commands in order:
 | 1 | lxc-static-ip | Script | `lxc-static-ip.sh` | - |
 
 <!-- GENERATED_END:COMMANDS -->
-
-## Capabilities
-
-This template provides the following capabilities:
-
-- Updating LXC container network configuration
-- Setting IPv4 and/or IPv6 addresses
-- Configuring gateway settings

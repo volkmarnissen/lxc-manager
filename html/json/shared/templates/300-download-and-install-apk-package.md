@@ -1,35 +1,28 @@
-# Latest OS Template
+# Download/Install APK Package
 
-Download latest operating system template for Proxmox
+Download and install APK package on the LXC container
 
-**Execution Target:** ve
+**Execution Target:** lxc
 
 ## Capabilities
 
 This template provides the following capabilities:
 
-- Finding the latest template matching the specified OS type
-- Checking if template is already present in local storage
-- Downloading template if not present
+- Package installation
 
 ## Used By Applications
 
 This template is used by the following applications (usage examples):
 
-- [alpine-packages](../../../alpine-packages.md)
-- [macbckpsrv](../../../macbckpsrv.md)
-- [mariadb](../../../mariadb.md)
 - [modbus2mqtt](../../../modbus2mqtt.md)
-- [mosquitto](../../../mosquitto.md)
-- [node-red](../../../node-red.md)
-- [phpmyadmin](../../../phpmyadmin.md)
 
 <!-- GENERATED_START:PARAMETERS -->
 ## Parameters
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `ostype` | enum | No | alpine | One of alpine, debian, ubuntu. Base template to download |
+| `packageurl` | string | Yes | - | URL of the APK package to be installed |
+| `packagerpubkeyurl` | string | Yes | - | URL of the public key for verifying the package |
 
 <!-- GENERATED_END:PARAMETERS -->
 
@@ -38,6 +31,7 @@ This template is used by the following applications (usage examples):
 
 | Output ID | Default | Description |
 |-----------|---------|-------------|
+| `undefined` | - | - |
 | `undefined` | - | - |
 
 <!-- GENERATED_END:OUTPUTS -->
@@ -49,6 +43,6 @@ This template executes the following commands in order:
 
 | # | Command | Type | Details | Description |
 |---|---------|------|---------|-------------|
-| 1 | Latest OS Template | Script | `get-latest-os-template.sh` | - |
+| 1 | Download and Install Package | Script | `300-download-and-install-apk-package.sh` | Download and install APK package on the LXC container |
 
 <!-- GENERATED_END:COMMANDS -->

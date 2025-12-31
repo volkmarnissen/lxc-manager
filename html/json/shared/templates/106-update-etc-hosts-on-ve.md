@@ -4,6 +4,14 @@ Optional template to update /etc/hosts with hostname and static IP addresses fro
 
 **Execution Target:** ve
 
+## Capabilities
+
+This template provides the following capabilities:
+
+- Adding or updating hostname entries with IPv4/IPv6 addresses
+- Removing old entries if IPs are not provided
+- Ensuring proper formatting of /etc/hosts file
+
 <!-- GENERATED_START:PARAMETERS -->
 ## Parameters
 
@@ -25,11 +33,3 @@ This template executes the following commands in order:
 | 1 | lxc-update-etc-hosts | Script | `lxc-update-etc-hosts.sh` | - |
 
 <!-- GENERATED_END:COMMANDS -->
-
-## Capabilities
-
-This template provides the following capabilities:
-
-- Adding or updating hostname entries with IPv4/IPv6 addresses
-- Removing old entries if IPs are not provided
-- Ensuring proper formatting of /etc/hosts file

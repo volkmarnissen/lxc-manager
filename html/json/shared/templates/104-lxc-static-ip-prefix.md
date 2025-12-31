@@ -4,6 +4,14 @@ Optional step: Derive static IPv4/IPv6 from prefixes and VMID, emitting paramete
 
 **Execution Target:** ve
 
+## Capabilities
+
+This template provides the following capabilities:
+
+- Deriving IPv4 address from prefix and VM ID
+- Deriving IPv6 address from prefix and VM ID
+- Emitting parameter overrides as JSON for use in subsequent templates
+
 <!-- GENERATED_START:PARAMETERS -->
 ## Parameters
 
@@ -38,11 +46,3 @@ This template executes the following commands in order:
 | 1 | Unnamed Command | Script | `lxc-static-ip-prefix.sh` | - |
 
 <!-- GENERATED_END:COMMANDS -->
-
-## Capabilities
-
-This template provides the following capabilities:
-
-- Deriving IPv4 address from prefix and VM ID
-- Deriving IPv6 address from prefix and VM ID
-- Emitting parameter overrides as JSON for use in subsequent templates

@@ -4,6 +4,24 @@ Install packages inside the LXC container. Supports both Alpine Linux (apk) and 
 
 **Execution Target:** lxc
 
+## Capabilities
+
+This template provides the following capabilities:
+
+- Auto-detecting OS type from /etc/os-release
+- Using appropriate package manager (apk for Alpine, apt for Debian/Ubuntu)
+- Installing specified packages
+
+## Used By Applications
+
+This template is used by the following applications (usage examples):
+
+- [macbckpsrv](../../../macbckpsrv.md)
+- [mariadb](../../../mariadb.md)
+- [mosquitto](../../../mosquitto.md)
+- [node-red](../../../node-red.md)
+- [phpmyadmin](../../../phpmyadmin.md)
+
 <!-- GENERATED_START:PARAMETERS -->
 ## Parameters
 
@@ -24,11 +42,3 @@ This template executes the following commands in order:
 | 1 | Unnamed Command | Script | `install-apk-package.sh` | Install packages using the appropriate package manager (apk for Alpine, apt for Debian/Ubuntu) |
 
 <!-- GENERATED_END:COMMANDS -->
-
-## Capabilities
-
-This template provides the following capabilities:
-
-- Auto-detecting OS type from /etc/os-release
-- Using appropriate package manager (apk for Alpine, apt for Debian/Ubuntu)
-- Installing specified packages

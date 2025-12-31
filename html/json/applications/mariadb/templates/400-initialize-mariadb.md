@@ -1,34 +1,27 @@
-# Start LXC Container
+# Initialize MariaDB
 
-Start existing LXC container on Proxmox host
+Initialize MariaDB data directory and prepare the database
 
-**Execution Target:** ve
+**Execution Target:** lxc
 
 ## Capabilities
 
 This template provides the following capabilities:
 
-- Checking if container exists
-- Starting the container if it's not already running
+- See template implementation for details
 
 ## Used By Applications
 
 This template is used by the following applications (usage examples):
 
-- [alpine-packages](../../../alpine-packages.md)
-- [macbckpsrv](../../../macbckpsrv.md)
-- [mariadb](../../../mariadb.md)
-- [modbus2mqtt](../../../modbus2mqtt.md)
-- [mosquitto](../../../mosquitto.md)
-- [node-red](../../../node-red.md)
-- [phpmyadmin](../../../phpmyadmin.md)
+- [mariadb](../../../../mariadb.md)
 
 <!-- GENERATED_START:PARAMETERS -->
 ## Parameters
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `vm_id` | number | No | - | ID of the virtual machine |
+| `datadir` | string | Yes | /var/lib/mysql | Directory where MariaDB stores its data files |
 
 <!-- GENERATED_END:PARAMETERS -->
 
@@ -39,6 +32,6 @@ This template executes the following commands in order:
 
 | # | Command | Type | Details | Description |
 |---|---------|------|---------|-------------|
-| 1 | Unnamed Command | Script | `lxc-start.sh` | - |
+| 1 | Initialize MariaDB | Script | `initialize-mariadb.sh` | Initialize the MariaDB data directory |
 
 <!-- GENERATED_END:COMMANDS -->

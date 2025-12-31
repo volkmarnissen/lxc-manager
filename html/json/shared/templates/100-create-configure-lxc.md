@@ -22,6 +22,37 @@ Templates included:
 
 **Execution Target:** ve
 
+## Capabilities
+
+This template provides the following capabilities:
+
+- Ensuring required UID/GID ranges are available for container creation
+- Configuring /etc/subuid and /etc/subgid files
+- Enabling bind mounts with specific UID/GID permissions
+- Auto-selecting the best storage (prefers local-zfs, otherwise storage with most free space)
+- Creating the LXC container with specified parameters
+- Configuring container settings (hostname, ostype, etc.)
+- References template: `104-lxc-static-ip-prefix.json`
+- References template: `105-set-static-ip-for-lxc.json`
+- References template: `106-update-etc-hosts-on-ve.json`
+- References template: `110-map-serial.json`
+- References template: `120-mount-disk-on-host.json`
+- References template: `121-mount-zfs-pool-on-host.json`
+- References template: `160-bind-multiple-volumes-to-lxc.json`
+- References template: `170-set-environment-variables-in-lxc.json`
+
+## Used By Applications
+
+This template is used by the following applications (usage examples):
+
+- [alpine-packages](../../../alpine-packages.md)
+- [macbckpsrv](../../../macbckpsrv.md)
+- [mariadb](../../../mariadb.md)
+- [modbus2mqtt](../../../modbus2mqtt.md)
+- [mosquitto](../../../mosquitto.md)
+- [node-red](../../../node-red.md)
+- [phpmyadmin](../../../phpmyadmin.md)
+
 <!-- GENERATED_START:PARAMETERS -->
 ## Parameters
 
@@ -67,22 +98,3 @@ This template executes the following commands in order:
 | 10 | Set Env Variables in LXC | Template | [170-set-environment-variables-in-lxc.json](templates/170-set-environment-variables-in-lxc.md) | - |
 
 <!-- GENERATED_END:COMMANDS -->
-
-## Capabilities
-
-This template provides the following capabilities:
-
-- Ensuring required UID/GID ranges are available for container creation
-- Configuring /etc/subuid and /etc/subgid files
-- Enabling bind mounts with specific UID/GID permissions
-- Auto-selecting the best storage (prefers local-zfs, otherwise storage with most free space)
-- Creating the LXC container with specified parameters
-- Configuring container settings (hostname, ostype, etc.)
-- References template: `104-lxc-static-ip-prefix.json`
-- References template: `105-set-static-ip-for-lxc.json`
-- References template: `106-update-etc-hosts-on-ve.json`
-- References template: `110-map-serial.json`
-- References template: `120-mount-disk-on-host.json`
-- References template: `121-mount-zfs-pool-on-host.json`
-- References template: `160-bind-multiple-volumes-to-lxc.json`
-- References template: `170-set-environment-variables-in-lxc.json`

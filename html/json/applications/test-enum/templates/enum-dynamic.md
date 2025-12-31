@@ -1,6 +1,6 @@
-# Latest OS Template
+# Dynamic Enum
 
-Download latest operating system template for Proxmox
+Parameter with enum values resolved via template
 
 **Execution Target:** ve
 
@@ -8,28 +8,20 @@ Download latest operating system template for Proxmox
 
 This template provides the following capabilities:
 
-- Finding the latest template matching the specified OS type
-- Checking if template is already present in local storage
-- Downloading template if not present
+- Executes command: `echo '[{"id":"enumValues","value":[{"name":"eth0","value":"eth0"},{"name":"eth1","value":"eth1"}]}]'`
 
 ## Used By Applications
 
 This template is used by the following applications (usage examples):
 
-- [alpine-packages](../../../alpine-packages.md)
-- [macbckpsrv](../../../macbckpsrv.md)
-- [mariadb](../../../mariadb.md)
-- [modbus2mqtt](../../../modbus2mqtt.md)
-- [mosquitto](../../../mosquitto.md)
-- [node-red](../../../node-red.md)
-- [phpmyadmin](../../../phpmyadmin.md)
+- [test-enum](../../../../test-enum.md)
 
 <!-- GENERATED_START:PARAMETERS -->
 ## Parameters
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `ostype` | enum | No | alpine | One of alpine, debian, ubuntu. Base template to download |
+| `iface` | enum | No | - |  |
 
 <!-- GENERATED_END:PARAMETERS -->
 
@@ -49,6 +41,6 @@ This template executes the following commands in order:
 
 | # | Command | Type | Details | Description |
 |---|---------|------|---------|-------------|
-| 1 | Latest OS Template | Script | `get-latest-os-template.sh` | - |
+| 1 | Emit enumValues | Command | `echo '[{"id":"enumValues","value":[{"name":"eth...` | - |
 
 <!-- GENERATED_END:COMMANDS -->

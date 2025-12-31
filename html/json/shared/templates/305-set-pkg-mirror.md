@@ -4,6 +4,22 @@ Configure package manager mirrors for Alpine Linux (apk) or Debian/Ubuntu (apt).
 
 **Execution Target:** lxc
 
+## Capabilities
+
+This template provides the following capabilities:
+
+- Detecting OS type (Alpine or Debian/Ubuntu)
+- Configuring appropriate mirror repositories
+- Updating package manager cache
+
+## Used By Applications
+
+This template is used by the following applications (usage examples):
+
+- [macbckpsrv](../../../macbckpsrv.md)
+- [modbus2mqtt](../../../modbus2mqtt.md)
+- [mosquitto](../../../mosquitto.md)
+
 <!-- GENERATED_START:PARAMETERS -->
 ## Parameters
 
@@ -25,11 +41,3 @@ This template executes the following commands in order:
 | 1 | Unnamed Command | Script | `set-pkg-mirror.sh` | Configure package manager mirrors based on OS type |
 
 <!-- GENERATED_END:COMMANDS -->
-
-## Capabilities
-
-This template provides the following capabilities:
-
-- Detecting OS type (Alpine or Debian/Ubuntu)
-- Configuring appropriate mirror repositories
-- Updating package manager cache

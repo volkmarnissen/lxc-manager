@@ -4,6 +4,26 @@ Set application-specific parameters for Mosquitto
 
 **Execution Target:** ve
 
+## Capabilities
+
+This template provides the following capabilities:
+
+- User management
+- Package configuration
+- Volume management
+- Service configuration
+
+## Used By Applications
+
+This template is used by the following applications (usage examples):
+
+- [macbckpsrv](../../../../macbckpsrv.md)
+- [mariadb](../../../../mariadb.md)
+- [modbus2mqtt](../../../../modbus2mqtt.md)
+- [mosquitto](../../../../mosquitto.md)
+- [node-red](../../../../node-red.md)
+- [phpmyadmin](../../../../phpmyadmin.md)
+
 <!-- GENERATED_START:PARAMETERS -->
 ## Parameters
 
@@ -40,12 +60,3 @@ This template sets the following properties:
 | `owned_paths` | /etc/mosquitto /var/lib/mosquitto /var/log/mosquitto /etc/mosquitto/certs |
 
 <!-- GENERATED_END:COMMANDS -->
-
-## Capabilities
-
-This template provides the following capabilities:
-
-- User management
-- Package configuration
-- Volume management
-- Service configuration

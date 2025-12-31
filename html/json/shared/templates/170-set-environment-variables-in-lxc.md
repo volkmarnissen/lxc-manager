@@ -10,6 +10,20 @@ This template can be called independently of the LXC container's state (running 
 
 **Execution Target:** ve
 
+## Capabilities
+
+This template provides the following capabilities:
+
+- Parsing environment variables (key=value format, one per line)
+- Adding environment variables to LXC container configuration file
+- Ensuring proper formatting and avoiding duplicates
+
+## Used By Applications
+
+This template is used by the following applications (usage examples):
+
+- [macbckpsrv](../../../macbckpsrv.md)
+
 <!-- GENERATED_START:PARAMETERS -->
 ## Parameters
 
@@ -33,11 +47,3 @@ This template executes the following commands in order:
 | 1 | Unnamed Command | Script | `setenv-vars-in-lxc.sh` | Executes the script to set environment variables in the container configuration. |
 
 <!-- GENERATED_END:COMMANDS -->
-
-## Capabilities
-
-This template provides the following capabilities:
-
-- Parsing environment variables (key=value format, one per line)
-- Adding environment variables to LXC container configuration file
-- Ensuring proper formatting and avoiding duplicates
