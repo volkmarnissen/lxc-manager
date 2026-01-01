@@ -106,6 +106,10 @@ describe("DocumentationGenerator", () => {
         {
           name: "test-script",
           script: "test-script.sh",
+          outputs: [
+            { id: "output1" },
+            { id: "output2", default: "default_value" },
+          ],
         },
       ],
       parameters: [
@@ -115,10 +119,6 @@ describe("DocumentationGenerator", () => {
           type: "string",
           description: "A test parameter",
         },
-      ],
-      outputs: [
-        { id: "output1" },
-        { id: "output2", default: "default_value" },
       ],
     };
     writeFileSync(

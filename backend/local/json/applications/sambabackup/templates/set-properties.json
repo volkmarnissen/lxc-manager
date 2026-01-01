@@ -3,24 +3,15 @@
   "name": "Set Properties for backup",
   "description": "Sets hostname and defaults.",
   "parameters": [],
-  "outputs": [
-    "hostname",
-    "ip4_prefix",
-    "ip4_cidr",
-    "ip6_prefix",
-    "ip6_cidr",
-    "static_gw",
-    "static_gw6"
-  ],
   "commands": [
-    { "command": "echo { \"id\": \"hostname\", \"value\": \"sambabackup\" }" },
-    { "command": "echo { \"id\": \"use_static_ip\", \"value\": true }" },
-    { "command": "echo { \"id\": \"ip4_prefix\", \"value\": \"192.168.4\" }" },
-    { "command": "echo { \"id\": \"ip4_cidr\", \"value\": \"24\" }" },
-    { "command": "echo { \"id\": \"ip6_prefix\", \"value\": \"fd00:4::\" }" },
-    { "command": "echo { \"id\": \"ip6_cidr\", \"value\": \"64\" }" },
-    { "command": "echo { \"id\": \"static_gw\", \"value\": \"192.168.4.1\" }" },
-    { "command": "echo { \"id\": \"static_gw6\", \"value\": \"fd00:4::1\" }" },
-    { "command": "echo { \"id\": \"disk_size\", \"default\": \"1\" }" }
+    { "command": "echo { \"id\": \"hostname\", \"value\": \"sambabackup\" }", "outputs": ["hostname"] },
+    { "command": "echo { \"id\": \"use_static_ip\", \"value\": true }", "outputs": ["use_static_ip"] },
+    { "command": "echo { \"id\": \"ip4_prefix\", \"value\": \"192.168.4\" }", "outputs": ["ip4_prefix"] },
+    { "command": "echo { \"id\": \"ip4_cidr\", \"value\": \"24\" }", "outputs": ["ip4_cidr"] },
+    { "command": "echo { \"id\": \"ip6_prefix\", \"value\": \"fd00:4::\" }", "outputs": ["ip6_prefix"] },
+    { "command": "echo { \"id\": \"ip6_cidr\", \"value\": \"64\" }", "outputs": ["ip6_cidr"] },
+    { "command": "echo { \"id\": \"static_gw\", \"value\": \"192.168.4.1\" }", "outputs": ["static_gw"] },
+    { "command": "echo { \"id\": \"static_gw6\", \"value\": \"fd00:4::1\" }", "outputs": ["static_gw6"] },
+    { "command": "echo { \"id\": \"disk_size\", \"default\": \"1\" }", "outputs": ["disk_size"] }
   ]
 }

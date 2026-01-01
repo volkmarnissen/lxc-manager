@@ -41,12 +41,10 @@
       "advanced": true
     }
   ],
-  "outputs": [
-    { "id": "use_static_ip"},
-    { "id": "static_ip" },
-    { "id": "static_ip6" }
-  ],
   "commands": [
-    { "script": "lxc-static-ip-prefix.sh" }
+    { 
+      "script": "lxc-static-ip-prefix.sh",
+      "outputs": ["use_static_ip", "static_ip", "static_ip6"]
+    }
   ]
 }

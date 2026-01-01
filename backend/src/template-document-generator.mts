@@ -112,13 +112,33 @@ export class TemplateDocumentGenerator {
     }
 
     // Generated Outputs Section
-    if (templateData.outputs && templateData.outputs.length > 0) {
+    // Collect outputs from all commands
+    const allOutputs: Array<{ id: string; default?: string | number | boolean }> = [];
+    for (const cmd of templateData.commands ?? []) {
+      if (cmd.outputs) {
+        for (const output of cmd.outputs) {
+          const id = typeof output === "string" ? output : output.id;
+          const defaultVal = typeof output === "object" && output.default !== undefined ? output.default : undefined;
+          if (!allOutputs.some((o) => o.id === id)) {
+            if (defaultVal !== undefined) {
+              allOutputs.push({ id, default: defaultVal });
+            } else {
+              allOutputs.push({ id });
+            }
+          }
+        }
+      }
+    }
+    // Note: outputs on template level are no longer supported
+    // All outputs should be defined on command level
+    
+    if (allOutputs.length > 0) {
       lines.push("<!-- GENERATED_START:OUTPUTS -->");
       lines.push("## Outputs");
       lines.push("");
       lines.push("| Output ID | Default | Description |");
       lines.push("|-----------|---------|-------------|");
-      for (const output of templateData.outputs) {
+      for (const output of allOutputs) {
         const defaultVal = output.default !== undefined
           ? String(output.default)
           : "-";

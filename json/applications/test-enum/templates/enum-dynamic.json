@@ -10,11 +10,11 @@
       "enumValuesTemplate": "list-enum-values.json"
     }
   ],
-  "outputs": ["enumValues"],
   "commands": [
     {
       "name": "Emit enumValues",
-      "command": "echo '[{\"id\":\"enumValues\",\"value\":[{\"name\":\"eth0\",\"value\":\"eth0\"},{\"name\":\"eth1\",\"value\":\"eth1\"}]}]'"
+      "command": "echo '[{\"id\":\"enumValues\",\"value\":[{\"name\":\"eth0\",\"value\":\"eth0\"},{\"name\":\"eth1\",\"value\":\"eth1\"}]}]'",
+      "outputs": ["enumValues"]
     }
   ]
 }

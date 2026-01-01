@@ -73,7 +73,6 @@
       "advanced": true
     }
   ],
-  "outputs": ["vm_id"],
   "commands": [
     {
       "name": "Configure subuid/subgid",
@@ -81,7 +80,8 @@
     },
     {
       "name": "Create LXC container",
-      "script": "create-lxc-container.sh"
+      "script": "create-lxc-container.sh",
+      "outputs": ["vm_id"]
     },
     {
       "name": "Compute Static IPs",

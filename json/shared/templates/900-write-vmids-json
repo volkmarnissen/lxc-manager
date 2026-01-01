@@ -3,13 +3,11 @@
     "execute_on": "ve",
     "name": "Write VM IDs JSON",
     "description": "Writes all LXC and QEMU VM IDs as a JSON array to stdout",
-    "outputs": [
-        "used_vm_ids"
-    ],
     "commands": [
             {
                 "name": "Write VM IDs JSON",
-                "script": "write-vmids-json.sh"
+                "script": "write-vmids-json.sh",
+                "outputs": ["used_vm_ids"]
             }
     ]
 }

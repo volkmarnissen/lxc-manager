@@ -12,11 +12,11 @@
       "enumValues": ["alpine", "debian", "ubuntu"]
     }
   ],
-  "outputs": ["template_path"],
   "commands": [
     {
       "name": "Latest OS Template",
-      "script": "get-latest-os-template.sh"
+      "script": "get-latest-os-template.sh",
+      "outputs": ["template_path", "ostype"]
     }
   ]
 }

@@ -32,11 +32,6 @@ export interface ITemplate {
   name: string;
   description?: string;
   parameters?: IParameter[];
-  outputs?: {
-    id: string;
-    default?: string | number | boolean;
-    value?: string | number | boolean;
-  }[];
   commands: ICommand[];
 }
 export const storageKey = "global_storage_context";

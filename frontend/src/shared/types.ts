@@ -48,6 +48,7 @@ export interface ICommand {
   libraryPath?: string; // Internal: resolved full path to library file
   template?: string;
   properties?: IOutputObject | IOutputObject[];
+  outputs?: Array<{ id: string; default?: boolean } | string>; // Expected outputs from this command/script
   description?: string;
   execute_on?: string;
 }
@@ -92,7 +93,6 @@ export interface ITemplate {
   name: string;
   description?: string;
   parameters?: IParameter[];
-  outputs?: { id: string; default?: boolean }[];
   commands: ICommand[];
 }
 export interface IError {

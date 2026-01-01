@@ -23,12 +23,8 @@
   "commands": [
     {
       "script": "install-node-application.sh",
-      "description": "Install the npm package globally"
-    }
-  ],
-  "outputs": [
-    {
-      "id": "settings_path"
+      "description": "Install the npm package globally",
+      "outputs": ["settings_path"]
     }
   ]
 }

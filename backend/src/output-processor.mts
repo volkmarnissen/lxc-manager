@@ -56,8 +56,55 @@ export class OutputProcessor {
   }
 
   /**
+   * Validates that all expected outputs from the command are present.
+   * @param expectedOutputs Expected output IDs from the command definition
+   * @param actualOutputIds Actual output IDs that were parsed
+   * @param commandName Command name for error messages
+   */
+  private validateExpectedOutputs(
+    expectedOutputs: Array<{ id: string; default?: boolean } | string> | undefined,
+    actualOutputIds: Set<string>,
+    commandName: string,
+  ): void {
+    if (!expectedOutputs || expectedOutputs.length === 0) {
+      return; // No expected outputs, nothing to validate
+    }
+
+    const expectedIds = new Set<string>();
+    for (const output of expectedOutputs) {
+      const id = typeof output === "string" ? output : output.id;
+      // Skip outputs with default values (they're optional)
+      if (typeof output === "object" && output.default !== undefined) {
+        continue;
+      }
+      expectedIds.add(id);
+    }
+
+    if (expectedIds.size === 0) {
+      return; // All outputs have defaults, nothing required
+    }
+
+    // Check for missing outputs
+    const missingOutputs: string[] = [];
+    for (const expectedId of expectedIds) {
+      if (!actualOutputIds.has(expectedId)) {
+        missingOutputs.push(expectedId);
+      }
+    }
+
+    if (missingOutputs.length > 0) {
+      throw new Error(
+        `Command "${commandName}" is missing expected outputs: ${missingOutputs.join(", ")}. ` +
+        `Expected: ${Array.from(expectedIds).join(", ")}, ` +
+        `Received: ${Array.from(actualOutputIds).join(", ") || "(none)"}`,
+      );
+    }
+  }
+
+  /**
    * Parses JSON output from stdout, validates it, and updates outputs map.
    * Handles multiple output formats: IOutput, IOutput[], or Array<{name, value}>.
+   * Validates that all expected outputs from the command are present.
    */
   parseAndUpdateOutputs(
     stdout: string,
@@ -95,6 +142,9 @@ export class OutputProcessor {
         "Outputs " + tmplCommand.name,
       );
 
+      const actualOutputIds = new Set<string>();
+      let isNameValueFormat = false;
+      
       if (Array.isArray(outputsJson)) {
         const first = outputsJson[0];
         if (
@@ -105,6 +155,7 @@ export class OutputProcessor {
         ) {
           // name/value array: pass through 1:1 to outputsRaw and also map for substitutions
           // Note: outputsRaw is managed by the caller, so we need to return this
+          isNameValueFormat = true;
           const raw: { name: string; value: string | number | boolean }[] = [];
           for (const nv of outputsJson as {
             name: string;
@@ -113,15 +164,29 @@ export class OutputProcessor {
             const processedValue = this.processLocalFileValue(nv.value);
             raw.push({ name: nv.name, value: processedValue });
             this.outputs.set(nv.name, processedValue);
+            actualOutputIds.add(nv.name);
           }
           // Store in a way that the caller can access it
           (this as any).outputsRawResult = raw;
+          // For name/value format, if expected output is "enumValues", consider it valid if we have any outputs
+          if (tmplCommand.outputs && tmplCommand.outputs.length === 1) {
+            const output = tmplCommand.outputs[0];
+            const expectedId = typeof output === "string" 
+              ? output 
+              : output?.id;
+            if (!expectedId) return;
+            if (expectedId === "enumValues" && actualOutputIds.size > 0) {
+              // Special case: enumValues is valid if we have any name/value pairs
+              return;
+            }
+          }
         } else {
           // Array of outputObject {id, value}
           for (const entry of outputsJson as IOutput[]) {
             if (entry.value !== undefined) {
               const processedValue = this.processLocalFileValue(entry.value);
               this.outputs.set(entry.id, processedValue);
+              actualOutputIds.add(entry.id);
             }
             if ((entry as any).default !== undefined)
               this.defaults.set(entry.id, (entry as any).default as any);
@@ -132,10 +197,14 @@ export class OutputProcessor {
         if (obj.value !== undefined) {
           const processedValue = this.processLocalFileValue(obj.value);
           this.outputs.set(obj.id, processedValue);
+          actualOutputIds.add(obj.id);
         }
         if ((obj as any).default !== undefined)
           this.defaults.set(obj.id, (obj as any).default as any);
       }
+      
+      // Validate expected outputs after parsing
+      this.validateExpectedOutputs(tmplCommand.outputs, actualOutputIds, tmplCommand.name || "unnamed");
     } catch (e) {
       // Re-throw with context
       throw e;

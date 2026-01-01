@@ -32,7 +32,6 @@
       "name": "Import Flow",
       "script": "scripts/import-flow.sh"
     }
-  ],
-  "outputs": []
+  ]
 }
 

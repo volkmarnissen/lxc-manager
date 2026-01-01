@@ -92,9 +92,9 @@ describe("WebAppVE API", () => {
           {
             name: "Test Command",
             command: "echo '[{\"id\": \"test\", \"value\": \"ok\"}]'",
+            outputs: ["test"],
           },
         ],
-        outputs: ["test"],
       });
 
       const url = ApiUri.VeConfiguration
@@ -214,9 +214,9 @@ describe("WebAppVE API", () => {
           {
             name: "Test Command",
             command: "echo '[{\"id\": \"test\", \"value\": \"ok\"}]'",
+            outputs: ["test"],
           },
         ],
-        outputs: ["test"],
       });
 
       // First, create a configuration to get a restartKey
@@ -333,9 +333,9 @@ describe("WebAppVE API", () => {
           {
             name: "Test Command",
             command: "echo '[{\"id\": \"test\", \"value\": \"ok\"}]'",
+            outputs: ["test"],
           },
         ],
-        outputs: ["test"],
       });
 
       // Create a vmInstallContext

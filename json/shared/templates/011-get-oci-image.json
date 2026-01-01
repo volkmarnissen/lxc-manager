@@ -19,11 +19,11 @@
       "advanced": true
     }
   ],
-  "outputs": ["template_path", "ostype"],
   "commands": [
     {
       "name": "Get OCI Image",
-      "script": "get-oci-image.sh"
+      "script": "get-oci-image.sh",
+      "outputs": ["template_path", "ostype"]
     }
   ]
 }

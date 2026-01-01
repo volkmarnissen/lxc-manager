@@ -63,10 +63,6 @@
         }
       }
     },
-    "outputs": {
-      "type": "array",
-      "items": { "$ref": "output.template#" }
-    },
     "commands": {
       "type": "array",
       "minItems": 1,
@@ -90,6 +86,11 @@
         "library": {
           "type": "string",
           "description": "Optional: Path to library file (relative to scripts directory). Library will be prepended to script content."
+        },
+        "outputs": {
+          "type": "array",
+          "items": { "$ref": "output.template#" },
+          "description": "Expected outputs from this command/script. If outputs are defined here, they will be validated after execution. If outputs are missing, an error will be raised."
         },
         "properties": {
           "description": "Sets parameter values (outputs). If a template has only one command with properties (and no script, command, or template), it is considered a properties-only template and will be displayed as a properties table in documentation. This is the normal case for parameter-setting templates.",

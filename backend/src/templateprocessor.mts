@@ -353,42 +353,9 @@ export class TemplateProcessor extends EventEmitter {
         "template.schema.json",
         // Check for icon.png in the application directory
       );
-      (tmplData.outputs ??= []).forEach((output, index) => {
-        if (typeof output === "string") {
-          // Convert string to object with id
-          (tmplData.outputs as any)[index] = { id: output };
-        }
-      });
-      
-      // Extract outputs from properties commands
-      // If a command has properties, all IDs in properties are automatically outputs
-      for (const cmd of tmplData.commands ?? []) {
-        if (cmd.properties !== undefined) {
-          const propertyIds: string[] = [];
-          
-          if (Array.isArray(cmd.properties)) {
-            // Array of {id, value} objects
-            for (const prop of cmd.properties) {
-              if (prop && typeof prop === "object" && prop.id) {
-                propertyIds.push(prop.id);
-              }
-            }
-          } else if (cmd.properties && typeof cmd.properties === "object" && cmd.properties.id) {
-            // Single object with id and value
-            propertyIds.push(cmd.properties.id);
-          }
-          
-          // Add property IDs as outputs if not already present
-          for (const propId of propertyIds) {
-            if (!tmplData.outputs?.some((out) => out.id === propId)) {
-              if (!tmplData.outputs) {
-                tmplData.outputs = [];
-              }
-              tmplData.outputs.push({ id: propId });
-            }
-          }
-        }
-      }
+      // Note: outputs on template level are no longer supported
+      // All outputs should be defined on command level
+      // Properties commands will be handled directly in the resolvedParams section below
     } catch (e: any) {
       opts.errors.push(e);
       this.emit("message", {
@@ -458,12 +425,52 @@ export class TemplateProcessor extends EventEmitter {
       (cmd) => cmd.properties !== undefined && cmd.script === undefined && cmd.command === undefined && cmd.template === undefined
     ) ?? false;
     
-    for (const out of tmplData.outputs ?? []) {
-      const existing = opts.resolvedParams.find((p) => p.id === out.id);
+    // Collect all outputs from all commands (including properties commands)
+    const allOutputIds = new Set<string>();
+    
+    // Collect outputs from command.outputs
+    for (const cmd of tmplData.commands ?? []) {
+      if (cmd.outputs) {
+        for (const output of cmd.outputs) {
+          const id = typeof output === "string" ? output : output.id;
+          allOutputIds.add(id);
+        }
+      }
+      
+      // Extract outputs from properties commands
+      // If a command has properties, all IDs in properties are automatically outputs
+      if (cmd.properties !== undefined) {
+        const propertyIds: string[] = [];
+        
+        if (Array.isArray(cmd.properties)) {
+          // Array of {id, value} objects
+          for (const prop of cmd.properties) {
+            if (prop && typeof prop === "object" && prop.id) {
+              propertyIds.push(prop.id);
+            }
+          }
+        } else if (cmd.properties && typeof cmd.properties === "object" && cmd.properties.id) {
+          // Single object with id and value
+          propertyIds.push(cmd.properties.id);
+        }
+        
+        // Add property IDs as outputs
+        for (const propId of propertyIds) {
+          allOutputIds.add(propId);
+        }
+      }
+    }
+    
+    // Note: outputs on template level are no longer supported
+    // All outputs should be defined on command level
+    
+    // Add all collected outputs to resolvedParams
+    for (const outputId of allOutputIds) {
+      const existing = opts.resolvedParams.find((p) => p.id === outputId);
       if (undefined == existing) {
         // Parameter not yet resolved, add it
         opts.resolvedParams.push({
-          id: out.id,
+          id: outputId,
           template: currentTemplateName,
         });
       } else if (hasOnlyProperties) {

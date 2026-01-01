@@ -7,12 +7,8 @@
     {
       "name": "List Audio Devices",
       "script": "list-host-audio-devices.sh",
-      "library": "usb-device-common.sh"
-    }
-  ],
-  "outputs": [
-    {
-      "id": "audio_devices"
+      "library": "usb-device-common.sh",
+      "outputs": ["audio_devices"]
     }
   ]
 }

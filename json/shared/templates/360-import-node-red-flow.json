@@ -32,7 +32,6 @@
     {
       "script": "import-node-red-flow.sh"
     }
-  ],
-  "outputs": []
+  ]
 }
 

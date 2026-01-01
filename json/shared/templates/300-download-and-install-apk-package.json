@@ -18,12 +18,12 @@
       "description": "URL of the public key for verifying the package"
     }
   ],
-  "outputs": ["packageurl", "packagerpubkeyurl"],
   "commands": [
     {
       "name": "Download and Install Package",
       "script": "300-download-and-install-apk-package.sh",
-      "description": "Download and install APK package on the LXC container"
+      "description": "Download and install APK package on the LXC container",
+      "outputs": ["packageurl", "packagerpubkeyurl"]
     }
   ]
 }

@@ -5,12 +5,12 @@
   "parameters": [
     { "id": "vm_id", "name": "VM ID", "type": "string", "required": true }
   ],
-  "outputs": ["ready"],
   "commands": [
     {
       "name": "Wait for Container",
       "script": "wait-for-container-ready.sh",
-      "description": "Poll host until the LXC container reports readiness (network up, apk reachable)"
+      "description": "Poll host until the LXC container reports readiness (network up, apk reachable)",
+      "outputs": ["ready"]
     }
   ]
 }

@@ -123,14 +123,11 @@ describe("TemplateProcessor skip_if_all_missing - outputs should not be set when
           "advanced": true
         }
       ],
-      "outputs": [
-        { "id": "static_ip" },
-        { "id": "static_ip6" }
-      ],
       "commands": [
         {
           "name": "Compute Static IPs",
-          "command": "echo 'static_ip=192.168.1.100/24' && echo 'static_ip6=2001:db8::100/64'"
+          "command": "echo 'static_ip=192.168.1.100/24' && echo 'static_ip6=2001:db8::100/64'",
+          "outputs": ["static_ip", "static_ip6"]
         }
       ]
     };

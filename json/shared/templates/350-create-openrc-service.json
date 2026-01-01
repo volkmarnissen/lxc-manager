@@ -56,12 +56,8 @@
     {
       "name": "Create OpenRC Service",
       "script": "create-openrc-service.sh",
-      "description": "Create user, service file, enable and start the service"
-    }
-  ],
-  "outputs": [
-    {
-      "id": "logfile_path"
+      "description": "Create user, service file, enable and start the service",
+      "outputs": ["logfile_path"]
     }
   ]
 }

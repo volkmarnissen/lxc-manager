@@ -54,11 +54,6 @@ describe("TemplateProcessor skip_if_property_set", () => {
       "execute_on": "ve",
       "name": "Set Parameters",
       "description": "Set application-specific parameters",
-      "outputs": [
-        {
-          "id": "myvariable"
-        }
-      ],
       "parameters": [
         {
           "id": "hostname",
@@ -76,7 +71,8 @@ describe("TemplateProcessor skip_if_property_set", () => {
               "id": "myvariable",
               "value": "test-value"
             }
-          ]
+          ],
+          "outputs": ["myvariable"]
         }
       ]
     };

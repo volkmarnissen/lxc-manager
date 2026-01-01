@@ -63,12 +63,8 @@
     {
       "name": "Create and Enable Service",
       "script": "create-enable-service.sh",
-      "description": "Create user, service file, enable and start the service"
-    }
-  ],
-  "outputs": [
-    {
-      "id": "logfile_path"
+      "description": "Create user, service file, enable and start the service",
+      "outputs": ["logfile_path"]
     }
   ]
 }

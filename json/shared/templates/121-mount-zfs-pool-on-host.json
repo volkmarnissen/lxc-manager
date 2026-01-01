@@ -29,15 +29,11 @@
       "description": "Optional: GID to set for the directory. If not provided, default permissions will be used."
     }
   ],
-  "outputs": [
-    {
-      "id": "host_mountpoint"
-    }
-  ],
   "commands": [
     {
       "script": "mount-zfs-pool.sh",
-      "description": "Executes the script to create a subdirectory under the ZFS pool mountpoint on the host."
+      "description": "Executes the script to create a subdirectory under the ZFS pool mountpoint on the host.",
+      "outputs": ["host_mountpoint"]
     }
   ]
 }

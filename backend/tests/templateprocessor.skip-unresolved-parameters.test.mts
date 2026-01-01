@@ -54,11 +54,6 @@ describe("TemplateProcessor - Parameters from skipped templates should not appea
       "execute_on": "ve",
       "name": "Set Parameters",
       "description": "Set application-specific parameters",
-      "outputs": [
-        {
-          "id": "myvariable"
-        }
-      ],
       "parameters": [
         {
           "id": "hostname",
@@ -76,7 +71,8 @@ describe("TemplateProcessor - Parameters from skipped templates should not appea
               "id": "myvariable",
               "value": "test-value"
             }
-          ]
+          ],
+          "outputs": ["myvariable"]
         }
       ]
     };

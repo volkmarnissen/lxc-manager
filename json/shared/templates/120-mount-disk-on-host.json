@@ -30,15 +30,11 @@
       "description": "Optional: GID to set for the mount directory. If not provided, default permissions will be used."
     }
   ],
-  "outputs": [
-    {
-      "id": "host_mountpoint"
-    }
-  ],
   "commands": [
     {
       "script": "mount-disk.sh",
-      "description": "Executes the script to mount the disk by UUID on the host."
+      "description": "Executes the script to mount the disk by UUID on the host.",
+      "outputs": ["host_mountpoint"]
     }
   ]
 }
