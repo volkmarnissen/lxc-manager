@@ -11,6 +11,10 @@ import {
   ISetSshConfigResponse,
   IDeleteSshConfigResponse,
   IJsonError,
+  IFrameworkNamesResponse,
+  IFrameworkParametersResponse,
+  IPostFrameworkCreateApplicationBody,
+  IPostFrameworkCreateApplicationResponse,
 } from "@src/types.mjs";
 import http from "http";
 import path from "path";
@@ -22,6 +26,7 @@ import { IVEContext, VEConfigurationError } from "./backend-types.mjs";
 import { ITemplateProcessorLoadResult } from "./templateprocessor.mjs";
 import { WebAppVE } from "./webapp-ve.mjs";
 import { JsonError } from "./jsonvalidator.mjs";
+import { FrameworkLoader } from "./frameworkloader.mjs";
 export class VEWebApp {
   app: express.Application;
   public httpServer: http.Server;
@@ -455,6 +460,119 @@ export class VEWebApp {
         res.status(500).json({ error: err.message });
       }
     });
+
+    // GET /api/framework-names - List all frameworks with their IDs and names
+    this.app.get(ApiUri.FrameworkNames, (req, res) => {
+      try {
+        const frameworkNames: Array<{ id: string; name: string }> = [];
+        const allFrameworks = storageContext.getAllFrameworkNames();
+        
+        for (const [frameworkId, frameworkPath] of allFrameworks) {
+          try {
+            const frameworkData = JSON.parse(
+              fs.readFileSync(frameworkPath, "utf-8"),
+            );
+            frameworkNames.push({
+              id: frameworkId,
+              name: frameworkData.name || frameworkId,
+            });
+          } catch {
+            // Skip invalid JSON files
+          }
+        }
+        
+        this.returnResponse<IFrameworkNamesResponse>(res, {
+          frameworks: frameworkNames,
+        });
+      } catch (err: any) {
+        const statusCode = this.getErrorStatusCode(err);
+        const serializedError = this.serializeError(err);
+        res.status(statusCode).json({
+          error: err instanceof Error ? err.message : String(err),
+          serializedError: serializedError,
+        });
+      }
+    });
+
+    // GET /api/framework-parameters/:frameworkId - Get all parameters for a framework
+    this.app.get(ApiUri.FrameworkParameters, async (req, res) => {
+      try {
+        const frameworkId: string = req.params.frameworkId;
+        if (!frameworkId) {
+          return res.status(400).json({ error: "Missing frameworkId" });
+        }
+
+        const veContext = storageContext.getCurrentVEContext();
+        if (!veContext) {
+          return res
+            .status(404)
+            .json({ error: "No VE context available. Please configure SSH first." });
+        }
+
+        const frameworkLoader = new FrameworkLoader(
+          {
+            schemaPath: storageContext.getJsonPath().replace(/\/json$/, "/schemas"),
+            jsonPath: storageContext.getJsonPath(),
+            localPath: storageContext.getLocalPath(),
+          },
+          storageContext,
+        );
+
+        const parameters = await frameworkLoader.getParameters(
+          frameworkId,
+          "installation",
+          veContext,
+        );
+
+        this.returnResponse<IFrameworkParametersResponse>(res, {
+          parameters,
+        });
+      } catch (err: any) {
+        const statusCode = this.getErrorStatusCode(err);
+        const serializedError = this.serializeError(err);
+        res.status(statusCode).json({
+          error: err instanceof Error ? err.message : String(err),
+          serializedError: serializedError,
+        });
+      }
+    });
+
+    // POST /api/framework-create-application - Create a new application from a framework
+    this.app.post(
+      ApiUri.FrameworkCreateApplication,
+      express.json(),
+      async (req, res) => {
+        try {
+          const body = req.body as IPostFrameworkCreateApplicationBody;
+          
+          if (!body.frameworkId) {
+            return res.status(400).json({ error: "Missing frameworkId" });
+          }
+          if (!body.name) {
+            return res.status(400).json({ error: "Missing name" });
+          }
+          if (!body.description) {
+            return res.status(400).json({ error: "Missing description" });
+          }
+
+          // TODO: Implementation will be added later
+          // This endpoint currently only validates the request structure
+          
+          this.returnResponse<IPostFrameworkCreateApplicationResponse>(res, {
+            success: true,
+            applicationId: undefined,
+          });
+        } catch (err: any) {
+          const statusCode = this.getErrorStatusCode(err);
+          const serializedError = this.serializeError(err);
+          res.status(statusCode).json({
+            error: err instanceof Error ? err.message : String(err),
+            serializedError: serializedError,
+          });
+        }
+      },
+    );
+
     const webAppVE = new WebAppVE(this.app);
     webAppVE.init();
   }

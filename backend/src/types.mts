@@ -113,6 +113,9 @@ export enum ApiUri {
   Applications = "/api/applications",
   TemplateDetailsForApplication = "/api/template-details/:application/:task/:veContext",
   UnresolvedParameters = "/api/unresolved-parameters/:application/:task/:veContext",
+  FrameworkNames = "/api/framework-names",
+  FrameworkParameters = "/api/framework-parameters/:frameworkId",
+  FrameworkCreateApplication = "/api/framework-create-application",
 }
 
 // Response interfaces for all backend endpoints (frontend mirror)
@@ -171,4 +174,26 @@ export interface IVeConfigurationResponse {
   success: boolean;
   restartKey?: string;
   vmInstallKey?: string;
+}
+export interface IFrameworkName {
+  id: string;
+  name: string;
+}
+export interface IFrameworkNamesResponse {
+  frameworks: IFrameworkName[];
+}
+export interface IFrameworkParametersResponse {
+  parameters: IParameter[];
+}
+export interface IPostFrameworkCreateApplicationBody {
+  frameworkId: string;
+  name: string;
+  description: string;
+  icon?: string;
+  iconContent?: string;
+  parameterValues: Array<{ id: string; value: string | number | boolean }>;
+}
+export interface IPostFrameworkCreateApplicationResponse {
+  success: boolean;
+  applicationId?: string;
 }

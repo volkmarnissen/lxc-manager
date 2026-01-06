@@ -1,0 +1,18 @@
+{
+  "name": "npm-nodejs",
+  "description": "Base application for Node.js/npm based services",
+  "icon": "icon.png",
+  "installation": [
+    "set-parameters.json",
+    "010-get-latest-os-template.json",
+    "100-create-configure-lxc.json",
+    "200-start-lxc.json",
+    "210-wait-for-container-ready.json",
+    "305-set-pkg-mirror.json",
+    "330-install-packages.json",
+    "340-install-node-application.json",
+    "350-create-enable-service.json"
+  ]
+}
+
+

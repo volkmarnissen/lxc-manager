@@ -875,4 +875,13 @@ export class TemplateProcessor extends EventEmitter {
         ),
     );
   }
+
+  async getParameters(
+    application: string,
+    task: TaskType,
+    veContest?: IVEContext,
+  ): Promise<IParameter[]> {
+    const loaded = await this.loadApplication(application, task, veContest!);
+    return loaded.parameters;
+  }
 }

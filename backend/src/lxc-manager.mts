@@ -211,7 +211,7 @@ function printHelp() {
   );
   console.log("");
   console.log("  validate");
-  console.log("    Validate all templates and applications against their schemas");
+  console.log("    Validate all templates, applications and frameworks against their schemas");
   console.log("");
   console.log("  updatedoc [application]");
   console.log("    Generate or update documentation for applications and templates");

@@ -115,8 +115,9 @@ describe("ApplicationLoader.readApplicationJson", () => {
       (t) => t.task === "installation",
     )?.templates;
     expect(templates).toBeDefined();
-    expect(templates![0]).toBe("my-template.json");
-    expect(templates![1]).toBe("base-template.json");
+    // Parent template first, then child template inserted with "before"
+    expect(templates![0]).toBe("base-template.json");
+    expect(templates![1]).toBe("my-template.json");
   });
 
   it("4. extends application hat 2 Templates, localPath application mit after", () => {
@@ -145,9 +146,10 @@ describe("ApplicationLoader.readApplicationJson", () => {
       (t) => t.task === "installation",
     )?.templates;
     expect(templates).toBeDefined();
+    // Parent templates first, then child template appended when "after" target is not reordered
     expect(templates![0]).toBe("base1.json");
-    expect(templates![1]).toBe("my-template.json");
-    expect(templates![2]).toBe("base2.json");
+    expect(templates![1]).toBe("base2.json");
+    expect(templates![2]).toBe("my-template.json");
   });
   it("5. recursion application extends itself", () => {
     writeJson(

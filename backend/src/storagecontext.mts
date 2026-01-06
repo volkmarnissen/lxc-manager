@@ -143,6 +143,28 @@ export class StorageContext extends Context implements IContext {
     });
     return allApps;
   }
+  getAllFrameworkNames(): Map<string, string> {
+    const allFrameworks = new Map<string, string>();
+    [this.pathes.localPath, this.pathes.jsonPath].forEach((jPath) => {
+      const frameworksDir = path.join(jPath, "frameworks");
+      if (existsSync(frameworksDir)) {
+        readdirSync(frameworksDir)
+          .filter(
+            (f) =>
+              f.endsWith(".json") &&
+              existsSync(path.join(frameworksDir, f)) &&
+              statSync(path.join(frameworksDir, f)).isFile(),
+          )
+          .forEach((f) => {
+            const frameworkId = f.replace(/\.json$/, "");
+            if (!allFrameworks.has(frameworkId)) {
+              allFrameworks.set(frameworkId, path.join(frameworksDir, f));
+            }
+          });
+      }
+    });
+    return allFrameworks;
+  }
   getTemplateProcessor(): TemplateProcessor {
     return new TemplateProcessor(this.pathes, this);
   }

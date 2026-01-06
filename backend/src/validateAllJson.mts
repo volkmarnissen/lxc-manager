@@ -7,7 +7,6 @@ import { ApplicationLoader } from "./apploader.mjs";
 import { IReadApplicationOptions } from "./apploader.mjs";
 import { TaskType } from "./types.mjs";
 import { VEConfigurationError, VELoadApplicationError, IVEContext } from "./backend-types.mjs";
-import { TemplatePathResolver } from "./template-path-resolver.mjs";
 import { TemplateProcessor } from "./templateprocessor.mjs";
 
 function findTemplateDirs(dir: string): string[] {
@@ -58,6 +57,27 @@ function findApplicationFiles(dir: string): string[] {
   } catch {
     // Ignore errors reading directory (e.g., permission denied)
     // Return empty results for this directory
+  }
+  return results;
+}
+
+function findFrameworkFiles(dir: string): string[] {
+  let results: string[] = [];
+  if (!fs.existsSync(dir)) {
+    return results;
+  }
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isFile() && entry.name.endsWith(".json")) {
+        results.push(fullPath);
+      } else if (entry.isDirectory()) {
+        results = results.concat(findFrameworkFiles(fullPath));
+      }
+    }
+  } catch {
+    // Ignore errors reading directory (e.g., permission denied)
   }
   return results;
 }
@@ -211,6 +231,69 @@ export async function validateAllJson(localPathArg?: string): Promise<void> {
           } else {
             console.error(
               `  - ${detail.message}${detail.line ? " (line " + detail.line + ")" : ""}`,
+            );
+          }
+        }
+      } else {
+        console.error(err);
+      }
+    }
+  }
+
+  // Validate frameworks - search in localPath (default: examples) and jsonPath
+  console.log("\nValidating frameworks...");
+  const frameworkFiles: string[] = [];
+
+  // Search in localPath (default: examples)
+  if (fs.existsSync(localPath)) {
+    const localFrameworks = findFrameworkFiles(
+      path.join(localPath, "frameworks"),
+    );
+    frameworkFiles.push(...localFrameworks);
+  }
+
+  // Search in jsonPath
+  if (fs.existsSync(jsonPath)) {
+    const jsonFrameworks = findFrameworkFiles(
+      path.join(jsonPath, "frameworks"),
+    );
+    frameworkFiles.push(...jsonFrameworks);
+  }
+
+  const frameworkSchemaPath = path.join(schemasDir, "framework.schema.json");
+
+  for (const filePath of frameworkFiles) {
+    const relPath = path.relative(
+      filePath.startsWith(localPath) ? localPath : jsonPath,
+      filePath,
+    );
+    try {
+      validator.serializeJsonFileWithSchema(filePath, frameworkSchemaPath);
+      console.log(`✔ Valid framework: ${relPath}`);
+    } catch (err: any) {
+      hasError = true;
+      const schemaName = path.basename(frameworkSchemaPath);
+      console.error(`✖ Invalid framework: ${relPath} [${schemaName}]`);
+      if (err && err.details) {
+        for (const detail of err.details) {
+          const isAdditional =
+            detail.message &&
+            detail.message.includes("must NOT have additional properties");
+          if (
+            isAdditional &&
+            detail.params &&
+            detail.params.additionalProperty
+          ) {
+            console.error(
+              `  - ${detail.message} (property: '${detail.params.additionalProperty}')${
+                detail.line ? " (line " + detail.line + ")" : ""
+              }`,
+            );
+          } else {
+            console.error(
+              `  - ${detail.message}${
+                detail.line ? " (line " + detail.line + ")" : ""
+              }`,
             );
           }
         }
