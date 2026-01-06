@@ -548,6 +548,9 @@ export class VEWebApp {
           if (!body.frameworkId) {
             return res.status(400).json({ error: "Missing frameworkId" });
           }
+          if (!body.applicationId) {
+            return res.status(400).json({ error: "Missing applicationId" });
+          }
           if (!body.name) {
             return res.status(400).json({ error: "Missing name" });
           }
@@ -555,12 +558,22 @@ export class VEWebApp {
             return res.status(400).json({ error: "Missing description" });
           }
 
-          // TODO: Implementation will be added later
-          // This endpoint currently only validates the request structure
+          const frameworkLoader = new FrameworkLoader(
+            {
+              schemaPath: storageContext.getJsonPath().replace(/\/json$/, "/schemas"),
+              jsonPath: storageContext.getJsonPath(),
+              localPath: storageContext.getLocalPath(),
+            },
+            storageContext,
+          );
+
+          const applicationId = await frameworkLoader.createApplicationFromFramework(
+            body,
+          );
           
           this.returnResponse<IPostFrameworkCreateApplicationResponse>(res, {
             success: true,
-            applicationId: undefined,
+            applicationId: applicationId,
           });
         } catch (err: any) {
           const statusCode = this.getErrorStatusCode(err);

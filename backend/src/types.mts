@@ -187,6 +187,7 @@ export interface IFrameworkParametersResponse {
 }
 export interface IPostFrameworkCreateApplicationBody {
   frameworkId: string;
+  applicationId: string;
   name: string;
   description: string;
   icon?: string;

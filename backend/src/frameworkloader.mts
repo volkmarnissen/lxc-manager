@@ -10,7 +10,7 @@ import {
 import { StorageContext } from "./storagecontext.mjs";
 import { JsonError } from "./jsonvalidator.mjs";
 import { TemplateProcessor } from "./templateprocessor.mjs";
-import { TaskType, IParameter } from "./types.mjs";
+import { TaskType, IParameter, IPostFrameworkCreateApplicationBody } from "./types.mjs";
 import { IVEContext } from "./backend-types.mjs";
 
 export interface IReadFrameworkOptions {
@@ -133,6 +133,152 @@ export class FrameworkLoader {
       }
     }
     return result;
+  }
+
+  public async createApplicationFromFramework(
+    request: IPostFrameworkCreateApplicationBody,
+  ): Promise<string> {
+    // Load framework
+    const frameworkOpts: IReadFrameworkOptions = {
+      error: new VEConfigurationError("", request.frameworkId),
+    };
+    const framework = this.readFrameworkJson(request.frameworkId, frameworkOpts);
+
+    // Load base application to get template list
+    const appOpts: IReadApplicationOptions = {
+      applicationHierarchy: [],
+      error: new VEConfigurationError("", framework.extends),
+      taskTemplates: [],
+    };
+    const baseApplication = this.applicationLoader!.readApplicationJson(
+      framework.extends,
+      appOpts,
+    );
+
+    // Get all parameters from base application to find parameter definitions
+    // No veContext needed - we only need parameter definitions, not execution
+    const templateProcessor = new TemplateProcessor(this.pathes, this.storage);
+    const allParameters = await templateProcessor.getParameters(
+      framework.extends,
+      "installation",
+    );
+
+    // Check if application already exists in localPath or jsonPath
+    const localAppDir = path.join(
+      this.pathes.localPath,
+      "applications",
+      request.applicationId,
+    );
+    const jsonAppDir = path.join(
+      this.pathes.jsonPath,
+      "applications",
+      request.applicationId,
+    );
+
+    if (fs.existsSync(localAppDir)) {
+      throw new Error(
+        `Application ${request.applicationId} already exists at ${localAppDir}`,
+      );
+    }
+    if (fs.existsSync(jsonAppDir)) {
+      throw new Error(
+        `Application ${request.applicationId} already exists at ${jsonAppDir}`,
+      );
+    }
+
+    // Create application directory in localPath
+    const appDir = localAppDir;
+    const templatesDir = path.join(appDir, "templates");
+
+    // Create directories
+    fs.mkdirSync(templatesDir, { recursive: true });
+
+    // Build parameterValues map for quick lookup
+    const paramValuesMap = new Map<string, string | number | boolean>();
+    for (const pv of request.parameterValues) {
+      paramValuesMap.set(pv.id, pv.value);
+    }
+
+    // Separate properties into parameters (default: true) and outputs (others)
+    const templateParameters: IParameter[] = [];
+    const templateProperties: Array<{ id: string; value: string | number | boolean }> = [];
+
+    for (const prop of framework.properties) {
+      const propId = typeof prop === "string" ? prop : prop.id;
+      const isDefault = typeof prop === "object" && prop.default === true;
+
+      // Find parameter definition from base application
+      const paramDef = allParameters.find((p) => p.id === propId);
+      const paramValue = paramValuesMap.get(propId);
+
+      if (isDefault && paramDef) {
+        // Create parameter entry
+        const param: IParameter = {
+          ...paramDef,
+        };
+        if (paramValue !== undefined) {
+          param.default = paramValue;
+        } else if (paramDef.default !== undefined) {
+          param.default = paramDef.default;
+        }
+        templateParameters.push(param);
+      } else if (paramValue !== undefined) {
+        // Create property/output entry
+        templateProperties.push({
+          id: propId,
+          value: paramValue,
+        });
+      }
+    }
+
+    // Create set-parameters.json template
+    const setParametersTemplate = {
+      execute_on: "ve",
+      name: "Set Parameters",
+      description: `Set application-specific parameters for ${request.name}`,
+      parameters: templateParameters,
+      commands: [
+        {
+          name: "set-properties",
+          properties: templateProperties,
+        },
+      ],
+    };
+
+    // Determine template name to prepend: derive from application-id or use set-parameters.json
+    const prependTemplateName = `${request.applicationId}-parameters.json`;
+
+    // Write the prepend template
+    fs.writeFileSync(
+      path.join(templatesDir, prependTemplateName),
+      JSON.stringify(setParametersTemplate, null, 2),
+    );
+
+    // Create application.json
+    // Get installation templates from base application
+    const baseInstallation = baseApplication.installation || [];
+    const applicationJson = {
+      name: request.name,
+      description: request.description,
+      extends: framework.extends,
+      icon: request.icon || baseApplication.icon || "icon.png",
+      installation: [prependTemplateName, ...baseInstallation],
+    };
+
+    // Write application.json
+    fs.writeFileSync(
+      path.join(appDir, "application.json"),
+      JSON.stringify(applicationJson, null, 2),
+    );
+
+    // Write icon if provided
+    if (request.iconContent) {
+      const iconPath = path.join(appDir, request.icon || "icon.png");
+      const iconBuffer = Buffer.from(request.iconContent, "base64");
+      fs.writeFileSync(iconPath, iconBuffer);
+    }
+
+    return request.applicationId;
   }
 
   private addErrorToOptions(opts: IReadFrameworkOptions, error: Error | any) {

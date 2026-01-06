@@ -83,7 +83,7 @@ export class TemplateProcessor extends EventEmitter {
   async loadApplication(
     applicationName: string,
     task: TaskType,
-    veContext: IVEContext,
+    veContext?: IVEContext,
     sshCommand?: string,
     initialInputs?: Array<{ id: string; value: string | number | boolean }>,
   ): Promise<ITemplateProcessorLoadResult> {
@@ -170,11 +170,13 @@ export class TemplateProcessor extends EventEmitter {
         templatePathes,
         scriptPathes,
         webuiTemplates,
-        veContext,
         sshCommand,
         processedTemplates,
         templateReferences,
       };
+      if (veContext !== undefined) {
+        ptOpts.veContext = veContext;
+      }
       await this.#processTemplate(ptOpts);
     }
     
@@ -658,34 +660,32 @@ export class TemplateProcessor extends EventEmitter {
             parentTemplate: this.extractTemplateName(opts.template),
           });
           // Try executing via VeExecution to respect execution semantics; collect errors
-          // Skip execution if this is a validation context (dummy VE context)
-          const isValidationContext = opts.veContext?.host === "validation-dummy";
-          if (!isValidationContext) {
+          // Skip execution if veContext is not provided (parameter extraction only)
+          if (opts.veContext) {
             try {
-              const context = opts.veContext!;
               const ve = new VeExecution(
                 tmpCommands,
                 [],
-                context ?? null,
+                opts.veContext,
                 undefined,
                 opts.sshCommand ?? "ssh",
               );
-              const rc = await ve.run(null);
-              if (rc && Array.isArray(rc.outputs) && rc.outputs.length > 0) {
-                // If outputs is an array of {name, value}, use it as enum values
-                pparm.enumValues = rc.outputs;
-                // If only one enum value is available and no default is set, use it as default
-                if (rc.outputs.length === 1 && pparm.default === undefined) {
-                  const singleValue = rc.outputs[0];
-                  // Handle both string values and {name, value} objects
-                  if (typeof singleValue === "string") {
-                    pparm.default = singleValue;
-                  } else if (typeof singleValue === "object" && singleValue !== null && "value" in singleValue) {
-                    pparm.default = singleValue.value;
+                const rc = await ve.run(null);
+                if (rc && Array.isArray(rc.outputs) && rc.outputs.length > 0) {
+                  // If outputs is an array of {name, value}, use it as enum values
+                  pparm.enumValues = rc.outputs;
+                  // If only one enum value is available and no default is set, use it as default
+                  if (rc.outputs.length === 1 && pparm.default === undefined) {
+                    const singleValue = rc.outputs[0];
+                    // Handle both string values and {name, value} objects
+                    if (typeof singleValue === "string") {
+                      pparm.default = singleValue;
+                    } else if (typeof singleValue === "object" && singleValue !== null && "value" in singleValue) {
+                      pparm.default = singleValue.value;
+                    }
                   }
                 }
-              }
-            } catch (e: any) {
+              } catch (e: any) {
               const err =
                 e instanceof JsonError
                   ? e
@@ -863,9 +863,9 @@ export class TemplateProcessor extends EventEmitter {
   async getUnresolvedParameters(
     application: string,
     task: TaskType,
-    veContest?: IVEContext,
+    veContext?: IVEContext,
   ): Promise<IParameter[]> {
-    const loaded = await this.loadApplication(application, task, veContest!);
+    const loaded = await this.loadApplication(application, task, veContext);
     // Only parameters whose id is not in resolvedParams.param
     return loaded.parameters.filter(
       (param) =>
@@ -879,9 +879,9 @@ export class TemplateProcessor extends EventEmitter {
   async getParameters(
     application: string,
     task: TaskType,
-    veContest?: IVEContext,
+    veContext?: IVEContext,
   ): Promise<IParameter[]> {
-    const loaded = await this.loadApplication(application, task, veContest!);
+    const loaded = await this.loadApplication(application, task, veContext);
     return loaded.parameters;
   }
 }
