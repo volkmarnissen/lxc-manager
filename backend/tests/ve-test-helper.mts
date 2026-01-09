@@ -158,13 +158,13 @@ export class ProxmoxTestHelper {
       fs.writeFileSync(storageContextPath, JSON.stringify({}), "utf-8");
     }
     const secretFilePath = path.join(this.localDir, "secret.txt");
-    const storage = new StorageContext(
+    // Use setInstance instead of constructor
+    StorageContext.setInstance(
       this.localDir,
       storageContextPath,
       secretFilePath,
     );
-    (StorageContext as any).instance = storage;
-    return storage;
+    return StorageContext.getInstance();
   }
 
   createTemplateProcessor(): TemplateProcessor {

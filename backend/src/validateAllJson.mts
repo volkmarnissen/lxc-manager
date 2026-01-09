@@ -4,7 +4,7 @@ import { fileURLToPath } from "url";
 import { JsonValidator } from "./jsonvalidator.mjs";
 import { StorageContext } from "./storagecontext.mjs";
 import { ApplicationLoader } from "./apploader.mjs";
-import { IReadApplicationOptions } from "./apploader.mjs";
+import { IReadApplicationOptions } from "./backend-types.mjs";
 import { TaskType } from "./types.mjs";
 import { VEConfigurationError, VELoadApplicationError, IVEContext } from "./backend-types.mjs";
 import { TemplateProcessor } from "./templateprocessor.mjs";

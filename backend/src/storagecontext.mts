@@ -1,306 +1,200 @@
-import path, { dirname, join } from "path";
-import { fileURLToPath } from "url";
-import { JsonValidator } from "./jsonvalidator.mjs";
-import { readdirSync, statSync, existsSync } from "fs";
-import {
-  IConfiguredPathes,
-  IContext,
-  IReadApplicationOptions,
-  IVEContext,
-  IVMContext,
-  IVMInstallContext,
-  VEConfigurationError,
-  storageKey as storageContextKey,
-} from "./backend-types.mjs";
-import { TemplateProcessor } from "./templateprocessor.mjs";
-import { IApplicationWeb, ISsh, TaskType } from "./types.mjs";
-import { Context } from "./context.mjs";
-import { Ssh } from "./ssh.mjs";
-import { ApplicationLoader } from "./apploader.mjs";
-import { FileSystemPersistence } from "./persistence/filesystem-persistence.mjs";
+/**
+ * @deprecated Use ContextManager and PersistenceManager instead
+ * This file provides backward compatibility during migration
+ * 
+ * StorageContext is now split into:
+ * - ContextManager: Manages execution contexts (VE, VM, VMInstall)
+ * - PersistenceManager: Manages persistence and services (Applications, Templates, Frameworks)
+ * 
+ * For entity access (Applications, Templates, Frameworks), use PersistenceManager.
+ * For context management (VE, VM, VMInstall), use ContextManager via PersistenceManager.
+ */
 
-const baseSchemas: string[] = ["templatelist.schema.json"];
+import { ContextManager, VMContext, VMInstallContext } from "./context-manager.mjs";
+import { PersistenceManager } from "./persistence/persistence-manager.mjs";
+import { VEConfigurationError, storageKey as storageContextKey, IContext } from "./backend-types.mjs";
+import { IApplicationWeb } from "./types.mjs";
 
-export class VMContext implements IVMContext {
-  vmid: number;
-  vekey: string;
-  outputs: Record<string, string| number| boolean>;
-  constructor(data: IVMContext) {
-    this.vmid = data.vmid;
-    this.vekey = data.vekey;
-    this.outputs = data.outputs || {};
+/**
+ * Proxy class that delegates to ContextManager and adds entity methods
+ * that delegate to PersistenceManager services
+ */
+class StorageContextProxy implements IContext {
+  private contextManager: ContextManager;
+  private pm: PersistenceManager;
+
+  constructor(contextManager: ContextManager, pm: PersistenceManager) {
+    this.contextManager = contextManager;
+    this.pm = pm;
   }
+
+  // Delegate all ContextManager methods
+  getLocalPath(): string {
+    return this.contextManager.getLocalPath();
+  }
+
+  getJsonPath(): string {
+    return this.contextManager.getJsonPath();
+  }
+
+  getSchemaPath(): string {
+    return this.contextManager.getSchemaPath();
+  }
+
   getKey(): string {
-    return `vm_${this.vmid}`;
-  } 
+    return this.contextManager.getKey();
+  }
+
+  getJsonValidator() {
+    return this.contextManager.getJsonValidator();
+  }
+
+  getTemplateProcessor() {
+    return this.contextManager.getTemplateProcessor();
+  }
+
+  getCurrentVEContext() {
+    return this.contextManager.getCurrentVEContext();
+  }
+
+  setVMContext(vmContext: any) {
+    return this.contextManager.setVMContext(vmContext);
+  }
+
+  setVEContext(veContext: any) {
+    return this.contextManager.setVEContext(veContext);
+  }
+
+  setVMInstallContext(vmInstallContext: any) {
+    return this.contextManager.setVMInstallContext(vmInstallContext);
+  }
+
+  getVEContextByKey(key: string) {
+    return this.contextManager.getVEContextByKey(key);
+  }
+
+  getVMContextByHostname(hostname: string) {
+    return this.contextManager.getVMContextByHostname(hostname);
+  }
+
+  getVMInstallContextByHostnameAndApplication(hostname: string, application: string) {
+    return this.contextManager.getVMInstallContextByHostnameAndApplication(hostname, application);
+  }
+
+  listSshConfigs() {
+    return this.contextManager.listSshConfigs();
+  }
+
+  getCurrentSsh() {
+    return this.contextManager.getCurrentSsh();
+  }
+
+  // Context base class methods
+  set(key: string, value: any): void {
+    return (this.contextManager as any).set(key, value);
+  }
+
+  get(key: string): any {
+    return (this.contextManager as any).get(key);
+  }
+
+  has(key: string): boolean {
+    return (this.contextManager as any).has(key);
+  }
+
+  remove(key: string): void {
+    return (this.contextManager as any).remove(key);
+  }
+
+  clear(): void {
+    return (this.contextManager as any).clear();
+  }
+
+  keys(): string[] {
+    return (this.contextManager as any).keys();
+  }
+
+  // Entity methods delegate to PersistenceManager services
+  getAllAppNames(): Map<string, string> {
+    return this.pm.getApplicationService().getAllAppNames();
+  }
+
+  listApplications(): IApplicationWeb[] {
+    return this.pm.getApplicationService().listApplicationsForFrontend();
+  }
+
+  getAllFrameworkNames(): Map<string, string> {
+    return this.pm.getFrameworkService().getAllFrameworkNames();
+  }
 }
 
-export class VMInstallContext implements IVMInstallContext {
-  constructor(data: IVMInstallContext) {
-    this.hostname = data.hostname;
-    this.application = data.application;
-    this.task = data.task;
-    this.changedParams = data.changedParams;
-  }
-  public hostname: string;
-  public application: string;
-  public task: TaskType;
-  public changedParams: Array<{ name: string; value: string | number | boolean }>;
-  getKey(): string {
-    return `vminstall_${this.hostname}_${this.application}`;
-  }
+/**
+ * @deprecated Use PersistenceManager.initialize() instead
+ */
+function setStorageContextInstance(
+  localPath: string,
+  storageContextFilePath: string,
+  secretFilePath: string,
+): StorageContext {
+  // Initialize PersistenceManager (which creates ContextManager)
+  PersistenceManager.initialize(
+    localPath,
+    storageContextFilePath,
+    secretFilePath,
+  );
+  
+  // Return a proxy that delegates to ContextManager
+  return getStorageContextInstance();
 }
 
-class VEContext implements IVEContext {
-  host: string;
-  port?: number;
-  current?: boolean;
-  constructor(data: IVEContext) {
-    this.host = data.host;
-    if (data.port !== undefined) this.port = data.port;
-    if (data.current !== undefined) this.current = data.current;
-  }
-  getStorageContext(): StorageContext {
-    return StorageContext.getInstance();
-  }
-  getKey(): string {
-    return `ve_${this.host}`;
-  }
-}
-export class StorageContext extends Context implements IContext {
-  static instance: StorageContext | undefined;
-  static setInstance(
-    localPath: string,
-    storageContextFilePath: string,
-    secretFilePath: string,
-  ): StorageContext {
-    StorageContext.instance = new StorageContext(
-      localPath,
-      storageContextFilePath,
-      secretFilePath,
+/**
+ * @deprecated Use PersistenceManager.getInstance().getContextManager() instead
+ */
+function getStorageContextInstance(): StorageContext {
+  try {
+    const pm = PersistenceManager.getInstance();
+    const contextManager = pm.getContextManager();
+    // Return a proxy that delegates all calls to ContextManager
+    return new StorageContextProxy(contextManager, pm);
+  } catch {
+    throw new VEConfigurationError(
+      "StorageContext instance not set. Use PersistenceManager.initialize() first.",
+      storageContextKey,
     );
-    return StorageContext.instance;
   }
-  static getInstance(): StorageContext {
-    if (!StorageContext.instance) {
-      throw new VEConfigurationError(
-        "StorageContext instance not set",
-        storageContextKey,
-      );
-    }
-    return StorageContext.instance;
-  }
-  jsonValidator: JsonValidator;
-  private jsonPath: string;
-  private schemaPath: string;
-  private pathes: IConfiguredPathes;
+}
+
+// Export as class for backward compatibility
+// Support both static methods and constructor (for tests that use new StorageContext())
+export class StorageContext extends StorageContextProxy {
+  static setInstance = setStorageContextInstance;
+  static getInstance = getStorageContextInstance;
+  static VMContext = VMContext;
+  static VMInstallContext = VMInstallContext;
+
+  // Constructor for backward compatibility (creates a proxy instance)
   constructor(
     localPath: string,
     storageContextFilePath: string,
     secretFilePath: string,
   ) {
-    super(storageContextFilePath, secretFilePath);
-    const rootDirname = join(dirname(fileURLToPath(import.meta.url)), "../..");
-    this.pathes = {
-      localPath: localPath,
-      jsonPath: path.join(rootDirname, "json"),
-      schemaPath: path.join(rootDirname, "schemas"),
-    };
-    this.jsonPath = path.join(rootDirname, "json");
-    this.schemaPath = path.join(rootDirname, "schemas");
-    this.jsonValidator = new JsonValidator(this.schemaPath, baseSchemas);
-    this.loadContexts("vm", VMContext);
-    this.loadContexts("ve", VEContext);
-    this.loadContexts("vminstall", VMInstallContext);
-  }
-  getLocalPath(): string {
-    return this.pathes.localPath;
-  }
-  getJsonPath(): string {
-    return this.pathes.jsonPath;
-  }
-  getKey(): string {
-    // return `storage_${this.localPath.replace(/[\/\\:]/g, "_")}`;
-    return storageContextKey;
-  }
-  getJsonValidator(): JsonValidator {
-    return this.jsonValidator;
-  }
-  getAllAppNames(): Map<string, string> {
-    const allApps = new Map<string, string>();
-    [this.pathes.localPath, this.pathes.jsonPath].forEach((jPath) => {
-      const appsDir = path.join(jPath, "applications");
-      if (existsSync(appsDir))
-        readdirSync(appsDir)
-          .filter(
-            (f) =>
-              existsSync(path.join(appsDir, f)) &&
-              statSync(path.join(appsDir, f)).isDirectory() &&
-              existsSync(path.join(appsDir, f, "application.json")),
-          )
-          .forEach((f) => {
-            if (!allApps.has(f)) allApps.set(f, path.join(appsDir, f));
-          });
-    });
-    return allApps;
-  }
-  getAllFrameworkNames(): Map<string, string> {
-    const allFrameworks = new Map<string, string>();
-    [this.pathes.localPath, this.pathes.jsonPath].forEach((jPath) => {
-      const frameworksDir = path.join(jPath, "frameworks");
-      if (existsSync(frameworksDir)) {
-        readdirSync(frameworksDir)
-          .filter(
-            (f) =>
-              f.endsWith(".json") &&
-              existsSync(path.join(frameworksDir, f)) &&
-              statSync(path.join(frameworksDir, f)).isFile(),
-          )
-          .forEach((f) => {
-            const frameworkId = f.replace(/\.json$/, "");
-            if (!allFrameworks.has(frameworkId)) {
-              allFrameworks.set(frameworkId, path.join(frameworksDir, f));
-            }
-          });
-      }
-    });
-    return allFrameworks;
-  }
-  getTemplateProcessor(): TemplateProcessor {
-    return new TemplateProcessor(this.pathes, this);
-  }
-  listApplications(): IApplicationWeb[] {
-    const applications: IApplicationWeb[] = [];
-    for (const [applicationName] of this.getAllAppNames()) {
-      const readOpts: IReadApplicationOptions = {
-        applicationHierarchy: [],
-        error: new VEConfigurationError("", applicationName),
-        taskTemplates: [],
-      };
-      const persistence = new FileSystemPersistence(
-        this.pathes,
-        this.getJsonValidator(),
-      );
-      const appLoader = new ApplicationLoader(this.pathes, persistence);
-      try {
-        let app = appLoader.readApplicationJson(applicationName, readOpts);
-        app.description = app.description || "No desription available";
-        applications.push(app as IApplicationWeb);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (e: Error | any) {
-         // Errors are handled below
-      }
-      if (readOpts.error.details && readOpts.error.details.length > 0 && applications.length > 0) {
-        applications[applications.length - 1]!.errors = readOpts.error.details;
-      }
-    }
-    return applications;
-  }
-  getCurrentVEContext(): IVEContext | null {
-    for (const ctx of this.keys()
-      .filter((k) => k.startsWith("ve_"))
-      .map((k) => this.get(k))) {
-      if (ctx instanceof VEContext && (ctx as IVEContext).current === true) {
-        return ctx;
-      }
-    }
-    return null;
-  }
-  setVMContext(vmContext: IVMContext): string {
-    // Verify that the VE context referenced by vekey exists
-    const veContext = this.getVEContextByKey(vmContext.vekey);
-    if (!veContext) {
-      throw new Error(
-        `VE context not found for key: ${vmContext.vekey}. Please set the VE context using setVEContext() before setting the VM context.`,
+    // Initialize PersistenceManager if not already initialized
+    try {
+      PersistenceManager.getInstance();
+    } catch {
+      PersistenceManager.initialize(
+        localPath,
+        storageContextFilePath,
+        secretFilePath,
       );
     }
-    
-    const key = `vm_${vmContext.vmid}`;
-    this.set(key, new VMContext(vmContext));
-    return key;
-  }
-  setVEContext(veContext: IVEContext): string {
-    const key = `ve_${veContext.host}`;
-    this.set(key, new VEContext(veContext));
-    return key;
-  }
-  setVMInstallContext(vmInstallContext: IVMInstallContext): string {
-    const vmInstall = new VMInstallContext(vmInstallContext);
-    const key = vmInstall.getKey();
-    this.set(key, vmInstall);
-    return key;
-  }
-
-  getVEContextByKey(key: string): IVEContext | null {
-    const value = this.get(key);
-    if (value instanceof VEContext) return value as IVEContext;
-    return null;
-  }
-
-  /** Find a VMContext by hostname stored inside its data */
-  getVMContextByHostname(hostname: string): IVMContext | null {
-    for (const key of this.keys().filter((k) => k.startsWith("vm_"))) {
-      const value = this.get(key);
-      if (value instanceof VMContext) {
-        const vm = value as VMContext;
-        const h = vm.outputs.hostname;
-        if (typeof h === "string" && h === hostname) {
-          return vm as IVMContext;
-        }
-      }
-    }
-    return null;
-  }
-
-  /** Find a VMInstallContext by hostname and application */
-  getVMInstallContextByHostnameAndApplication(
-    hostname: string,
-    application: string,
-  ): IVMInstallContext | null {
-    const key = `vminstall_${hostname}_${application}`;
-    const value = this.get(key);
-    if (value instanceof VMInstallContext) {
-      return value as IVMInstallContext;
-    }
-    return null;
-  }
-
-  /** Build ISsh descriptors for all VE contexts using current storage */
-  listSshConfigs(): ISsh[] {
-    const result: ISsh[] = [];
-    const pubCmd = Ssh.getPublicKeyCommand();
-    const install = Ssh.getInstallSshServerCommand();
-    for (const key of this.keys().filter((k) => k.startsWith("ve_"))) {
-      const anyCtx: any = this.get(key);
-      if (anyCtx && typeof anyCtx.host === "string") {
-        const item: ISsh = { host: anyCtx.host } as ISsh;
-        if (typeof anyCtx.port === "number") item.port = anyCtx.port;
-        if (typeof anyCtx.current === "boolean") item.current = anyCtx.current;
-        if (pubCmd) item.publicKeyCommand = pubCmd;
-        item.installSshServer = install;
-        const perm = Ssh.checkSshPermission(item.host, item.port);
-        item.permissionOk = perm.permissionOk;
-        if (perm.stderr) (item as any).stderr = perm.stderr;
-        result.push(item);
-      }
-    }
-    return result;
-  }
-
-  /** Build an ISsh descriptor from the current VE context in StorageContext */
-  getCurrentSsh(): ISsh | null {
-    const ctx = this.getCurrentVEContext();
-    if (!ctx) return null;
-    const pub = Ssh.getPublicKeyCommand();
-    const install = Ssh.getInstallSshServerCommand();
-    const base: ISsh = { host: ctx.host } as ISsh;
-    if (typeof ctx.port === "number") base.port = ctx.port;
-    if (typeof ctx.current === "boolean") base.current = ctx.current;
-    if (pub) base.publicKeyCommand = pub;
-    base.installSshServer = install;
-    const perm = Ssh.checkSshPermission(base.host, base.port);
-    base.permissionOk = perm.permissionOk;
-    if ((perm as any).stderr) (base as any).stderr = (perm as any).stderr;
-    return base;
+    // Get the context manager and persistence manager
+    const pm = PersistenceManager.getInstance();
+    const contextManager = pm.getContextManager();
+    // Call super constructor with the context manager and persistence manager
+    super(contextManager, pm);
   }
 }
+
+// Re-export for backward compatibility
+export { VMContext, VMInstallContext } from "./context-manager.mjs";

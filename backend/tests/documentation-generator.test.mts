@@ -398,6 +398,20 @@ echo "Shared script"
         "utf-8",
       );
 
+      // Invalidate cache to ensure new application is found
+      const storageContext = StorageContext.getInstance();
+      if (storageContext && typeof (storageContext as any).invalidateCache === "function") {
+        (storageContext as any).invalidateCache();
+      }
+      // Also invalidate via PersistenceManager if available
+      try {
+        const { PersistenceManager } = await import("@src/persistence/persistence-manager.mjs");
+        const pm = PersistenceManager.getInstance();
+        pm.getPersistence().invalidateCache();
+      } catch {
+        // Ignore if PersistenceManager is not available
+      }
+
       const generator = new DocumentationGenerator(jsonPath, localPath, schemaPath, htmlPath);
       await generator.generateDocumentation("other-app");
 

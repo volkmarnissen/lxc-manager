@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { ApplicationLoader, IReadApplicationOptions } from "./apploader.mjs";
-import { VEConfigurationError, IApplication, IConfiguredPathes } from "./backend-types.mjs";
-import { ITemplateReference, TemplateProcessor } from "./templateprocessor.mjs";
+import { ApplicationLoader } from "./apploader.mjs";
+import { VEConfigurationError, IApplication, IConfiguredPathes, IReadApplicationOptions, ITemplateReference } from "./backend-types.mjs";
+import { TemplateProcessor } from "./templateprocessor.mjs";
 import { DocumentationPathResolver } from "./documentation-path-resolver.mjs";
 import { TemplateAnalyzer } from "./template-analyzer.mjs";
 import { TemplatePathResolver } from "./template-path-resolver.mjs";

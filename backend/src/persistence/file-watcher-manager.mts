@@ -11,7 +11,7 @@ export class FileWatcherManager {
   private localAppsWatcher?: FSWatcher;
   private localTemplatesWatcher?: FSWatcher;
   private localFrameworksWatcher?: FSWatcher;
-  private invalidateTimeout?: NodeJS.Timeout;
+  private invalidateTimeout: NodeJS.Timeout | undefined;
   private readonly DEBOUNCE_MS = 300;
 
   constructor(private pathes: IConfiguredPathes) {}

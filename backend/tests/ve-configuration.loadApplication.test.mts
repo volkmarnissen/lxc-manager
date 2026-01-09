@@ -14,13 +14,13 @@ ProxmoxTestHelper.prototype.createStorageContext = function () {
   // Constructor expects (localPath, jsonPath, schemaPath)
   const storageContextFilePath = path.join(localPath, "storagecontext.json");
   const secretFilePath = path.join(localPath, "secret.txt");
-  const storage = new StorageContext(
+  // Use setInstance instead of constructor to avoid DataCloneError
+  StorageContext.setInstance(
     localPath,
     storageContextFilePath,
     secretFilePath,
   );
-  (StorageContext as any).instance = storage;
-  return storage;
+  return StorageContext.getInstance();
 };
 
 describe("ProxmoxConfiguration.loadApplication", () => {

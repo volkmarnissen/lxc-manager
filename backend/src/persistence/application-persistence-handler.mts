@@ -6,8 +6,8 @@ import {
   IReadApplicationOptions,
   VEConfigurationError,
 } from "../backend-types.mjs";
-import { IApplicationWeb } from "../types.mts";
-import { ITemplateReference } from "../templateprocessor.mjs";
+import { IApplicationWeb } from "../types.mjs";
+import { ITemplateReference } from "../backend-types.mjs";
 import { JsonValidator } from "../jsonvalidator.mjs";
 import { JsonError } from "../jsonvalidator.mjs";
 
@@ -383,7 +383,8 @@ export class ApplicationPersistenceHandler {
               (entry as ITemplateReference).before!.length > 0
             ) {
               // before is an array, use the first element
-              const beforeName = (entry as ITemplateReference).before![0];
+              const beforeName = (entry as ITemplateReference).before?.[0];
+              if (!beforeName) return;
               const existingTemplates = taskEntry.templates.map((t) =>
                 typeof t === "string" ? t : (t as ITemplateReference).name,
               );
@@ -407,7 +408,8 @@ export class ApplicationPersistenceHandler {
               (entry as ITemplateReference).after!.length > 0
             ) {
               // after is an array, use the first element
-              const afterName = (entry as ITemplateReference).after![0];
+              const afterName = (entry as ITemplateReference).after?.[0];
+              if (!afterName) return;
               const existingTemplates = taskEntry.templates.map((t) =>
                 typeof t === "string" ? t : (t as ITemplateReference).name,
               );

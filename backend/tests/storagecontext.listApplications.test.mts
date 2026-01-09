@@ -17,7 +17,9 @@ describe("StorageContext.listApplications", () => {
 
   beforeEach(() => {
     tmp = createTempDir();
-    StorageContext.setInstance(tmp);
+    const storageContextFile = path.join(tmp, "storagecontext.json");
+    const secretFile = path.join(tmp, "secret.txt");
+    StorageContext.setInstance(tmp, storageContextFile, secretFile);
   });
 
   it("returns more than one application and first has name/description", () => {

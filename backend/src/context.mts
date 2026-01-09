@@ -59,14 +59,21 @@ export class Context {
     ctxPrefix: string,
     Clazz: C,
   ) {
-    const saved: Record<string, any> = structuredClone(this.context);
-    for (const [key, value] of Object.entries(saved)) {
+    // Iterate directly over context keys instead of cloning
+    // This avoids DataCloneError when context contains non-serializable objects
+    // Context is loaded from JSON file, so values are plain objects
+    for (const key of Object.keys(this.context)) {
       if (!key.startsWith(ctxPrefix + "_")) {
         continue;
       }
-      const instance = new Clazz(value);
-      // Do not persist here; only populate in-memory cache
-      this.context[key] = instance;
+      const value = this.context[key];
+      // Only process plain objects (not already instantiated classes)
+      // Values from JSON file are always plain objects
+      if (value && typeof value === "object" && value.constructor === Object) {
+        const instance = new Clazz(value);
+        // Do not persist here; only populate in-memory cache
+        this.context[key] = instance;
+      }
     }
   }
 

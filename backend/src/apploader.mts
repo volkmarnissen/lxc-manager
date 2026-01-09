@@ -4,22 +4,9 @@ import {
   VEConfigurationError,
 } from "@src/backend-types.mjs";
 import { StorageContext } from "./storagecontext.mjs";
-import { ITemplateReference } from "./templateprocessor.mjs";
 import { JsonError } from "./jsonvalidator.mjs";
 import { IApplicationPersistence } from "./persistence/interfaces.mjs";
-export interface IReadApplicationOptions {
-  applicationHierarchy: string[];
-  application?: IApplication;
-  appPath?: string;
-  error: VEConfigurationError;
-  taskTemplates: {
-    task: string;
-    templates: (ITemplateReference | string)[];
-  }[];
-  inheritedIcon?: string;
-  inheritedIconContent?: string;
-  inheritedIconType?: string;
-}
+import { IReadApplicationOptions, ITemplateReference } from "./backend-types.mjs";
 export class ApplicationLoader {
   constructor(
     private pathes: IConfiguredPathes,

@@ -1,5 +1,6 @@
 import { JsonError } from "./jsonvalidator.mjs";
-import { StorageContext } from "./storagecontext.mjs";
+// StorageContext import removed to avoid circular dependency
+// Use type-only import if needed: import type { StorageContext } from "./storagecontext.mjs";
 import { ICommand, IJsonError, IParameter, ISsh, TaskType } from "./types.mjs";
 
 export class VEConfigurationError extends JsonError {
@@ -78,6 +79,12 @@ export interface IApplication extends IApplicationSchema {
   iconContent?: string | undefined;
   iconType?: string | undefined;
 }
+export interface ITemplateReference {
+  name: string;
+  before?: string[];
+  after?: string[];
+}
+
 export interface IReadApplicationOptions {
   applicationHierarchy: string[];
   application?: IApplication;
@@ -85,8 +92,11 @@ export interface IReadApplicationOptions {
   error: VEConfigurationError;
   taskTemplates: {
     task: string;
-    templates: string[];
+    templates: (ITemplateReference | string)[];
   }[];
+  inheritedIcon?: string;
+  inheritedIconContent?: string;
+  inheritedIconType?: string;
 }
 
 export class VELoadApplicationError extends VEConfigurationError {
@@ -104,7 +114,8 @@ export class VELoadApplicationError extends VEConfigurationError {
 // Interface generated from template.schema.json
 export interface ITemplateSchema {}
 
+// Use any to avoid circular dependency - will be resolved when StorageContext is fully migrated
 export interface IVEContext extends ISsh {
-  getStorageContext(): StorageContext;
+  getStorageContext(): any; // StorageContext | ContextManager
   getKey(): string;
 }

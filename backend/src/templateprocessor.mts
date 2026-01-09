@@ -21,14 +21,12 @@ import { ApplicationLoader } from "@src/apploader.mjs";
 import fs from "fs";
 import { ScriptValidator } from "@src/scriptvalidator.mjs";
 import { StorageContext } from "./storagecontext.mjs";
+import { ContextManager } from "./context-manager.mjs";
 import { FileSystemPersistence } from "./persistence/filesystem-persistence.mjs";
 import { VeExecution } from "./ve-execution.mjs";
 import { TemplatePathResolver } from "./template-path-resolver.mjs";
-export interface ITemplateReference {
-  name: string;
-  before?: string[];
-  after?: string[];
-}
+// ITemplateReference moved to backend-types.mts
+import { ITemplateReference } from "./backend-types.mjs";
 interface IProcessTemplateOpts {
   application: string;
   template: ITemplateReference | string;
@@ -77,7 +75,7 @@ export class TemplateProcessor extends EventEmitter {
   resolvedParams: IResolvedParam[] = [];
   constructor(
     private pathes: IConfiguredPathes,
-    private storageContext: StorageContext = StorageContext.getInstance(),
+    private storageContext: StorageContext | ContextManager = StorageContext.getInstance(),
   ) {
     super();
   }

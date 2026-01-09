@@ -27,20 +27,35 @@ describe("WebAppVE API", () => {
     fs.writeFileSync(storageContextPath, JSON.stringify({}), "utf-8");
     
     // Create StorageContext with test paths
-    storageContext = new StorageContext(
+    // Use PersistenceManager to set up with test paths
+    const { PersistenceManager } = await import("@src/persistence/persistence-manager.mjs");
+    // Close existing instance if any
+    try {
+      PersistenceManager.getInstance().close();
+    } catch {
+      // Ignore if not initialized
+    }
+    // Initialize with test paths
+    PersistenceManager.initialize(
       helper.localDir,
       storageContextPath,
       secretFilePath,
     );
-    // Override jsonPath and schemaPath to point to test directories
-    (storageContext as any).jsonPath = helper.jsonDir;
-    (storageContext as any).schemaPath = helper.schemaDir;
-    (storageContext as any).pathes = {
+    // Override paths in PersistenceManager
+    const pm = PersistenceManager.getInstance();
+    (pm as any).pathes = {
       localPath: helper.localDir,
       jsonPath: helper.jsonDir,
       schemaPath: helper.schemaDir,
     };
-    (StorageContext as any).instance = storageContext;
+    // Also update ContextManager paths
+    const contextManager = pm.getContextManager();
+    (contextManager as any).pathes = {
+      localPath: helper.localDir,
+      jsonPath: helper.jsonDir,
+      schemaPath: helper.schemaDir,
+    };
+    storageContext = StorageContext.getInstance();
     
     // Create a test VE context using the proper method
     veContextKey = "ve_testhost";
