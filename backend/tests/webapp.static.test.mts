@@ -38,7 +38,7 @@ describe("WebApp serves index.html", () => {
     } catch {
       // Ignore if not initialized
     }
-    PersistenceManager.initialize(testDir, storageContextPath, secretFilePath);
+    PersistenceManager.initialize(testDir, storageContextPath, secretFilePath, false); // Disable cache for tests
   });
 
   afterAll(() => {
