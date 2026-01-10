@@ -1,28 +1,56 @@
 {
   "execute_on": "ve",
   "name": "Get OCI Image",
-  "description": "Find OCI image in Proxmox storage (must be downloaded manually via Web UI until pveam download supports OCI)",
+  "description": "Download OCI image from Docker Registry and import to Proxmox storage",
   "parameters": [
     {
       "id": "oci_image",
       "name": "OCI Image",
       "type": "string",
       "required": true,
-      "description": "OCI image reference (e.g., docker://alpine:latest, docker://debian:bookworm, oci://ghcr.io/owner/repo:latest). Used to search for the image in storage."
+      "description": "OCI image reference (e.g., docker://alpine:latest, docker://debian:bookworm, oci://ghcr.io/owner/repo:latest)"
     },
     {
       "id": "storage",
       "name": "Storage",
       "type": "string",
       "default": "local",
-      "description": "Storage where the OCI image should be located",
+      "description": "Proxmox storage where the OCI image should be stored",
+      "advanced": true
+    },
+    {
+      "id": "registry_username",
+      "name": "Registry Username",
+      "type": "string",
+      "description": "Username for registry authentication (optional, required for private images)",
+      "advanced": true
+    },
+    {
+      "id": "registry_password",
+      "name": "Registry Password",
+      "type": "string",
+      "description": "Password for registry authentication (optional, required for private images)",
+      "advanced": true
+    },
+    {
+      "id": "registry_token",
+      "name": "Registry Token",
+      "type": "string",
+      "description": "Bearer token for registry authentication (optional, alternative to username/password)",
+      "advanced": true
+    },
+    {
+      "id": "platform",
+      "name": "Platform",
+      "type": "string",
+      "description": "Target platform (e.g., linux/amd64, linux/arm64). Auto-detects if not specified.",
       "advanced": true
     }
   ],
   "commands": [
     {
       "name": "Get OCI Image",
-      "script": "get-oci-image.sh",
+      "script": "get-oci-image.py",
       "outputs": ["template_path", "ostype"]
     }
   ]
