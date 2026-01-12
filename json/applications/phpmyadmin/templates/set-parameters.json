@@ -1,0 +1,46 @@
+{
+  "execute_on": "ve",
+  "name": "MyPhpAdmin Parameters",
+  "description": "Set application-specific parameters for phpMyAdmin",
+  "parameters": [
+    {
+      "id": "hostname",
+      "name": "Hostname",
+      "type": "string",
+      "default": "phpmyadmin",
+      "required": true,
+      "description": "Hostname for the phpMyAdmin container"
+    },
+    {
+      "id": "http_port",
+      "name": "HTTP Port",
+      "type": "string",
+      "default": "80",
+      "required": false,
+      "advanced": true,
+      "description": "Port number for lighttpd HTTP server (default: 80)"
+    }
+  ],
+  "commands": [
+    {
+      "properties": [
+        {
+          "id": "ostype",
+          "value": "alpine"
+        },
+        {
+          "id": "packages",
+          "value": "lighttpd php fcgi php-cgi phpmyadmin"
+        },
+        {
+          "id": "http_port",
+          "value": "{{http_port}}"
+        },
+        {
+          "id": "volumes",
+          "value": "config=lighttpd\nconfig=phpmyadmin"
+        }
+      ]
+    }
+  ]
+}

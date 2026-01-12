@@ -1,0 +1,47 @@
+
+<div class="dialog-header">
+	@if (data.app.iconContent) {
+		<img class="app-icon" [src]="'data:' + (data.app.iconType || 'image/png') + ';base64,' + data.app.iconContent" alt="App Icon" />
+	}
+	<div class="header-text">
+		<h2>Configuration for {{ data.app.name }}</h2>
+		<p>{{ data.app.description }}</p>
+	</div>
+</div>
+
+<form [formGroup]="form" (ngSubmit)="save()">
+	@if (!loading()) {
+		<div class="group-container">
+			@for (groupName of groupNames; track groupName) {
+				<app-parameter-group
+					[groupName]="groupName"
+					[groupedParameters]="groupedParameters"
+					[form]="form"
+					[showAdvanced]="showAdvanced()"
+				/>
+			}
+		</div>
+			@if (hasAdvancedParams()) {
+				<div class="advanced-toggle" (click)="toggleAdvanced()" (keyup.enter)="toggleAdvanced()" (keyup.space)="toggleAdvanced()" tabindex="0" role="button" [attr.aria-expanded]="showAdvanced()">
+					<span class="toggle-icon">{{ showAdvanced() ? '▼' : '▶' }}</span>
+					<span class="toggle-text">{{ showAdvanced() ? 'Hide' : 'Show' }} Advanced Options</span>
+				</div>
+			}
+			<ng-content select="[slot=actions]"></ng-content>
+			@if (!customActions) {
+				@if (hasError()) {
+					<div class="dialog-actions">
+						<button mat-stroked-button color="primary" type="button" (click)="close()">Close</button>
+					</div>
+				} @else {
+					<div class="dialog-actions">
+						<button mat-stroked-button color="primary" type="button" (click)="close()">Cancel</button>
+						<button mat-flat-button color="accent" type="submit" [disabled]="form.invalid || loading()">Install</button>
+					</div>
+				}
+			}
+		}
+	@if (loading()) {
+		<div>Loading parameters ...</div>
+	}
+</form>

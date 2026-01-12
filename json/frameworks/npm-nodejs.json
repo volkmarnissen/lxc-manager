@@ -1,0 +1,23 @@
+{
+  "name": "npm-nodejs",
+  "extends": "npm-nodejs",
+  "properties": [
+    "hostname",
+    "ostype",
+    "packages",
+    "command",
+    "command_args",
+    "package",
+    "owned_paths",
+    "uid",
+    "group",
+    "username",
+    "volumes"
+  ]
+}
+
+
+
+
+
+

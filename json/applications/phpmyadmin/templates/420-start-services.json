@@ -1,0 +1,11 @@
+{
+  "execute_on": "lxc",
+  "name": "Start lighttpd service",
+  "description": "Start and enable lighttpd service",
+  "commands": [
+    {
+      "script": "start-lighttpd.sh",
+      "description": "Start and enable lighttpd service"
+    }
+  ]
+}

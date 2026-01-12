@@ -1,0 +1,18 @@
+{
+  "execute_on": "ve",
+  "name": "Start LXC Container",
+  "description": "Start existing LXC container on Proxmox host",
+  "parameters": [
+    {
+      "id": "vm_id",
+      "name": "VM ID",
+      "type": "number",
+      "description": "ID of the virtual machine"
+    }
+  ],
+  "commands": [
+    {
+      "script": "lxc-start.sh"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "oci-image",
+  "extends": "oci-image",
+  "properties": [
+    "hostname",
+    "oci_image",
+    "uid",
+    "username",
+    "volumes"
+  ]
+}
+

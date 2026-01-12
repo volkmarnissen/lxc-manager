@@ -1,0 +1,145 @@
+import { ICommand, IJsonError, IParameter } from "@src/types.mjs";
+import fs from "fs";
+import path from "path";
+import { JsonError } from "./jsonvalidator.mjs";
+import { IResolvedParam } from "./backend-types.mjs";
+import { TemplatePathResolver } from "./template-path-resolver.mjs";
+
+export class ScriptValidator {
+  /**
+   * Extracts all {{ var }} placeholders from a string.
+   */
+  private extractTemplateVariables(str: string): string[] {
+    const regex = /{{ *([^}\ ]+) *}}/g;
+    const vars = new Set<string>();
+    let match;
+    while ((match = regex.exec(str)) !== null) {
+      vars.add(match[1] || "");
+    }
+    return Array.from(vars);
+  }
+  // Removed findInPathes - now using TemplatePathResolver.findInPathes
+  /**
+   * Checks if the script exists and if all variables are defined as parameters.
+   */
+  validateScript(
+    cmd: ICommand,
+    application: string,
+    errors: IJsonError[],
+    parameters: IParameter[],
+    resolvedParams: IResolvedParam[],
+    requestedIn?: string,
+    parentTemplate?: string,
+    scriptPathes?: string[],
+  ) {
+    if (cmd.script === undefined) {
+      errors.push(
+        new JsonError(
+          `Script command missing 'script' property (requested in: ${requestedIn ?? "unknown"}${parentTemplate ? ", parent template: " + parentTemplate : ""})`,
+        ),
+      );
+      return;
+    }
+    const scriptPath = TemplatePathResolver.findInPathes(scriptPathes || [], cmd.script);
+    if (!scriptPath) {
+      errors.push(
+        new JsonError(
+          `Script file not found: ${cmd.script} (searched in: applications/${application}/scripts and shared/scripts, requested in: ${requestedIn ?? "unknown"}${parentTemplate ? ", parent template: " + parentTemplate : ""})`,
+        ),
+      );
+      return;
+    }
+    // Read script content and check variables
+    try {
+      const scriptContent = fs.readFileSync(scriptPath, "utf-8");
+      const vars = this.extractTemplateVariables(scriptContent);
+      for (const v of vars) {
+        if (
+          !parameters.some((p) => p.id === v) &&
+          !resolvedParams.some((rp) => rp.id === v)
+        ) {
+          errors.push(
+            new JsonError(
+              `Script ${cmd.script} uses variable '{{ ${v} }}' but no such parameter is defined (requested in: ${requestedIn ?? "unknown"}${parentTemplate ? ", parent template: " + parentTemplate : ""})`,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      errors.push(new JsonError(`Failed to read script ${cmd.script}: ${e}`));
+    }
+  }
+
+  /**
+   * Checks if all variables in the execute string are defined as parameters.
+   */
+  validateCommand(
+    cmd: ICommand,
+    errors: IJsonError[],
+    parameters: IParameter[],
+    resolvedParams: IResolvedParam[],
+    requestedIn?: string,
+    parentTemplate?: string,
+  ) {
+    if (cmd.command) {
+      const vars = this.extractTemplateVariables(cmd.command);
+      for (const v of vars) {
+        if (
+          !parameters.some((p) => p.id === v) &&
+          !resolvedParams.some((rp) => rp.id === v)
+        ) {
+          errors.push(
+            new JsonError(
+              `Command uses variable '{{ ${v} }}' but no such parameter is defined (requested in: ${requestedIn ?? "unknown"}${parentTemplate ? ", parent template: " + parentTemplate : ""})`,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  /**
+   * Validates a library file: checks if it exists and if it contains template variables (which should not be in libraries).
+   */
+  validateLibrary(
+    libraryName: string,
+    errors: IJsonError[],
+    requestedIn?: string,
+    parentTemplate?: string,
+    scriptPathes?: string[],
+  ) {
+    if (!scriptPathes || scriptPathes.length === 0) {
+      errors.push(
+        new JsonError(
+          `Library validation failed: scriptPathes not provided (library: ${libraryName}, requested in: ${requestedIn ?? "unknown"}${parentTemplate ? ", parent template: " + parentTemplate : ""})`,
+        ),
+      );
+      return;
+    }
+
+    const libraryPath = TemplatePathResolver.findInPathes(scriptPathes, libraryName);
+    if (!libraryPath) {
+      errors.push(
+        new JsonError(
+          `Library file not found: ${libraryName} (searched in: ${scriptPathes.join(", ")}, requested in: ${requestedIn ?? "unknown"}${parentTemplate ? ", parent template: " + parentTemplate : ""})`,
+        ),
+      );
+      return;
+    }
+
+    // Check if library contains template variables (libraries should not contain variables)
+    try {
+      const libraryContent = fs.readFileSync(libraryPath, "utf-8");
+      const vars = this.extractTemplateVariables(libraryContent);
+      if (vars.length > 0) {
+        errors.push(
+          new JsonError(
+            `Library ${libraryName} contains template variables ({{ ${vars.join(", ")}} }), which is not allowed. Libraries should only contain function definitions without template variables.`,
+          ),
+        );
+      }
+    } catch (e) {
+      errors.push(new JsonError(`Failed to read library ${libraryName}: ${e}`));
+    }
+  }
+}

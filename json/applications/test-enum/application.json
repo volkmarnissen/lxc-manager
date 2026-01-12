@@ -1,0 +1,5 @@
+{
+  "name": "Test Enum Application",
+  "description": "App to test enum values (static and dynamic)",
+  "installation": ["enum-static.json", "enum-dynamic.json"]
+}

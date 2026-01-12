@@ -1,0 +1,36 @@
+{
+  "name": "lxc-manager",
+  "version": "0.1.7",
+  "description": "Packaged web UI and backend for LXC Manager",
+  "type": "module",
+  "draft": true,
+  "author": {
+    "email": "volkmar.nissen@gmail.com",
+    "name": "Volkmar Nissen"
+  },
+  "scripts": {
+    "build": "npm run build:backend --silent && npm run build:frontend --silent",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
+    "e2e:debug": "PWDEBUG=1 playwright test --headed",
+    "lint:lang": "node scripts/check-language.js",
+    "prettier": "npm run prettier --prefix backend && npm run prettier --prefix frontend"
+  },
+  "bin": {
+    "lxc-manager-web": "bin/webapp"
+  },
+  "files": [
+    "backend/dist",
+    "frontend/dist",
+    "backend/json",
+    "bin"
+  ],
+  "lxcManager": {
+    "frontendDir": "frontend/dist/webapp-angular/browser"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.2"
+  }
+}

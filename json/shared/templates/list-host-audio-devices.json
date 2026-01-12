@@ -1,0 +1,15 @@
+{
+  "execute_on": "ve",
+  "name": "List Host Audio Devices",
+  "description": "Lists all audio devices (USB and PCI) available on the VE host",
+  "parameters": [],
+  "commands": [
+    {
+      "name": "List Audio Devices",
+      "script": "list-host-audio-devices.sh",
+      "library": "usb-device-common.sh",
+      "outputs": ["audio_devices"]
+    }
+  ]
+}
+

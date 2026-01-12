@@ -1,0 +1,139 @@
+{
+  "description": "Vorschlag für Schema-Änderungen für optionale Templates",
+  "changes": [
+    {
+      "file": "schemas/template.schema.json",
+      "location": "properties section, after 'if' property",
+      "new_properties": {
+        "skip_if_all_missing": {
+          "type": "array",
+          "items": { 
+            "type": "string" 
+          },
+          "minItems": 1,
+          "description": "List of parameter IDs. If ALL of these are missing or empty, the template will be skipped. If at least one parameter is present, the template will be executed. If this property is present (and not empty), the template is considered optional."
+        }
+      }
+    }
+  ],
+  "example_updated_schema_section": {
+    "properties": {
+      "execute_on": {
+        "anyOf": [
+          { "const": "ve" },
+          { "const": "lxc" },
+          { "type": "string", "pattern": "^host:.*$" }
+        ]
+      },
+      "if": {
+        "type": "boolean"
+      },
+      "skip_if_all_missing": {
+        "type": "array",
+        "items": { 
+          "type": "string" 
+        },
+        "minItems": 1,
+        "description": "List of parameter IDs that must be present and non-empty. If any of these are missing or empty, the template will be skipped. If this property is present (and not empty), the template is considered optional."
+      },
+      "name": {
+        "type": "string",
+        "maxLength": 30
+      },
+      "description": {
+        "type": "string"
+      },
+      "parameters": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "id": { "type": "string" },
+            "if": { "type": "string" },
+            "type": { "enum": ["string", "number", "enum", "boolean"] },
+            "description": { "type": "string" },
+            "upload": { "type": "boolean", "default": false },
+            "required": { "type": "boolean", "default": false },
+            "secure": { "type": "boolean", "default": false },
+            "advanced": { "type": "boolean", "default": false },
+            "default": { "type": ["string", "number", "boolean"] }
+          },
+          "required": ["name", "id", "type"],
+          "if": { "properties": { "type": { "const": "enum" } } },
+          "then": {
+            "properties": {
+              "enumValues": {
+                "type": "array",
+                "items": { 
+                  "anyOf": [
+                    { "type": "string" },
+                    { 
+                      "type": "object",
+                      "properties": {
+                        "name": { "type": "string" },
+                        "value": { "type": ["string", "number", "boolean"] }
+                      }
+                    }
+                  ]
+                }
+              },
+              "enumValuesTemplate": {
+                "type": "string"
+              }
+            },
+            "anyOf": [
+              { "required": ["enumValues"] },
+              { "required": ["enumValuesTemplate"] }
+            ]
+          }
+        }
+      },
+      "outputs": {
+        "type": "array",
+        "items": { "$ref": "output.template#" }
+      },
+      "commands": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "$ref": "#/$defs/command" }
+      }
+    }
+  },
+  "implementation_location": "backend/src/templateprocessor.mts",
+  "implementation_method": "#processTemplate",
+  "implementation_snippet": {
+    "description": "Code der nach dem Laden von tmplData eingefügt werden sollte",
+    "code": `
+    // Check if template is optional and should be skipped
+    if (tmplData.skip_if_all_missing && tmplData.skip_if_all_missing.length > 0) {
+      // Check if ALL required parameters are missing
+      // Skip only if ALL parameters are missing. If at least one is present, execute the template.
+      let allMissing = true;
+      for (const paramId of tmplData.skip_if_all_missing) {
+        const resolved = opts.resolvedParams.find((p) => p.id === paramId);
+        
+        // If at least one parameter is resolved, don't skip
+        if (resolved) {
+          allMissing = false;
+          break;
+        }
+      }
+      
+      if (allMissing) {
+        // Skip template - don't add commands, don't throw errors
+        this.emit("message", {
+          stderr: \`Skipping optional template \${opts.templatename} - all required parameters missing\`,
+          result: null,
+          exitCode: 0,
+          command: String(opts.templatename || opts.template),
+          execute_on: undefined,
+          index: 0,
+        });
+        return; // Exit early, don't process this template
+      }
+    }
+    `
+  }
+}
+

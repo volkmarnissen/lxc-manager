@@ -1,0 +1,7 @@
+[
+  {
+    "host": "ubuntupve",
+    "port": 22,
+    "current": true
+  }
+]

@@ -1,0 +1,140 @@
+{
+  "execute_on": "ve",
+  "name": "Mosquitto Parameters",
+  "description": "Set application-specific parameters for Mosquitto",
+  "parameters": [
+    {
+      "id": "hostname",
+      "name": "Hostname",
+      "type": "string",
+      "default": "mosquitto",
+      "required": true,
+      "description": "Hostname for the Mosquitto container"
+    },
+    {
+      "id": "auth_mode",
+      "name": "Authentication Mode",
+      "type": "enum",
+      "default": "password",
+      "required": true,
+      "description": "Authentication mode: none (no authentication), password (username/password), certificate (client certificate authentication)",
+      "enumValues": ["none", "password", "certificate"]
+    },
+    {
+      "id": "mqtt_port",
+      "name": "MQTT Port",
+      "type": "string",
+      "default": "1883",
+      "required": false,
+      "advanced": true,
+      "description": "Port number for MQTT (default: 1883)"
+    },
+    {
+      "id": "mqtts_port",
+      "name": "MQTTS Port (TLS)",
+      "type": "string",
+      "default": "8883",
+      "required": false,
+      "advanced": true,
+      "description": "Port number for MQTT over TLS (default: 8883). Only used with certificate authentication."
+    },
+    {
+      "id": "mqtt_username",
+      "name": "MQTT Username",
+      "type": "string",
+      "required": false,
+      "description": "Username for MQTT broker login (required for password authentication mode)"
+    },
+    {
+      "id": "mqtt_password",
+      "name": "MQTT Password",
+      "type": "string",
+      "required": false,
+      "secure": true,
+      "description": "Password for MQTT broker login (required for password authentication mode)"
+    },
+    {
+      "id": "bind_address",
+      "name": "Bind Address",
+      "type": "string",
+      "default": "0.0.0.0",
+      "required": false,
+      "advanced": true,
+      "description": "IP address to bind to. Use 0.0.0.0 to accept connections from all interfaces"
+    },
+    {
+      "id": "server_cert",
+      "name": "Server Certificate",
+      "type": "string",
+      "required": false,
+      "advanced": true,
+      "upload": true,
+      "description": "Server certificate file for TLS. If not provided, a server certificate will be generated."
+    },
+    {
+      "id": "server_key",
+      "name": "Server Private Key",
+      "type": "string",
+      "required": false,
+      "advanced": true,
+      "upload": true,
+      "description": "Server private key file for TLS. Required if server certificate is provided."
+    },
+    {
+      "id": "ca_cert",
+      "name": "CA Certificate",
+      "type": "string",
+      "required": false,
+      "advanced": true,
+      "upload": true,
+      "description": "CA certificate file for client certificate authentication (optional). If provided, client certificates will be required."
+    },
+    {
+      "id": "ca_key",
+      "name": "CA Private Key",
+      "type": "string",
+      "required": false,
+      "advanced": true,
+      "upload": true,
+      "description": "CA private key file (optional). Required if CA certificate is provided."
+    }
+  ],
+  "commands": [
+    {
+      "properties": [
+        {
+          "id": "ostype",
+          "value": "alpine"
+        },
+        {
+          "id": "packages",
+          "value": "mosquitto mosquitto-clients"
+        },
+        {
+          "id": "volumes",
+          "value": "config=/etc/mosquitto\ndata=/var/lib/mosquitto\nsecret=/etc/mosquitto/certs"
+        },
+        {
+          "id": "username",
+          "value": "mosquitto"
+        },
+        {
+          "id": "command",
+          "value": "mosquitto"
+        },
+        {
+          "id": "command_args",
+          "value": "-c /etc/mosquitto/mosquitto.conf"
+        },  
+        {
+          "id": "group",
+          "value": "mosquitto"
+        },
+        {
+          "id": "owned_paths",
+          "value": "/etc/mosquitto /var/lib/mosquitto /var/log/mosquitto /etc/mosquitto/certs"
+        }
+      ]
+    }
+  ]
+}

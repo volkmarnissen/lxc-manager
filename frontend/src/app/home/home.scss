@@ -1,0 +1,37 @@
+:host {
+	display: block;
+	padding: 16px;
+}
+
+.cards-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	gap: 16px;
+}
+
+.card {
+	display: block;
+	text-decoration: none;
+	color: inherit;
+	border-radius: 8px;
+	padding: 16px;
+	background: #ffffff;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+	transition: box-shadow 150ms ease, transform 150ms ease;
+}
+
+.card:hover {
+	box-shadow: 0 4px 6px rgba(0,0,0,0.18), 0 2px 4px rgba(0,0,0,0.18);
+	transform: translateY(-1px);
+}
+
+.card-title {
+	font-size: 18px;
+	font-weight: 600;
+	margin-bottom: 8px;
+}
+
+.card-body {
+	font-size: 14px;
+	opacity: 0.8;
+}

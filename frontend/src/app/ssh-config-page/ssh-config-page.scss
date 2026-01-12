@@ -1,0 +1,15 @@
+.ssh-config-page { padding: 16px; display: flex; justify-content: center; }
+.ssh-config-page .ssh-dialog { width: 100%; max-width: 520px; }
+.page-header { display: block; margin-bottom: 12px; text-align: center; }
+.ssh-config-page h2 { margin: 0; font-weight: 600; }
+.add-row { display: flex; align-items: center; gap: 8px; }
+.emphasized { background: #fff8e1; border: 1px solid #f9a825; padding: 8px 12px; border-radius: 6px; }
+
+.grid-row { display: grid; grid-template-columns: 40px 1fr 140px 48px; gap: 8px; align-items: center; margin-bottom: 12px; }
+.col.radio { display: flex; align-items: center; justify-content: center; }
+.col.host, .col.port, .col.actions { display: flex; align-items: center; justify-content: center; }
+.col.actions button { align-self: center; }
+.col.radio mat-radio-button { display: inline-flex; align-items: center; }
+.field { width: 100%; }
+.col.host .field { max-width: 280px; margin: 0 auto; }
+.col.port .field { max-width: 120px; margin: 0 auto; }

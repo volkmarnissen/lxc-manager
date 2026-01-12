@@ -1,0 +1,15 @@
+{
+  "execute_on": "ve",
+  "name": "List Host USB Input Devices",
+  "description": "Lists all USB input devices (keyboards, mice) available on the VE host",
+  "parameters": [],
+  "commands": [
+    {
+      "name": "List USB Input Devices",
+      "script": "list-host-usb-input-devices.sh",
+      "library": "usb-device-common.sh",
+      "outputs": ["usb_input_devices"]
+    }
+  ]
+}
+

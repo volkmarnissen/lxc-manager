@@ -1,0 +1,21 @@
+# Node modules
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Tests and test data
+tests/
+jsonTest/
+coverage/
+
+# Editor/IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Misc
+*.tgz
+.env
+.env.*

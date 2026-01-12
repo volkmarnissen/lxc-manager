@@ -1,0 +1,5 @@
+{
+  "name": "Invalid Application",
+  "description": "Should be shown as invalid application",
+  "installation": ["non-existing-template.json"]
+}

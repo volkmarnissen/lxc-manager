@@ -1,0 +1,85 @@
+<h2>Process Monitor</h2>
+
+@if (messages && messages.length > 1) {
+  <!-- Multiple groups: use accordion -->
+  <mat-accordion>
+    @for (group of messages; track group) {
+      <mat-expansion-panel [expanded]="true">
+        <mat-expansion-panel-header>
+          <mat-panel-title>{{ group.application }} / {{ group.task }}</mat-panel-title>
+        </mat-expansion-panel-header>
+        <ng-container *ngTemplateOutlet="groupContent; context: { group: group }"></ng-container>
+      </mat-expansion-panel>
+    }
+  </mat-accordion>
+} @else {
+  <!-- Single group: no accordion needed -->
+  @for (group of messages; track group) {
+    <div class="process-group">
+      <h3>{{ group.application }} / {{ group.task }}</h3>
+      <ng-container *ngTemplateOutlet="groupContent; context: { group: group }"></ng-container>
+    </div>
+  } @empty {
+    <div>No process messages available.</div>
+  }
+}
+
+<!-- Shared template for group content -->
+<ng-template #groupContent let-group="group">
+  <!-- Successful commands as compact list -->
+  <ul class="success-list">
+    @for (msg of group.messages; track msg.index) {
+      @if (msg.exitCode === 0) {
+        <li>
+          <span class="success-icon">✓</span>
+          <span class="command-text">{{ msg.command }}</span>
+          @if (msg.stderr) {
+            <button mat-icon-button type="button" (click)="openStderrDialog(msg)" class="info-button" [attr.aria-label]="'Show stderr output for ' + msg.command">
+              <mat-icon>info</mat-icon>
+            </button>
+          }
+        </li>
+      }
+    }
+  </ul>
+  
+  <!-- Success message when all completed -->
+  @for (msg of group.messages; track msg.index) {
+    @if (msg.finished) {
+      <div class="success-block">
+        <span class="success-icon-large">✓</span>
+        <strong>{{ msg.result }}</strong>
+        <button class="back-btn" routerLink="/applications">← Back to Applications</button>
+      </div>
+    }
+  }
+  
+  <!-- Error displayed prominently with restart button -->
+  @for (msg of group.messages; track msg.index) {
+    @if (msg.exitCode !== 0 && !msg.finished) {
+      <div class="error-block">
+        <div class="error-header">
+          <span class="error-icon">✗</span>
+          <strong>{{ msg.command }}</strong>
+          <span class="exit-code">Exit code: {{ msg.exitCode }}</span>
+        </div>
+        @if (msg.error?.message) {
+          <div class="error-message">{{ msg.error.message }}</div>
+        }
+        @if (msg.stderr) {
+          <pre class="error-stderr">{{ msg.stderr }}</pre>
+        }
+        @if (group.restartKey) {
+          <div class="restart-buttons">
+            <button class="restart-btn" (click)="triggerRestart(group)" title="Restart from last successful step">
+              ↻ Restart
+            </button>
+            <button class="restart-full-btn" (click)="triggerRestartFull(group)" title="Restart installation from beginning with same parameters">
+              ↻↻ Restart from Beginning
+            </button>
+          </div>
+        }
+      </div>
+    }
+  }
+</ng-template>

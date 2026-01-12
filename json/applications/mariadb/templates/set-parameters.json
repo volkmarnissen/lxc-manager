@@ -1,0 +1,89 @@
+{
+  "execute_on": "ve",
+  "name": "Set Parameters",
+  "description": "Set application-specific parameters for MariaDB",
+  "parameters": [
+    {
+      "id": "hostname",
+      "name": "Hostname",
+      "type": "string",
+      "default": "mariadb",
+      "required": true,
+      "description": "Hostname for the MariaDB container"
+    },
+    {
+      "id": "datadir",
+      "name": "Data Directory",
+      "type": "string",
+      "default": "/var/lib/mysql",
+      "required": false,
+      "advanced": true,
+      "description": "Directory where MariaDB stores its data files"
+    },
+    {
+      "id": "root_password",
+      "name": "Root Password",
+      "type": "string",
+      "required": false,
+      "secure": true,
+      "description": "Password for the MariaDB root user. If not set, Unix socket authentication will be used."
+    },
+    {
+      "id": "bind_address",
+      "name": "Bind Address",
+      "type": "string",
+      "default": "0.0.0.0",
+      "required": false,
+      "advanced": true,
+      "description": "IP address to bind to. Use 0.0.0.0 to accept connections from all interfaces (required for remote access, e.g., from phpMyAdmin)"
+    },
+    {
+      "id": "allow_remote_root",
+      "name": "Allow Remote Root Login",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "advanced": true,
+      "description": "Allow root user to connect from remote hosts (not recommended for security)"
+    },
+    {
+      "id": "remove_anonymous_users",
+      "name": "Remove Anonymous Users",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "advanced": true,
+      "description": "Remove anonymous users created for socket authentication"
+    },
+    {
+      "id": "remove_test_database",
+      "name": "Remove Test Database",
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "description": "Remove the default test database"
+    }
+  ],
+  "commands": [
+    {
+      "properties": [
+        {
+          "id": "ostype",
+          "value": "alpine"
+        },
+        {
+          "id": "packages",
+          "value": "mariadb mariadb-client"
+        },
+        {
+          "id": "remove_test_database",
+          "value": "{{remove_test_database}}"
+        },
+        {
+          "id": "volumes",
+          "value": "data=mysql"
+        }
+      ]
+    }
+  ]
+}
