@@ -37,7 +37,7 @@ jobs:
             version="$(npm version ${{ inputs.version_number }} | sed -e 's/^v//g' )"
             git push --follow-tags
           else
-            version="$(node -p \"require('./package.json').version\")"
+            version="$(grep -o '"version": "[^"]*"' package.json | sed 's/"version": "\(.*\)"/\1/')"
           fi
           echo "version=$version" >> $GITHUB_OUTPUT
           # Check if this is a major or minor release (patch number is 0)
@@ -68,8 +68,8 @@ jobs:
           echo "::endgroup::"
           echo "::group::Packing npm tarball ..."
           info=$(npm pack --json)
-          tarball=$(node -e "const i=JSON.parse(process.env.INFO); console.log(i[0].filename)" INFO="$info")
-          version=$(node -e "const i=JSON.parse(process.env.INFO); console.log(i[0].version)" INFO="$info")
+          tarball=$(echo "$info" | grep -o '"filename": "[^"]*"' | sed 's/"filename": "\(.*\)"/\1/')
+          version=$(echo "$info" | grep -o '"version": "[^"]*"' | sed 's/"version": "\(.*\)"/\1/')
           mv "$tarball" docker/lxc-manager.tgz
           echo "tarball=docker/lxc-manager.tgz" >> $GITHUB_OUTPUT
           echo "version=$version" >> $GITHUB_OUTPUT
@@ -84,6 +84,8 @@ jobs:
 
       - name: Build and push Docker image from npm pack
         uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_SUMMARY: false
         with:
           context: .
           file: docker/Dockerfile.npm-pack
@@ -97,6 +99,13 @@ jobs:
             BUILD_REF=${{ github.sha }}
             BUILD_DATE=${{ github.run_started_at }}
             BUILD_REPOSITORY=${{ github.repository }}
+
+      - name: Container Registry Link
+        run: |
+          echo "::notice title=Docker Image::Docker image available at: https://github.com/${{ github.repository }}/pkgs/container/lxc-manager"
+          echo "Image tags:"
+          echo "  - ${{ env.REGISTRY }}/${{ github.repository_owner }}/lxc-manager:${{ steps.pack.outputs.version }}"
+          echo "  - ${{ env.REGISTRY }}/${{ github.repository_owner }}/lxc-manager:latest"
 
       - name: Create GitHub Release (for major/minor releases)
         if: steps.set-version.outputs.isRelease == 'true'
