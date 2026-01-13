@@ -11,7 +11,7 @@ The **framework-based approach** is the simplest way to create a new application
 3. **UID/GID** of the user inside the container (e.g., `1000:1000`)
 
 
-###Use the Web UI to create a new application:
+### Use the Web UI to create a new application:
 
 1. **Open the Framework UI** in LXC Manager web interface (usually under "Create Application" or "Frameworks")
 2. **Select the OCI Image Framework** (`framework-oci-volumes`)
