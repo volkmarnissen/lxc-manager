@@ -140,7 +140,7 @@ while IFS= read -r line <&3; do
   fi
   
   # Check if mount already exists
-  if pct config "$VMID" | grep -q "mp[0-9]*: $SOURCE_PATH,mp=$CONTAINER_PATH"; then
+  if pct config "$VMID" | grep -a -q "mp[0-9]*: $SOURCE_PATH,mp=$CONTAINER_PATH"; then
     echo "Mount $SOURCE_PATH -> $CONTAINER_PATH already exists, skipping." >&2
     continue
   fi
