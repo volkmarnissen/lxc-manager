@@ -258,14 +258,14 @@ fi
 
 echo "  OCI image ready: ${template_path}" >&2
 
-# 2) Configure subuid/subgid before container creation
-echo "Step 2: Configuring subuid/subgid..." >&2
+# 2) Configure UID/GID mapping (subuid/subgid only, container config after creation)
+echo "Step 2: Configuring UID/GID mapping..." >&2
 execute_script_from_github \
-  "json/shared/scripts/configure-subuid-subgid.sh" \
+  "json/shared/scripts/setup-lxc-uid-mapping.sh" \
   "-" \
   "uid=${LXC_UID}" \
   "gid=${LXC_GID}"
-echo "  subuid/subgid configured" >&2
+echo "  UID/GID ranges configured in /etc/subuid and /etc/subgid" >&2
 
 # 3) Create LXC container from OCI image
 echo "Step 3: Creating LXC container..." >&2
@@ -287,27 +287,12 @@ fi
 
 echo "  Container created: ${vm_id}" >&2
 
-# 3.5) Configure UID/GID mapping in container config
-echo "Step 3.5: Configuring UID/GID mapping..." >&2
-config_file="/etc/pve/lxc/${vm_id}.conf"
-
-# Stop container to modify config
-pct stop "${vm_id}" 2>/dev/null || true
-
-# Remove any automatically created idmap entries
-sed -i '/^lxc\.idmap/d' "$config_file" 2>/dev/null || true
-
-# Add 1:1 mapping for UID/GID 1001 (lxc user)
-cat >> "$config_file" <<EOF
-lxc.idmap: u 0 100000 ${LXC_UID}
-lxc.idmap: g 0 100000 ${LXC_GID}
-lxc.idmap: u ${LXC_UID} ${LXC_UID} 1
-lxc.idmap: g ${LXC_GID} ${LXC_GID} 1
-lxc.idmap: u $((LXC_UID + 1)) $((100000 + LXC_UID + 1)) $((65536 - LXC_UID - 1))
-lxc.idmap: g $((LXC_GID + 1)) $((100000 + LXC_GID + 1)) $((65536 - LXC_GID - 1))
-EOF
-
-echo "  UID/GID mapping configured: Container UID ${LXC_UID} <-> Host UID ${LXC_UID} (1:1)" >&2
+# 3.5) Update container config with UID/GID mapping
+echo "Step 3.5: Applying UID/GID mapping to container..." >&2
+# Use the new script with vm_id to update container config
+raw_url="https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/json/shared/scripts/setup-lxc-uid-mapping.sh"
+curl -fsSL "$raw_url" | env uid="${LXC_UID}" gid="${LXC_GID}" vm_id="${vm_id}" python3
+echo "  Container config updated with 1:1 UID/GID mapping" >&2
 
 # 4) Mount ZFS pool if using ZFS storage
 echo "Step 4: Preparing storage..." >&2
