@@ -251,8 +251,8 @@ ostype=$(execute_script_from_github \
 echo "  OCI image ready: ${template_path}" >&2
 
 
-# 3) Create LXC container from OCI image
-echo "Step 3: Creating LXC container..." >&2
+# 2) Create LXC container from OCI image
+echo "Step 2: Creating LXC container..." >&2
 vm_id=$(execute_script_from_github \
   "json/shared/scripts/create-lxc-container.sh" \
   "vm_id" \
@@ -272,16 +272,25 @@ fi
 echo "  Container created: ${vm_id}" >&2
 # 3) Configure UID/GID mapping (subuid/subgid only, container config after creation)
 echo "Step 3: Configuring UID/GID mapping..." >&2
-if ! execute_script_from_github \
+# Run mapping script and capture mapped UID/GID for later steps (idempotent to call twice)
+mapped_uid=$(execute_script_from_github \
   "json/shared/scripts/setup-lxc-uid-mapping.py" \
-  "-" \
+  "mapped_uid" \
   "uid=${LXC_UID}" \
   "gid=${LXC_GID}" \
-  "vm_id=${vm_id}"; then
-  echo "Error: Failed to configure UID/GID mapping" >&2
-  exit 1
-fi
-echo "  UID/GID ranges configured in /etc/subuid and /etc/subgid and /etc/pve/lxc/${vm_id}.conf" >&2
+  "vm_id=${vm_id}" || echo "")
+mapped_gid=$(execute_script_from_github \
+  "json/shared/scripts/setup-lxc-uid-mapping.py" \
+  "mapped_gid" \
+  "uid=${LXC_UID}" \
+  "gid=${LXC_GID}" \
+  "vm_id=${vm_id}" || echo "")
+
+# Fallback to defaults if mapper returned nothing
+if [ -z "$mapped_uid" ]; then mapped_uid="$LXC_UID"; fi
+if [ -z "$mapped_gid" ]; then mapped_gid="$LXC_GID"; fi
+
+echo "  UID/GID ranges configured; mapped_uid=${mapped_uid}, mapped_gid=${mapped_gid}" >&2
 
 # 4) Mount ZFS pool if using ZFS storage
 echo "Step 4: Preparing storage..." >&2
@@ -298,7 +307,9 @@ if echo "$volume_base" | grep -q "^/"; then
         "host_mountpoint" \
         "storage_selection=zfs:${zfs_pool}" \
         "uid=${LXC_UID}" \
-        "gid=${LXC_GID}")
+        "gid=${LXC_GID}" \
+        "mapped_uid=${mapped_uid}" \
+        "mapped_gid=${mapped_gid}")
       if [ -z "$host_mountpoint" ]; then
         echo "Error: Failed to mount ZFS pool" >&2
         exit 1
@@ -316,6 +327,10 @@ fi
 
 # 5) Bind volumes to container
 echo "Step 5: Binding volumes to container..." >&2
+# Log context for permissions/mapping
+echo "  Host: ${proxmox_hostname}" >&2
+echo "  Container ID: ${vm_id}, Container hostname: ${hostname}" >&2
+echo "  Using UID/GID: ${LXC_UID}/${LXC_GID} (mapped: ${mapped_uid}/${mapped_gid})" >&2
 # Set volumes as environment variable for the script
 export VOLUMES="config=config
 secure=secure"
@@ -331,6 +346,8 @@ if ! execute_script_from_github \
   "username=" \
   "uid=${LXC_UID}" \
   "gid=${LXC_GID}" \
+  "mapped_uid=${mapped_uid}" \
+  "mapped_gid=${mapped_gid}" \
   "volumes=\$VOLUMES"; then
   echo "Error: Failed to bind volumes to container" >&2
   exit 1

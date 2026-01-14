@@ -18,6 +18,15 @@ export class MarkdownReader {
     s = s.replace(/\s+/g, " ");
     return s;
   }
+  // Preserve original case for display while removing anchors/backticks/colons and normalizing whitespace
+  private static cleanHeadingDisplay(name: string): string {
+    let s = name.trim();
+    s = s.replace(/\s*\{#.*\}\s*$/, "");
+    s = s.replace(/:+\s*$/, "");
+    s = s.replace(/^`+|`+$/g, "");
+    s = s.replace(/\s+/g, " ");
+    return s;
+  }
   /**
    * Reads a markdown file and extracts a specific section based on heading name.
    * Sections are defined by ## headings. Returns text from heading until next ## or EOF.
@@ -125,7 +134,7 @@ export class MarkdownReader {
       for (const line of lines) {
         const headingMatch = line.match(/^##\s+(.+)$/);
         if (headingMatch) {
-          sections.push(MarkdownReader.normalizeHeadingName(headingMatch[1]!));
+          sections.push(MarkdownReader.cleanHeadingDisplay(headingMatch[1]!));
         }
       }
       
