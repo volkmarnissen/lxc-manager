@@ -38,11 +38,56 @@ if ! command -v gh >/dev/null 2>&1; then
 else
   # Sync fork with upstream (if this is a fork)
   echo "${BLUE}==> Syncing GitHub repository with upstream...${NC}"
-  if gh repo sync --force 2>/dev/null; then
+  # Use sync without --force to avoid overwriting local work
+  # If conflicts exist, gh repo sync will fail and show instructions
+  if gh repo sync 2>/dev/null; then
     echo "${GREEN}✓ GitHub repository synced with upstream${NC}"
   else
-    # Not a fork or no upstream configured - this is okay
-    echo "${YELLOW}Note: No upstream sync performed (not a fork or no upstream configured)${NC}"
+    # Sync failed - could be due to conflicts or not being a fork
+    SYNC_EXIT_CODE=$?
+    if [ $SYNC_EXIT_CODE -ne 0 ]; then
+      echo "${YELLOW}Note: GitHub upstream sync was not possible${NC}"
+      echo "${YELLOW}This could mean:${NC}"
+      echo "${YELLOW}  - This repository is not a fork${NC}"
+      echo "${YELLOW}  - The fork has diverged from upstream (conflicting commits)${NC}"
+      echo "${YELLOW}  - No upstream repository is configured${NC}"
+      echo ""
+      
+      # Try to get upstream URL
+      UPSTREAM_URL=$(gh repo view --json parent -q .parent.url 2>/dev/null || echo "")
+      
+      if [ -n "$UPSTREAM_URL" ]; then
+        echo "${YELLOW}Gentle alternative - Compare upstream in separate branch:${NC}"
+        
+        # Check if upstream remote already exists
+        if git remote get-url upstream >/dev/null 2>&1; then
+          echo "  1. ${GREEN}✓${NC} Upstream remote already configured"
+        else
+          echo "  1. Add upstream as remote:"
+          echo "     ${BLUE}git remote add upstream ${UPSTREAM_URL}${NC}"
+        fi
+        
+        echo "  2. Fetch upstream into new branch:"
+        echo "     ${BLUE}git fetch upstream main:upstream-compare${NC}"
+        echo "  3. Compare changes:"
+        echo "     ${BLUE}git diff main upstream-compare${NC}"
+        echo "  4. Merge upstream changes into main:"
+        echo "     ${BLUE}git checkout main${NC}"
+        echo "     ${BLUE}git merge upstream-compare${NC}"
+        echo "     ${BLUE}git checkout ${CURRENT_BRANCH}${NC}"
+        echo "  5. Merge main into your branch:"
+        echo "     ${BLUE}git merge main${NC}"
+        echo "  6. Push your changes:"
+        echo "     ${BLUE}git push${NC}"
+        echo ""
+      fi
+      
+      echo "${YELLOW}Or sync directly (${RED}overwrites your fork on GitHub!${YELLOW}):${NC}"
+      echo "     ${RED}gh repo sync --force${NC}"
+      echo ""
+      echo "${YELLOW}Continuing with local repository sync...${NC}"
+      # Don't fail the hook - continue with local sync
+    fi
   fi
 fi
 
