@@ -186,8 +186,6 @@ export interface IInstallationEntry {
   task: TaskType;
 }
 
-export type IInstallationsResponse = IInstallationEntry[];
-
 export interface IInstallationEntry {
   application: IApplicationWeb;
   vmInstallKey: string;
