@@ -13,7 +13,7 @@
     },
     {
       "id": "install_replug_watcher",
-      "name": "Live Replug (Host-Installation)",
+      "name": "Live Replug (Host Installation)",
       "type": "boolean",
       "default": true,
       "advanced": true

@@ -44,24 +44,24 @@ interface IProcessTemplateOpts {
   webuiTemplates: string[];
   veContext?: IVEContext;
   executionMode?: ExecutionMode;  // Execution mode for VeExecution
-  processedTemplates?: Map<string, IProcessedTemplate>;  // NEU: Sammelt Template-Informationen
-  templateReferences?: Map<string, Set<string>>;  // NEU: Template-Referenzen (template -> referenzierte Templates)
+  processedTemplates?: Map<string, IProcessedTemplate>;  // NEW: Collects template information
+  templateReferences?: Map<string, Set<string>>;  // NEW: Template references (template -> referenced templates)
 }
 export interface IParameterWithTemplate extends IParameter {
   template: string;
 }
 export interface IProcessedTemplate {
-  name: string;              // Template-Name (ohne .json)
-  path: string;              // Vollständiger Pfad zur Template-Datei
+  name: string;              // Template name (without .json)
+  path: string;              // Full path to the template file
   isShared: boolean;         // true = shared template, false = app-specific
-  skipped: boolean;          // true = alle Commands geskippt
-  conditional: boolean;       // true = skip_if_all_missing oder optional
-  referencedBy?: string[];    // Templates, die diesen Template referenzieren
-  references?: string[];      // Templates, die von diesem Template referenziert werden
-  templateData?: ITemplate;   // NEU: Vollständige Template-Daten (validiert)
-  capabilities?: string[];    // NEU: Extrahierte Capabilities aus Script-Headern
-  resolvedScriptPaths?: Map<string, string>;  // NEU: script name -> full path
-  usedByApplications?: string[];  // NEU: Applications, die diesen Template verwenden
+  skipped: boolean;          // true = all commands skipped
+  conditional: boolean;       // true = skip_if_all_missing or skip_if_property_set
+  referencedBy?: string[];    // Templates that reference this template
+  references?: string[];      // Templates referenced by this template
+  templateData?: ITemplate;   // NEW: Full template data (validated)
+  capabilities?: string[];    // NEW: Extracted capabilities from script headers
+  resolvedScriptPaths?: Map<string, string>;  // NEW: script name -> full path
+  usedByApplications?: string[];  // NEW: Applications that use this template
 }
 
 export interface ITemplateProcessorLoadResult {
@@ -69,8 +69,8 @@ export interface ITemplateProcessorLoadResult {
   parameters: IParameterWithTemplate[];
   resolvedParams: IResolvedParam[];
   webuiTemplates: string[];
-  application?: IApplication;  // Vollständige Application-Daten (inkl. Parent)
-  processedTemplates?: IProcessedTemplate[];  // Liste aller verarbeiteten Templates
+  application?: IApplication;  // Full application data (incl. parent)
+  processedTemplates?: IProcessedTemplate[];  // List of all processed templates
 }
 export class TemplateProcessor extends EventEmitter {
   resolvedParams: IResolvedParam[] = [];

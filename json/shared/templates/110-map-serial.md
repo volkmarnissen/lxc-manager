@@ -1,122 +1,122 @@
 # Map Serial Device (110)
 
-Diese Vorlage mappt ein Serial-/USB-Serial-Gerät vom Proxmox-Host in einen LXC-Container.
+This template maps a serial / USB-serial device from the Proxmox host into an LXC container.
 
-Ziel ist eine stabile Device-Path-Story für den Container (z. B. immer `/dev/ttyUSB0`) – auch wenn das Gerät am Host nach einem Replug einen anderen `/dev/ttyUSB*`-Namen bekommt.
+The goal is a stable device path inside the container (e.g. always `/dev/ttyUSB0`) even if the device shows up as a different `/dev/ttyUSB*` node on the host after a replug.
 
-## Verwendung (stabil + optional live replug)
+## Usage (stable + optional live replug)
 
-1. **`host_device_path` setzen**:
-   - Wähle einen stabilen Pfad wie `/dev/serial/by-id/...` (enthält oft die USB-Seriennummer).
-   - Vorteil: Mapping ist stabil über Replug hinweg (spätestens nach Container-Restart).
+1. **Set `host_device_path`**:
+   - Choose a stable path like `/dev/serial/by-id/...` (often includes the USB serial number).
+   - Benefit: mapping stays stable across replugs (at the latest after a container restart).
 
-2. **Optional (Advanced): `Live Replug (Host-Installation)` aktivieren** (`install_replug_watcher=true`):
-   - Installiert am Proxmox-Host eine **udev-Regel** + einen **systemd oneshot Service**.
-   - Bei einem Replug wird das aktuell aufgelöste Device-Node automatisch erneut **in den laufenden Container gebind-mountet**.
-   - Ergebnis: Replug funktioniert in der Praxis ohne Container-Restart.
+2. **Optional (Advanced): enable `Live Replug (Host Installation)`** (`install_replug_watcher=true`):
+   - Installs a **udev rule** + a **systemd oneshot service** on the Proxmox host.
+   - On replug, the currently resolved device node is automatically **bind-mounted again into the running container**.
+   - Result: in practice, replug works without restarting the container.
 
-Warum ist das nötig?
+Why is this needed?
 
-- Ein USB-Serial-Adapter taucht nach Replug oft als **anderes** `/dev/ttyUSBX` auf.
-- Der Container sieht aber typischerweise einen **festen Zielpfad** (z. B. `/dev/ttyUSB0`), weil Anwendungen so konfiguriert werden.
-- Damit dieser feste Zielpfad im **laufenden** Container wieder auf das neue Host-Device zeigt, braucht es einen **Host-Trigger**, der neu bind-mountet.
+- A USB-serial adapter often appears as a **different** `/dev/ttyUSBX` after a replug.
+- The container typically uses a **fixed target path** (e.g. `/dev/ttyUSB0`) because applications are configured that way.
+- To make that fixed path point to the new host device **while the container is running**, you need a host-side trigger that re-binds the mount.
 
-Wichtig: `install_replug_watcher=true` erfordert `host_device_path` (z. B. `/dev/serial/by-id/...`).
+Important: `install_replug_watcher=true` requires `host_device_path` (e.g. `/dev/serial/by-id/...`).
 
-Nachteil / Trade-off:
+Downside / trade-off:
 
-- Diese Option muss **am Proxmox-Host** etwas installieren (udev-Regel + systemd Unit). Wenn du das nicht möchtest, bleibt als Alternative nur „Container neu starten nach Replug“.
+- This option installs things **on the Proxmox host** (udev rule + systemd unit). If you don't want host-side installation, the alternative is: restart the container after replug.
 
 ## USB Serial Port
 
-Wähle hier den USB-Serial-Adapter aus.
+Select the USB-serial adapter here.
 
-- Der `value` ist ein stabiler Pfad wie `/dev/serial/by-id/...`.
-- Der Anzeigename ist menschenlesbar (Vendor/Model/Serial), aber entscheidend ist der `value`.
+- The `value` is a stable path like `/dev/serial/by-id/...`.
+- The label is human-readable (vendor/model/serial), but the `value` is what matters.
 
-Wenn du das Feld leer lässt, wird das Serial-Mapping übersprungen.
+If you leave this field empty, serial mapping will be skipped.
 
-## Live Replug (Host-Installation)
+## Live Replug (Host Installation)
 
-Aktiviere diese Option, wenn das Device nach einem Replug **ohne Container-Restart** weiter funktionieren soll.
+Enable this option if the device should keep working after a replug **without restarting the container**.
 
-Was passiert technisch?
+What happens technically?
 
-- Auf dem Proxmox-Host wird eine udev-Regel + eine systemd oneshot Unit installiert.
-- Bei jedem Replug (`ACTION=add`) wird das aktuell aufgelöste Device-Node (aus `host_device_path`) erneut in den laufenden Container gebind-mountet.
-- Ziel ist immer `container_device_path` (z. B. `/dev/serial-by-id` oder für Legacy `/dev/ttyUSB0`).
+- A udev rule + a systemd oneshot unit is installed on the Proxmox host.
+- On every replug (`ACTION=add`), the currently resolved device node (from `host_device_path`) is bind-mounted again into the running container.
+- The target is always `container_device_path` (e.g. `/dev/serial-by-id` or for legacy setups `/dev/ttyUSB0`).
 
 Trade-off:
 
-- Host-seitige Installation (schreibt nach `/etc/udev/rules.d` und `/etc/systemd/system`).
+- Host-side installation (writes to `/etc/udev/rules.d` and `/etc/systemd/system`).
 
 ## ID of the VM
 
-ID des Ziel-Containers (Proxmox CT-ID), in den das Serial-Device gemappt werden soll.
+ID of the target container (Proxmox CT ID) into which the serial device will be mapped.
 
-- Beispiel: `114`
-- Hinweis: Dieses Mapping ist aktuell für **LXC** gedacht.
+- Example: `114`
+- Note: this mapping is currently intended for **LXC**.
 
-## Security-Hinweise
+## Security Notes
 
-- `map_usb_bus_directory=true` bedeutet **deutlich breiteren Zugriff**: der Container sieht und kann (je nach Kernel-/Treiber-Situation) potentiell mit **mehreren USB-Geräten** auf dem Host interagieren.
-- Für „minimalen Zugriff“ ist `host_device_path` die bessere Wahl, weil dabei nur ein konkreter Pfad in den Container gebind-mountet wird.
-- In einem **unprivileged LXC** sind Dateisystem- und UID/GID-Rechte zwar stärker eingeschränkt, aber **Device-Nodes sind eine eigene Sicherheitsdomäne**. Gib daher nur die Rechte frei, die du wirklich brauchst.
+- `map_usb_bus_directory=true` grants **much broader access**: the container can potentially see and interact with **multiple USB devices** on the host (depending on kernel/driver situation).
+- For “minimal access”, `host_device_path` is the better choice because it bind-mounts only a specific path into the container.
+- Even in an **unprivileged LXC**, filesystem and UID/GID permissions are more restricted, but **device nodes are a separate security domain**. Only grant the access you actually need.
 
-## Parameter-Guide (Kurzfassung)
+## Parameter Guide (Short)
 
-- `host_device_path`: Stabiler Host-Pfad, z. B. `/dev/serial/by-id/...`.
-- `install_replug_watcher`: Live-Replug ohne Container-Restart (udev + systemd rebind).
+- `host_device_path`: stable host path, e.g. `/dev/serial/by-id/...`.
+- `install_replug_watcher`: live replug without container restart (udev + systemd rebind).
 
 ## Container Device Path (`container_device_path`)
 
-Dieses Feld steuert **nur den Zielpfad im Container**.
+This field controls **only the target path inside the container**.
 
 - **Default:** `/dev/ttyUSB0`
-   - Das ist ein normaler Device-Node-Pfad, den praktisch jede App direkt öffnen kann.
-   - Die Stabilität kommt vom Host-Pfad `/dev/serial/by-id/...` (Quelle) + optionalem Live-Replug.
+   - This is a regular device node path that almost any app can open directly.
+   - Stability comes from the host path `/dev/serial/by-id/...` (source) + optional live replug.
 
-- **Legacy-Beispiel:** `/dev/ttyUSB0`
-   - Manche ältere Container/Apps erwarten hart `/dev/ttyUSB0`.
-   - Setze dafür explizit: `container_device_path=/dev/ttyUSB0`.
+- **Legacy example:** `/dev/ttyUSB0`
+   - Some older containers/apps expect a hard-coded `/dev/ttyUSB0`.
+   - In that case set explicitly: `container_device_path=/dev/ttyUSB0`.
 
-Wichtig:
+Important:
 
-- Der Replug-Mechanismus (`install_replug_watcher`) bind-mountet nach Replug immer wieder auf **genau diesen** Zielpfad.
-   - D. h. wenn du `/dev/ttyUSB0` als Ziel wählst, bleibt auch `/dev/ttyUSB0` nach Replug stabil (ohne Restart), solange der Host-Rebind aktiv ist.
+- The replug mechanism (`install_replug_watcher`) always bind-mounts again to **exactly this** target path.
+   - That means if you choose `/dev/ttyUSB0` as the target, `/dev/ttyUSB0` stays stable after replug (without restart) as long as the host rebind is active.
 
 ## UID
 
-- **Bedeutung**: Container-UID, die im Container Zugriff haben soll.
-- **Standard**: `0` (root).
-- **Unprivileged Container**: root im Container ist nicht root auf dem Host.
-   Damit im Container nicht `nobody` erscheint, setzt das Script die Host-Ownership des Device-Nodes auf die gemappten Host-IDs (via `lxc.idmap` oder Proxmox-Default).
+- **Meaning**: container UID that should have access inside the container.
+- **Default**: `0` (root).
+- **Unprivileged container**: root inside the container is not root on the host.
+   To avoid showing up as `nobody` inside the container, the script sets host ownership of the device node to the mapped host IDs (via `lxc.idmap` or Proxmox default).
 
 ## GID
 
-- **Bedeutung**: Container-GID für den Zugriff.
-- **Standard**: `20` (typisch `dialout` auf Debian/Ubuntu; in Alpine kann die Gruppennummer abweichen).
-- **Beispiel**: `gid=20` ergibt im Container effektiv `root:dialout`, sofern die Gruppe existiert.
-- **Unprivileged Container**: Auch hier gilt: Script mappt/übersetzt auf passende Host-GID, damit es nicht als `nobody` endet.
+- **Meaning**: container GID for access.
+- **Default**: `20` (typically `dialout` on Debian/Ubuntu; on Alpine the group number may differ).
+- **Example**: `gid=20` results in `root:dialout` inside the container (if the group exists).
+- **Unprivileged container**: same idea—script maps/translates to a suitable host GID so it doesn't end up as `nobody`.
 
 ## Mapped UID (Host)
 
-Optional: explizite Host-UID, die auf dem Host für den Device-Node gesetzt wird.
+Optional: explicit host UID to set on the host for the device node.
 
-- Wenn leer, wird automatisch gemappt (aus `lxc.idmap` oder Proxmox-Default `100000 + uid`).
-- Nur nötig, wenn du bewusst eine spezielle ID-Mapping-Konfiguration nutzt.
+- If empty, it will be mapped automatically (from `lxc.idmap` or Proxmox default `100000 + uid`).
+- Only needed if you intentionally use a special ID mapping configuration.
 
 ## Mapped GID (Host)
 
-Optional: explizite Host-GID, die auf dem Host für den Device-Node gesetzt wird.
+Optional: explicit host GID to set on the host for the device node.
 
-- Wenn leer, wird automatisch gemappt (aus `lxc.idmap` oder Proxmox-Default `100000 + gid`).
-- Nur nötig, wenn du bewusst eine spezielle ID-Mapping-Konfiguration nutzt.
+- If empty, it will be mapped automatically (from `lxc.idmap` or Proxmox default `100000 + gid`).
+- Only needed if you intentionally use a special ID mapping configuration.
 
 ## Container Device Path
 
-Der Zielpfad im Container, auf den gebind-mountet wird.
+The target path inside the container to which the device is bind-mounted.
 
 - **Default:** `/dev/ttyUSB0`
-- Typisch für Apps/Services, die einfach einen festen Port-Pfad brauchen.
-- Für mehrere Adapter solltest du pro Adapter einen eigenen Zielpfad wählen (z. B. `/dev/ttyUSB0`, `/dev/ttyUSB1`, ...).
+- Typical for apps/services that just need a fixed port path.
+- For multiple adapters, choose a separate target path per adapter (e.g. `/dev/ttyUSB0`, `/dev/ttyUSB1`, ...).

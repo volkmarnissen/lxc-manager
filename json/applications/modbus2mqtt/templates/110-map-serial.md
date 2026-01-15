@@ -1,35 +1,35 @@
 # Map Serial Device (Modbus2Mqtt)
 
-Diese Variante ist für Modbus2Mqtt gedacht und macht `host_device_path` **verpflichtend**, damit das UI den Serial-Port immer abfragt.
+This variant is intended for Modbus2Mqtt and makes `host_device_path` **required**, so the UI always asks for the serial port.
 
 ## USB Serial Port
 
-Wähle den Host-Serial-Port (stabiler Pfad, typischerweise unter `/dev/serial/by-id/...`).
+Select the host serial port (stable path, typically under `/dev/serial/by-id/...`).
 
-## Live Replug (Host-Installation)
+## Live Replug (Host Installation)
 
-Wenn aktiviert, wird auf dem Proxmox-Host ein udev+systemd Replug-Mechanismus installiert, damit ein kurzes Abziehen/Einstecken ohne Container-Restart wieder funktioniert.
+If enabled, a udev+systemd replug mechanism is installed on the Proxmox host so unplug/replug works again without restarting the container.
 
 ## ID of the VM
 
-CT-ID des Ziel-Containers (Proxmox LXC-ID).
+CT ID of the target container (Proxmox LXC ID).
 
 ## UID
 
-UID **im Container**, dem das Device gehören soll (Standard: `0`).
+UID **inside the container** that should own the device (default: `0`).
 
 ## GID
 
-GID **im Container**, dem das Device gehören soll (Standard: `20`).
+GID **inside the container** that should own the device (default: `20`).
 
 ## Mapped UID (Host)
 
-Optional: explizite Host-UID (numerisch) für unprivilegierte Container.
+Optional: explicit host UID (numeric) for unprivileged containers.
 
 ## Mapped GID (Host)
 
-Optional: explizite Host-GID (numerisch) für unprivilegierte Container.
+Optional: explicit host GID (numeric) for unprivileged containers.
 
 ## Container Device Path
 
-Zielpfad im Container (Standard: `/dev/ttyUSB0`).
+Target path inside the container (default: `/dev/ttyUSB0`).
