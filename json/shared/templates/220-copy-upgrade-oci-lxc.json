@@ -1,14 +1,14 @@
 {
   "execute_on": "ve",
   "name": "Copy-Upgrade LXC from OCI Image",
-  "description": "Downloads an OCI image, creates a new LXC container from it, then copies relevant configuration from an existing lxc-manager managed container (mappings/devices/bind mounts) while keeping the new rootfs. Finally starts the new container and waits for readiness.\n\nFlow:\n- 011: Download OCI image and import to Proxmox storage\n- 220: Create new container + merge config from source\n- 200: Start container\n- 210: Wait for readiness",
+  "description": "Downloads an OCI image, creates a new LXC container from it, then copies relevant configuration from an existing oci-lxc-deployer managed container (mappings/devices/bind mounts) while keeping the new rootfs. Finally starts the new container and waits for readiness.\n\nFlow:\n- 011: Download OCI image and import to Proxmox storage\n- 220: Create new container + merge config from source\n- 200: Start container\n- 210: Wait for readiness",
   "parameters": [
     {
       "id": "source_vm_id",
       "name": "Source VM ID",
       "type": "number",
       "required": true,
-      "description": "Existing (source) LXC container ID that was created by lxc-manager. Its config will be used as the base for mappings/devices/bind mounts."
+      "description": "Existing (source) LXC container ID that was created by oci-lxc-deployer. Its config will be used as the base for mappings/devices/bind mounts."
     },
     {
       "id": "vm_id",

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Find variants of "LXC Manager" in a repository.
+"""Find variants of "OCI LXC Deployer" in a repository.
 
 Scans files recursively (skipping common VCS/build dirs), extracts matching
-strings like "lxc-manager", "LXCManager", "lxc_manager", "lxcManager",
+strings like "oci-lxc-deployer", "OciLxcDeployer", "oci_lxc_deployer", "ociLxcDeployer",
 removes duplicates and prints a sorted list.
 
 Usage: python3 scripts/find_lxc_manager_variants.py [path]
@@ -68,7 +68,7 @@ def matches_gitignore(relpath, name, gitignore_patterns):
 def find_variants(root, excludes, gitignore_patterns=None):
     if gitignore_patterns is None:
         gitignore_patterns = []
-    pattern = re.compile(r'(?<!\w)(lxc[\s._\-]?manager|lxcmanager)(?!\w)', re.IGNORECASE)
+    pattern = re.compile(r'(?<!\w)(lxc[\s._\-]?manager|oci-lxc-deployer)(?!\w)', re.IGNORECASE)
     variants = {}
 
     root = os.path.abspath(root)
@@ -100,6 +100,9 @@ def find_variants(root, excludes, gitignore_patterns=None):
 
         for fname in filenames:
             fpath = os.path.join(dirpath, fname)
+            # ignore backup files
+            if fname.lower().endswith('.bak'):
+                continue
             # skip binary files
             if is_binary_file(fpath):
                 continue
@@ -117,7 +120,7 @@ def find_variants(root, excludes, gitignore_patterns=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Find variants of "LXC Manager" in files')
+    parser = argparse.ArgumentParser(description='Find variants of "OCI LXC Deployer" in files')
     parser.add_argument('path', nargs='?', default='.', help='Root path to search')
     parser.add_argument('--exclude', '-e', action='append', default=[], help='Additional directory names to exclude (can be repeated)')
     args = parser.parse_args()

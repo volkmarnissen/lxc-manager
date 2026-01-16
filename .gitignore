@@ -29,7 +29,7 @@ alpine/repo/
 test-results/
 **/secret.txt
 **/storagecontext.json
-docker/lxc-manager.tgz
+docker/oci-lxc-deployer.tgz
 **/__pycache__/*
 
 

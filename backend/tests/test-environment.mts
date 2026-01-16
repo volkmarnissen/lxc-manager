@@ -141,7 +141,7 @@ export function createTestEnvironment(
   opts: CreateTestEnvironmentOptions = {},
 ): TestEnvironment {
   const repoRoot = repoRootFromTestFile(testFileUrl);
-  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "lxc-manager-test-"));
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "oci-lxc-deployer-test-"));
 
   const localDir = path.join(rootDir, "local");
   const jsonDir = path.join(rootDir, "json");

@@ -106,7 +106,7 @@ fi
 
 echo "LXC container $VMID ({{ hostname }}) created." >&2
 
-# Write notes/description so we can later detect lxc-manager managed containers.
+# Write notes/description so we can later detect oci-lxc-deployer managed containers.
 # Store the OCI image in a visible, identifiable line.
 OCI_IMAGE_RAW="{{ oci_image }}"
 OCI_IMAGE_VISIBLE=$(printf "%s" "$OCI_IMAGE_RAW" | sed -E 's#^(docker|oci)://##')
@@ -125,19 +125,19 @@ if [ "$APP_NAME_RAW" != "NOT_DEFINED" ]; then APP_NAME="$APP_NAME_RAW"; fi
 
 NOTES_TMP=$(mktemp)
 {
-  echo "<!-- lxc-manager:managed -->"
+  echo "<!-- oci-lxc-deployer:managed -->"
   if [ -n "$OCI_IMAGE_VISIBLE" ]; then
-    echo "<!-- lxc-manager:oci-image $OCI_IMAGE_VISIBLE -->"
+    echo "<!-- oci-lxc-deployer:oci-image $OCI_IMAGE_VISIBLE -->"
   fi
   if [ -n "$APP_ID" ]; then
-    echo "<!-- lxc-manager:application-id $APP_ID -->"
+    echo "<!-- oci-lxc-deployer:application-id $APP_ID -->"
   fi
   if [ -n "$APP_NAME" ]; then
-    echo "<!-- lxc-manager:application-name $APP_NAME -->"
+    echo "<!-- oci-lxc-deployer:application-name $APP_NAME -->"
   fi
-  echo "# LXC Manager"
+  echo "# OCI LXC Deployer"
   echo
-  echo "Managed by **lxc-manager**."
+  echo "Managed by **oci-lxc-deployer**."
   if [ -n "$APP_ID" ] || [ -n "$APP_NAME" ]; then
     echo
     if [ -n "$APP_ID" ] && [ -n "$APP_NAME" ]; then

@@ -1,58 +1,59 @@
 {
-  "timestamp": "2026-01-16T06:54:56.667431Z",
+  "timestamp": "2026-01-16T07:04:56.438781Z",
   "root": "/Users/volkmar/lxc-manager",
   "dry_run": true,
   "file_changes": [
-    "/Users/volkmar/lxc-manager/install-lxc-manager.sh",
-    "/Users/volkmar/lxc-manager/.cursorrules",
-    "/Users/volkmar/lxc-manager/README.md",
-    "/Users/volkmar/lxc-manager/.gitignore",
-    "/Users/volkmar/lxc-manager/package-lock.json",
-    "/Users/volkmar/lxc-manager/package.json",
-    "/Users/volkmar/lxc-manager/playwright.config.ts",
-    "/Users/volkmar/lxc-manager/alpine/package-build.sh",
-    "/Users/volkmar/lxc-manager/alpine/README.md",
-    "/Users/volkmar/lxc-manager/docker/Dockerfile.npm-pack",
-    "/Users/volkmar/lxc-manager/docker/test-npm-docker.sh",
-    "/Users/volkmar/lxc-manager/frontend/.angular/cache/21.0.2/webapp-angular/vite/com.chrome.devtools.json.bak",
-    "/Users/volkmar/lxc-manager/frontend/src/favicon.svg",
-    "/Users/volkmar/lxc-manager/frontend/src/app/ssh-config-page/ssh-config-page.html",
-    "/Users/volkmar/lxc-manager/bin/webapp",
-    "/Users/volkmar/lxc-manager/backend/README.MD",
-    "/Users/volkmar/lxc-manager/backend/package-lock.json",
-    "/Users/volkmar/lxc-manager/backend/package.json",
-    "/Users/volkmar/lxc-manager/backend/tests/webapp.test.mts",
-    "/Users/volkmar/lxc-manager/backend/tests/storagecontext.listApplications.test.mts",
-    "/Users/volkmar/lxc-manager/backend/tests/test-environment.mts",
-    "/Users/volkmar/lxc-manager/backend/tests/webapp.installations.test.mts",
-    "/Users/volkmar/lxc-manager/backend/scripts/copilot-instructions",
-    "/Users/volkmar/lxc-manager/backend/.vscode/launch.json",
-    "/Users/volkmar/lxc-manager/backend/src/lxc-manager.mts",
-    "/Users/volkmar/lxc-manager/backend/src/webapp.mts",
-    "/Users/volkmar/lxc-manager/backend/src/ssh.mts",
-    "/Users/volkmar/lxc-manager/docs/proxmox-community-scripts-analyse.md",
-    "/Users/volkmar/lxc-manager/docs/applications-oci-images.md",
-    "/Users/volkmar/lxc-manager/docs/application-development.md",
-    "/Users/volkmar/lxc-manager/docs/configuration.md",
-    "/Users/volkmar/lxc-manager/docs/assets/lxc-manager-logo.svg",
-    "/Users/volkmar/lxc-manager/json/shared/scripts/list-managed-oci-containers.py",
-    "/Users/volkmar/lxc-manager/json/shared/scripts/copy-upgrade-oci-lxc.sh",
-    "/Users/volkmar/lxc-manager/json/shared/scripts/USB_DEVICE_ARCHITECTURE.md",
-    "/Users/volkmar/lxc-manager/json/shared/scripts/create-lxc-container.sh",
-    "/Users/volkmar/lxc-manager/json/shared/scripts/get-oci-image.py",
-    "/Users/volkmar/lxc-manager/json/shared/templates/220-copy-upgrade-oci-lxc.json",
-    "/Users/volkmar/lxc-manager/json/applications/mosquitto/scripts/configure-start-mosquitto.sh",
-    "/Users/volkmar/lxc-manager/json/applications/lxc-manager/application.json",
-    "/Users/volkmar/lxc-manager/json/applications/lxc-manager/favicon.svg",
-    "/Users/volkmar/lxc-manager/json/applications/lxc-manager/templates/lxc-manager-parameters.json",
-    "/Users/volkmar/lxc-manager/examples/applications/lxc-manager/application.json",
-    "/Users/volkmar/lxc-manager/examples/applications/lxc-manager/favicon.svg",
-    "/Users/volkmar/lxc-manager/examples/applications/lxc-manager/templates/lxc-manager-parameters.json",
-    "/Users/volkmar/lxc-manager/scripts/find_lxc_manager_variants.py",
-    "/Users/volkmar/lxc-manager/scripts/install-git-hooks.sh",
-    "/Users/volkmar/lxc-manager/scripts/test-list-managed-oci-containers.sh",
+    "/Users/volkmar/lxc-manager/.cursorrules.bak",
+    "/Users/volkmar/lxc-manager/.gitignore.bak",
+    "/Users/volkmar/lxc-manager/playwright.config.ts.bak",
+    "/Users/volkmar/lxc-manager/install-oci-lxc-deployer.sh.bak",
+    "/Users/volkmar/lxc-manager/README.md.bak",
+    "/Users/volkmar/lxc-manager/package-lock.json.bak",
+    "/Users/volkmar/lxc-manager/package.json.bak",
+    "/Users/volkmar/lxc-manager/alpine/README.md.bak",
+    "/Users/volkmar/lxc-manager/alpine/package-build.sh.bak",
+    "/Users/volkmar/lxc-manager/docker/Dockerfile.npm-pack.bak",
+    "/Users/volkmar/lxc-manager/docker/test-npm-docker.sh.bak",
+    "/Users/volkmar/lxc-manager/frontend/.angular/cache/21.0.2/webapp-angular/vite/com.chrome.devtools.json.bak.bak",
+    "/Users/volkmar/lxc-manager/frontend/src/favicon.svg.bak",
+    "/Users/volkmar/lxc-manager/frontend/src/app/ssh-config-page/ssh-config-page.html.bak",
+    "/Users/volkmar/lxc-manager/bin/webapp.bak",
+    "/Users/volkmar/lxc-manager/backend/README.MD.bak",
+    "/Users/volkmar/lxc-manager/backend/package-lock.json.bak",
+    "/Users/volkmar/lxc-manager/backend/package.json.bak",
+    "/Users/volkmar/lxc-manager/backend/tests/webapp.test.mts.bak",
+    "/Users/volkmar/lxc-manager/backend/tests/test-environment.mts.bak",
+    "/Users/volkmar/lxc-manager/backend/tests/webapp.installations.test.mts.bak",
+    "/Users/volkmar/lxc-manager/backend/tests/storagecontext.listApplications.test.mts.bak",
+    "/Users/volkmar/lxc-manager/backend/scripts/copilot-instructions.bak",
+    "/Users/volkmar/lxc-manager/backend/.vscode/launch.json.bak",
+    "/Users/volkmar/lxc-manager/backend/src/oci-lxc-deployer.mts.bak",
+    "/Users/volkmar/lxc-manager/backend/src/ssh.mts.bak",
+    "/Users/volkmar/lxc-manager/backend/src/webapp.mts.bak",
+    "/Users/volkmar/lxc-manager/docs/proxmox-community-scripts-analyse.md.bak",
+    "/Users/volkmar/lxc-manager/docs/application-development.md.bak",
+    "/Users/volkmar/lxc-manager/docs/applications-oci-images.md.bak",
+    "/Users/volkmar/lxc-manager/docs/configuration.md.bak",
+    "/Users/volkmar/lxc-manager/docs/assets/oci-lxc-deployer-logo.svg.bak",
+    "/Users/volkmar/lxc-manager/json/shared/scripts/get-oci-image.py.bak",
+    "/Users/volkmar/lxc-manager/json/shared/scripts/USB_DEVICE_ARCHITECTURE.md.bak",
+    "/Users/volkmar/lxc-manager/json/shared/scripts/list-managed-oci-containers.py.bak",
+    "/Users/volkmar/lxc-manager/json/shared/scripts/copy-upgrade-oci-lxc.sh.bak",
+    "/Users/volkmar/lxc-manager/json/shared/scripts/create-lxc-container.sh.bak",
+    "/Users/volkmar/lxc-manager/json/shared/templates/220-copy-upgrade-oci-lxc.json.bak",
+    "/Users/volkmar/lxc-manager/json/applications/mosquitto/scripts/configure-start-mosquitto.sh.bak",
+    "/Users/volkmar/lxc-manager/json/applications/lxc-manager/application.json.bak",
+    "/Users/volkmar/lxc-manager/json/applications/lxc-manager/favicon.svg.bak",
+    "/Users/volkmar/lxc-manager/json/applications/lxc-manager/templates/oci-lxc-deployer-parameters.json.bak",
+    "/Users/volkmar/lxc-manager/examples/applications/lxc-manager/application.json.bak",
+    "/Users/volkmar/lxc-manager/examples/applications/lxc-manager/favicon.svg.bak",
+    "/Users/volkmar/lxc-manager/examples/applications/lxc-manager/templates/oci-lxc-deployer-parameters.json.bak",
+    "/Users/volkmar/lxc-manager/scripts/replace_lxc_manager_changes.json.bak",
+    "/Users/volkmar/lxc-manager/scripts/install-git-hooks.sh.bak",
+    "/Users/volkmar/lxc-manager/scripts/find_lxc_manager_variants.py.bak",
+    "/Users/volkmar/lxc-manager/scripts/test-list-managed-oci-containers.sh.bak",
     "/Users/volkmar/lxc-manager/scripts/replace_lxc_manager_changes.json",
-    "/Users/volkmar/lxc-manager/.github/workflows/npm-publish-workflow-dispatch.yml"
+    "/Users/volkmar/lxc-manager/.github/workflows/npm-publish-workflow-dispatch.yml.bak"
   ],
   "file_renames": [
     [
@@ -76,7 +77,7 @@
       "/Users/volkmar/lxc-manager/alpine/package/oci-lxc-deployer/oci-lxc-deployer.post-upgrade"
     ],
     [
-      "/Users/volkmar/lxc-manager/alpine/package/lxc-manager.ini",
+      "/Users/volkmar/lxc-manager/alpine/package/oci-lxc-deployer.ini",
       "/Users/volkmar/lxc-manager/alpine/package/oci-lxc-deployer.ini"
     ],
     [
@@ -88,22 +89,6 @@
       "/Users/volkmar/lxc-manager/backend/dist/oci-lxc-deployer.d.mts"
     ],
     [
-      "/Users/volkmar/lxc-manager/backend/dist/lxc-manager.mjs",
-      "/Users/volkmar/lxc-manager/backend/dist/oci-lxc-deployer.mjs"
-    ],
-    [
-      "/Users/volkmar/lxc-manager/backend/dist/lxc-manager.mjs.map",
-      "/Users/volkmar/lxc-manager/backend/dist/oci-lxc-deployer.mjs.map"
-    ],
-    [
-      "/Users/volkmar/lxc-manager/backend/dist/lxc-manager.d.mts",
-      "/Users/volkmar/lxc-manager/backend/dist/oci-lxc-deployer.d.mts"
-    ],
-    [
-      "/Users/volkmar/lxc-manager/backend/dist/lxc-manager.d.mts.map",
-      "/Users/volkmar/lxc-manager/backend/dist/oci-lxc-deployer.d.mts.map"
-    ],
-    [
       "/Users/volkmar/lxc-manager/backend/dist/oci-lxc-deployer.d.mts.map",
       "/Users/volkmar/lxc-manager/backend/dist/oci-lxc-deployer.d.mts.map"
     ],
@@ -112,24 +97,44 @@
       "/Users/volkmar/lxc-manager/backend/dist/oci-lxc-deployer.mjs.map"
     ],
     [
-      "/Users/volkmar/lxc-manager/backend/src/lxc-manager.mts",
+      "/Users/volkmar/lxc-manager/backend/src/oci-lxc-deployer.mts.bak",
+      "/Users/volkmar/lxc-manager/backend/src/oci-lxc-deployer.mts.bak"
+    ],
+    [
+      "/Users/volkmar/lxc-manager/backend/src/oci-lxc-deployer.mts",
       "/Users/volkmar/lxc-manager/backend/src/oci-lxc-deployer.mts"
     ],
     [
-      "/Users/volkmar/lxc-manager/docs/assets/lxc-manager-logo.svg",
+      "/Users/volkmar/lxc-manager/docs/assets/oci-lxc-deployer-logo.svg",
       "/Users/volkmar/lxc-manager/docs/assets/oci-lxc-deployer-logo.svg"
     ],
     [
-      "/Users/volkmar/lxc-manager/json/applications/lxc-manager/templates/lxc-manager-parameters.json",
+      "/Users/volkmar/lxc-manager/docs/assets/oci-lxc-deployer-logo.svg.bak",
+      "/Users/volkmar/lxc-manager/docs/assets/oci-lxc-deployer-logo.svg.bak"
+    ],
+    [
+      "/Users/volkmar/lxc-manager/json/applications/lxc-manager/templates/oci-lxc-deployer-parameters.json.bak",
+      "/Users/volkmar/lxc-manager/json/applications/lxc-manager/templates/oci-lxc-deployer-parameters.json.bak"
+    ],
+    [
+      "/Users/volkmar/lxc-manager/json/applications/lxc-manager/templates/oci-lxc-deployer-parameters.json",
       "/Users/volkmar/lxc-manager/json/applications/lxc-manager/templates/oci-lxc-deployer-parameters.json"
     ],
     [
-      "/Users/volkmar/lxc-manager/examples/applications/lxc-manager/templates/lxc-manager-parameters.json",
+      "/Users/volkmar/lxc-manager/examples/applications/lxc-manager/templates/oci-lxc-deployer-parameters.json.bak",
+      "/Users/volkmar/lxc-manager/examples/applications/lxc-manager/templates/oci-lxc-deployer-parameters.json.bak"
+    ],
+    [
+      "/Users/volkmar/lxc-manager/examples/applications/lxc-manager/templates/oci-lxc-deployer-parameters.json",
       "/Users/volkmar/lxc-manager/examples/applications/lxc-manager/templates/oci-lxc-deployer-parameters.json"
     ],
     [
-      "/Users/volkmar/lxc-manager/install-lxc-manager.sh",
+      "/Users/volkmar/lxc-manager/install-oci-lxc-deployer.sh",
       "/Users/volkmar/lxc-manager/install-oci-lxc-deployer.sh"
+    ],
+    [
+      "/Users/volkmar/lxc-manager/install-oci-lxc-deployer.sh.bak",
+      "/Users/volkmar/lxc-manager/install-oci-lxc-deployer.sh.bak"
     ]
   ],
   "dir_renames": [

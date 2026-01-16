@@ -13,7 +13,7 @@ Parameters (via template variables):
   platform (optional): Target platform (e.g., linux/amd64, linux/arm64). Default: linux/amd64
 
 Output (JSON to stdout):
-    [{"id": "template_path", "value": "storage:vztmpl/image_tag.tar"}, {"id": "ostype", "value": "alpine"}, {"id": "application_id", "value": "lxc-manager"}, {"id": "oci_image", "value": "ghcr.io/modbus2mqtt/lxc-manager:latest"}, {"id": "oci_image_tag", "value": "0.17.5"}]
+    [{"id": "template_path", "value": "storage:vztmpl/image_tag.tar"}, {"id": "ostype", "value": "alpine"}, {"id": "application_id", "value": "oci-lxc-deployer"}, {"id": "oci_image", "value": "ghcr.io/modbus2mqtt/oci-lxc-deployer:latest"}, {"id": "oci_image_tag", "value": "0.17.5"}]
 
 All logs and progress go to stderr.
 

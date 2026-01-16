@@ -12,12 +12,17 @@ import re
 import fnmatch
 import argparse
 import json
+import shutil
 from datetime import datetime
 
 
 DEFAULT_EXCLUDE_DIRS = {'.git', 'node_modules', 'dist', 'build', '__pycache__', '.venv', 'venv'}
 # files that must never be modified by this script
-DEFAULT_EXCLUDE_FILES = {'replace_lxc_manager.py', 'find_lxc_manager.py'}
+# keep workspace file untouched per user requirement
+DEFAULT_EXCLUDE_FILES = {
+    'replace_lxc_manager.py',
+    'find_lxc_manager.py',
+}
 
 
 def load_gitignore_patterns(root):
@@ -151,18 +156,59 @@ def replace_in_files(root, excludes, gitignore_patterns, dry_run=False):
 
 
 def rename_paths(root, excludes, gitignore_patterns, dry_run=False):
-    # rename files and directories bottom-up
+    # rename directories and files bottom-up (deepest directories first)
     changes = {'file_renames': [], 'dir_renames': []}
     root = os.path.abspath(root)
     pattern = re.compile(r'(?<!\w)(lxc[\s._\-]?manager|oci-lxc-deployer)(?!\w)', re.IGNORECASE)
 
     for dirpath, dirnames, filenames in os.walk(root, topdown=False):
-        # files first
+        # Directories first (bottom-up) -> ensures deepest directories are handled before parents
+        for d in list(dirnames):
+            if pattern.search(d):
+                new_name = pattern.sub('oci-lxc-deployer', d)
+                src = os.path.join(dirpath, d)
+                dst = os.path.join(dirpath, new_name)
+                changes['dir_renames'].append((src, dst))
+                if not dry_run:
+                    try:
+                        if os.path.exists(dst):
+                            # Merge contents: move all entries from src into dst, then remove src
+                            for entry in os.listdir(src):
+                                s_entry = os.path.join(src, entry)
+                                d_entry = os.path.join(dst, entry)
+                                try:
+                                    if os.path.exists(d_entry):
+                                        # destination exists: overwrite files or move directories
+                                        if os.path.isdir(s_entry):
+                                            shutil.move(s_entry, d_entry)
+                                        else:
+                                            os.replace(s_entry, d_entry)
+                                    else:
+                                        shutil.move(s_entry, dst)
+                                except Exception as e:
+                                    print('Failed to merge', s_entry, '->', d_entry, e)
+                            try:
+                                os.rmdir(src)
+                            except Exception:
+                                try:
+                                    shutil.rmtree(src)
+                                except Exception as e:
+                                    print('Failed to remove source dir after merge', src, e)
+                        else:
+                            os.rename(src, dst)
+                    except Exception as e:
+                        print('Dir rename failed', src, '->', dst, e)
+
+        # Files next
         for fname in filenames:
             # do not rename the controlling scripts
             if fname in DEFAULT_EXCLUDE_FILES:
                 continue
-            if is_binary_file(os.path.join(dirpath, fname)):
+            # never rename VS Code workspace files; update their contents but keep the filename
+            if fname.endswith('.code-workspace'):
+                continue
+            fpath = os.path.join(dirpath, fname)
+            if is_binary_file(fpath):
                 continue
             if pattern.search(fname):
                 new_name = pattern.sub('oci-lxc-deployer', fname)
@@ -171,22 +217,16 @@ def rename_paths(root, excludes, gitignore_patterns, dry_run=False):
                 changes['file_renames'].append((src, dst))
                 if not dry_run:
                     try:
-                        os.rename(src, dst)
+                        if os.path.exists(dst):
+                            # destination file exists; overwrite
+                            try:
+                                os.replace(src, dst)
+                            except Exception as e:
+                                print('Failed to replace file', src, '->', dst, e)
+                        else:
+                            os.rename(src, dst)
                     except Exception as e:
                         print('Rename failed', src, '->', dst, e)
-
-        # directories
-        for d in dirnames:
-            if pattern.search(d):
-                new_name = pattern.sub('oci-lxc-deployer', d)
-                src = os.path.join(dirpath, d)
-                dst = os.path.join(dirpath, new_name)
-                changes['dir_renames'].append((src, dst))
-                if not dry_run:
-                    try:
-                        os.rename(src, dst)
-                    except Exception as e:
-                        print('Dir rename failed', src, '->', dst, e)
 
     return changes
 
@@ -200,11 +240,11 @@ def main():
     excludes = set(DEFAULT_EXCLUDE_DIRS)
     gitignore_patterns = load_gitignore_patterns(args.root)
 
+    print('Renaming files and directories (directories first)...')
+    rename_changes = rename_paths(args.root, excludes, gitignore_patterns, dry_run=args.dry_run)
+
     print('Scanning and replacing in files...')
     file_changes = replace_in_files(args.root, excludes, gitignore_patterns, dry_run=args.dry_run)
-
-    print('Renaming files and directories...')
-    rename_changes = rename_paths(args.root, excludes, gitignore_patterns, dry_run=args.dry_run)
 
     manifest = {
         'timestamp': datetime.utcnow().isoformat() + 'Z',

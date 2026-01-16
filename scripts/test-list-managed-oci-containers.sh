@@ -21,25 +21,25 @@ mkdir -p "$LXC_DIR"
 
 cat >"$LXC_DIR/101.conf" <<'EOF'
 hostname: cont-101
-description: <!-- lxc-manager:managed -->
- <!-- lxc-manager:oci-image docker://alpine:3.19 -->
+description: <!-- oci-lxc-deployer:managed -->
+ <!-- oci-lxc-deployer:oci-image docker://alpine:3.19 -->
  OCI image: docker://alpine:3.19
 EOF
 
 cat >"$LXC_DIR/102.conf" <<'EOF'
 hostname: cont-102
-description: <!-- lxc-manager:managed -->
+description: <!-- oci-lxc-deployer:managed -->
 LXC template: local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst
 EOF
 
 cat >"$LXC_DIR/103.conf" <<'EOF'
 hostname: cont-103
-description: <!-- lxc-manager:oci-image docker://debian:bookworm -->
+description: <!-- oci-lxc-deployer:oci-image docker://debian:bookworm -->
 EOF
 
 cat >"$LXC_DIR/104.conf" <<'EOF'
 hostname: cont-104
-description: <!-- lxc-manager:managed -->
+description: <!-- oci-lxc-deployer:managed -->
 OCI image: ghcr.io/example/app:1.2.3
 EOF
 

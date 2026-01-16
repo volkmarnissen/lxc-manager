@@ -64,7 +64,7 @@ describe("WebApp Installations API", () => {
       path.join(lxcDir, "101.conf"),
       [
         "hostname: cont-101",
-        "description: <!-- lxc-manager:managed -->\\n<!-- lxc-manager:oci-image docker://alpine:3.19 -->\\nOCI image: docker://alpine:3.19",
+        "description: <!-- oci-lxc-deployer:managed -->\\n<!-- oci-lxc-deployer:oci-image docker://alpine:3.19 -->\\nOCI image: docker://alpine:3.19",
       ].join("\n"),
       "utf-8",
     );
@@ -73,7 +73,7 @@ describe("WebApp Installations API", () => {
       path.join(lxcDir, "102.conf"),
       [
         "hostname: cont-102",
-        "description: <!-- lxc-manager:managed -->\\nLXC template: local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst",
+        "description: <!-- oci-lxc-deployer:managed -->\\nLXC template: local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst",
       ].join("\n"),
       "utf-8",
     );
@@ -82,7 +82,7 @@ describe("WebApp Installations API", () => {
       path.join(lxcDir, "103.conf"),
       [
         "hostname: cont-103",
-        "description: <!-- lxc-manager:oci-image docker://debian:bookworm -->",
+        "description: <!-- oci-lxc-deployer:oci-image docker://debian:bookworm -->",
       ].join("\n"),
       "utf-8",
     );
@@ -91,7 +91,7 @@ describe("WebApp Installations API", () => {
       path.join(lxcDir, "104.conf"),
       [
         "hostname: cont-104",
-        "description: <!-- lxc-manager:managed -->\\nOCI image: ghcr.io/example/app:1.2.3",
+        "description: <!-- oci-lxc-deployer:managed -->\\nOCI image: ghcr.io/example/app:1.2.3",
       ].join("\n"),
       "utf-8",
     );

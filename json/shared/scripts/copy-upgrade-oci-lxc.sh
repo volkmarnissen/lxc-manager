@@ -2,7 +2,7 @@
 # Copy-upgrade an LXC container using a new OCI image.
 #
 # Steps:
-# 1) Verify source container exists and was created by lxc-manager (marker in description/notes).
+# 1) Verify source container exists and was created by oci-lxc-deployer (marker in description/notes).
 # 2) Create a new container from the downloaded OCI template (template_path) to generate a fresh rootfs.
 # 3) Merge configuration: keep new rootfs + new ostype, copy remaining config from source.
 # 4) Update notes/description to include an identifiable OCI image line.
@@ -80,10 +80,10 @@ extract_description() {
 
 SOURCE_DESC=$(extract_description "$SOURCE_CONF")
 
-# Detect lxc-manager marker in notes/description
+# Detect oci-lxc-deployer marker in notes/description
 # We accept either an HTML comment marker or a visible header.
-if ! printf "%s\n" "$SOURCE_DESC" | grep -qiE 'lxc-manager:managed|^# LXC Manager|Managed by .*lxc-manager'; then
-  fail "Source container does not look like it was created by lxc-manager (missing notes marker)."
+if ! printf "%s\n" "$SOURCE_DESC" | grep -qiE 'oci-lxc-deployer:managed|^# OCI LXC Deployer|Managed by .*oci-lxc-deployer'; then
+  fail "Source container does not look like it was created by oci-lxc-deployer (missing notes marker)."
 fi
 
 # Determine target VMID
@@ -153,22 +153,22 @@ NEW_OSTYPE_LINE=$(grep -E '^ostype:' "$TARGET_CONF" | head -n1 || true)
 # Build new description block (keep source notes, but update/add OCI image line)
 # Strategy:
 # - Keep all source description lines except old OCI image markers.
-# - Ensure lxc-manager markers are present.
+# - Ensure oci-lxc-deployer markers are present.
 # - Add a visible line: "OCI image: <image>".
 TMP_DESC=$(mktemp)
 {
-  printf "<!-- lxc-manager:managed -->\n"
+  printf "<!-- oci-lxc-deployer:managed -->\n"
   if [ -n "$OCI_IMAGE_VISIBLE" ]; then
-    printf "<!-- lxc-manager:oci-image %s -->\n" "$OCI_IMAGE_VISIBLE"
+    printf "<!-- oci-lxc-deployer:oci-image %s -->\n" "$OCI_IMAGE_VISIBLE"
   fi
   if [ -n "$APP_ID" ]; then
-    printf "<!-- lxc-manager:application-id %s -->\n" "$APP_ID"
+    printf "<!-- oci-lxc-deployer:application-id %s -->\n" "$APP_ID"
   fi
   if [ -n "$APP_NAME" ]; then
-    printf "<!-- lxc-manager:application-name %s -->\n" "$APP_NAME"
+    printf "<!-- oci-lxc-deployer:application-name %s -->\n" "$APP_NAME"
   fi
-  printf "# LXC Manager\n\n"
-  printf "Managed by **lxc-manager**.\n\n"
+  printf "# OCI LXC Deployer\n\n"
+  printf "Managed by **oci-lxc-deployer**.\n\n"
   if [ -n "$APP_ID" ] || [ -n "$APP_NAME" ]; then
     if [ -n "$APP_ID" ] && [ -n "$APP_NAME" ]; then
       printf "Application: %s (%s)\n\n" "$APP_NAME" "$APP_ID"
@@ -184,7 +184,7 @@ TMP_DESC=$(mktemp)
   # Append remaining source description, stripped of previous OCI-image markers to avoid duplicates
   if [ -n "$SOURCE_DESC" ]; then
     printf "%s\n" "$SOURCE_DESC" \
-      | grep -vE 'lxc-manager:oci-image|^OCI image:' \
+      | grep -vE 'oci-lxc-deployer:oci-image|^OCI image:' \
       | sed '/^$/N;/^\n$/D'
   fi
 } > "$TMP_DESC"

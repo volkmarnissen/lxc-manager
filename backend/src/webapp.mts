@@ -185,11 +185,11 @@ export class VEWebApp {
         const pkg = JSON.parse(fs.readFileSync(rootPkg, "utf-8"));
         if (
           pkg &&
-          pkg.lxcManager &&
-          pkg.lxcManager.frontendDir &&
+          pkg.ociLxcDeployer &&
+          pkg.ociLxcDeployer.frontendDir &&
           !configuredRel
         ) {
-          configuredRel = String(pkg.lxcManager.frontendDir);
+          configuredRel = String(pkg.ociLxcDeployer.frontendDir);
         }
       }
     } catch {}

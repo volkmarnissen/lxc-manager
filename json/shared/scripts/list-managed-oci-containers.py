@@ -3,7 +3,7 @@
 
 Scans `${LXC_MANAGER_PVE_LXC_DIR:-/etc/pve/lxc}/*.conf` (env override supported for tests)
 for containers that:
-- contain the lxc-manager managed marker
+- contain the oci-lxc-deployer managed marker
 - contain an OCI image marker or visible OCI image line
 
 Outputs a single VeExecution output id `containers` whose value is a JSON string
@@ -18,8 +18,8 @@ import re
 from pathlib import Path
 
 
-MANAGED_RE = re.compile(r"lxc-manager:managed", re.IGNORECASE)
-OCI_MARKER_RE = re.compile(r"lxc-manager:oci-image\s+(.+?)\s*-->", re.IGNORECASE)
+MANAGED_RE = re.compile(r"oci-lxc-deployer:managed", re.IGNORECASE)
+OCI_MARKER_RE = re.compile(r"oci-lxc-deployer:oci-image\s+(.+?)\s*-->", re.IGNORECASE)
 OCI_VISIBLE_RE = re.compile(r"^\s*OCI image:\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
 HOSTNAME_RE = re.compile(r"^hostname:\s*(.+?)\s*$", re.MULTILINE)
 
