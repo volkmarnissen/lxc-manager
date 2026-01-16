@@ -23,7 +23,6 @@ alpine/package/*/
 !alpine/package/generate-ap.sh
 !alpine/package/*.ini
 !alpine/package/README.md
-
 # Alpine local repository (build output)
 alpine/repo/
 #
