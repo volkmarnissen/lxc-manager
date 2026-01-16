@@ -26,7 +26,7 @@ describe("FrameworkFromImage - Quick Integration Test", () => {
     port: 22,
     getKey: () => "ve_localhost",
     getStorageContext: () => null,
-  } as IVEContext;
+  } as unknown as IVEContext;
 
   // Check if skopeo is available (synchronous check)
   const skopeoAvailable = (() => {

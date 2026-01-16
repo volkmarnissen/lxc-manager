@@ -15,7 +15,7 @@ describe("FrameworkFromImage", () => {
     port: 22,
     getKey: () => "ve_localhost",
     getStorageContext: () => null,
-  } as IVEContext;
+  } as unknown as IVEContext;
 
   describe("buildFrameworkFromAnnotations", () => {
     it("should build framework from annotations", () => {

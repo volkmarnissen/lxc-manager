@@ -2,11 +2,11 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import path from "path";
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "fs";
 import { tmpdir } from "os";
-import { PersistenceManager } from "@src/persistence/persistence-manager.mjs";
-import { TemplateProcessor } from "@src/templateprocessor.mjs";
-import { VEConfigurationError } from "@src/backend-types.mjs";
-import { ExecutionMode } from "@src/ve-execution-constants.mjs";
-import { ContextManager } from "@src/context-manager.mjs";
+import { PersistenceManager } from "../src/persistence/persistence-manager.mjs";
+import { TemplateProcessor } from "../src/templateprocessor.mjs";
+import { VEConfigurationError } from "../src/backend-types.mjs";
+import { ExecutionMode } from "../src/ve-execution-constants.mjs";
+import { ContextManager } from "../src/context-manager.mjs";
 
 describe("TemplateProcessor duplicate validation", () => {
   let testDir: string;

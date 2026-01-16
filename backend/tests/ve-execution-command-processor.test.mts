@@ -413,6 +413,10 @@ describe("VeExecutionCommandProcessor", () => {
       };
 
       const content = processor.loadCommandContent(cmd);
+      expect(content).toBeTruthy();
+      if (!content) {
+        throw new Error("Expected script content");
+      }
       expect(content).toContain("test_function() { echo 'library function'; }");
       expect(content).toContain("test_function");
       expect(content).toContain("# --- Script starts here ---");

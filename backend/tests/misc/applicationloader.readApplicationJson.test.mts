@@ -1,37 +1,32 @@
-import { ApplicationLoader } from "@src/apploader.mjs";
-import { PersistenceManager } from "@src/persistence/persistence-manager.mjs";
-import { FileSystemPersistence } from "@src/persistence/filesystem-persistence.mjs";
-import fs from "fs";
-import path from "path";
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { IReadApplicationOptions } from "@src/backend-types.mjs";
-
-const tmpDir = path.join(__dirname, "__apptest__");
-const localPath = path.join(tmpDir, "local");
-const jsonPath = path.join(tmpDir, "json");
-const schemaPath = path.join(__dirname, "../schemas");
-
-const storageContextFilePath = path.join(localPath, "storagecontext.json");
-const secretFilePath = path.join(localPath, "secret.txt");
-// Close existing instance if any
-try {
-  PersistenceManager.getInstance().close();
-} catch {
-  // Ignore if not initialized
-}
-PersistenceManager.initialize(localPath, storageContextFilePath, secretFilePath, false); // Disable cache for tests
-
-function writeJson(filePath: string, data: any) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-}
-
+import { describe, beforeEach, afterEach, it, expect } from "vitest";
+import { TestPersistenceHelper, Volume } from "../helper/test-persistence-helper.mjs";
+import { createTestEnvironment, TestEnvironment } from "../test-environment.mjs";
+import { ApplicationLoader } from "../../src/apploader.mjs";
+import { FileSystemPersistence } from "../../src/persistence/filesystem-persistence.mjs";
+import { IReadApplicationOptions } from "../../src/backend-types.mjs";
 describe("ApplicationLoader.readApplicationJson", () => {
+  let env: TestEnvironment;
+  let persistenceHelper: TestPersistenceHelper;
+  let localPath: string;
+  let jsonPath: string;
+  let schemaPath: string;
   let loader: ApplicationLoader;
 
   beforeEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-    const pm = PersistenceManager.getInstance();
+    env = createTestEnvironment(import.meta.url, {
+      jsonIncludePatterns: [],
+    });
+    const init = env.initPersistence({ enableCache: false });
+    persistenceHelper = new TestPersistenceHelper({
+      repoRoot: env.repoRoot,
+      localRoot: env.localDir,
+      jsonRoot: env.jsonDir,
+      schemasRoot: env.schemaDir,
+    });
+    localPath = env.localDir;
+    jsonPath = env.jsonDir;
+    schemaPath = env.schemaDir;
+    const pm = init.pm;
     const persistence = new FileSystemPersistence(
       { schemaPath, jsonPath, localPath },
       pm.getJsonValidator(),
@@ -39,19 +34,21 @@ describe("ApplicationLoader.readApplicationJson", () => {
     loader = new ApplicationLoader({ schemaPath, jsonPath, localPath }, persistence);
   });
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    env.cleanup();
   });
 
   it("1. Application in localPath, extends application in jsonPath, different names", () => {
-    writeJson(
-      path.join(jsonPath, "applications", "baseapp", "application.json"),
+    persistenceHelper.writeJsonSync(
+      Volume.JsonApplications,
+      "baseapp/application.json",
       {
         name: "baseapp",
         installation: ["base-template.json"],
       },
     );
-    writeJson(
-      path.join(localPath, "applications", "myapp", "application.json"),
+    persistenceHelper.writeJsonSync(
+      Volume.LocalRoot,
+      "applications/myapp/application.json",
       {
         name: "myapp",
         extends: "baseapp",
@@ -60,9 +57,9 @@ describe("ApplicationLoader.readApplicationJson", () => {
     );
     const opts: IReadApplicationOptions = {
       applicationHierarchy: [],
-      error: {name:"", message:"",details: [] },
+      error: { details: [] },
       taskTemplates: [],
-    } ;
+    } as any;
     loader.readApplicationJson("myapp", opts);
     const templates = opts.taskTemplates.find(
       (t) => t.task === "installation",
@@ -72,15 +69,17 @@ describe("ApplicationLoader.readApplicationJson", () => {
   });
 
   it("2. Like 1. Same names", () => {
-    writeJson(
-      path.join(jsonPath, "applications", "myapp", "application.json"),
+    persistenceHelper.writeJsonSync(
+      Volume.JsonApplications,
+      "myapp/application.json",
       {
         name: "myapp",
         installation: ["base-template.json"],
       },
     );
-    writeJson(
-      path.join(localPath, "applications", "myapp", "application.json"),
+    persistenceHelper.writeJsonSync(
+      Volume.LocalRoot,
+      "applications/myapp/application.json",
       {
         name: "myapp",
         extends: "json:myapp",
@@ -89,9 +88,9 @@ describe("ApplicationLoader.readApplicationJson", () => {
     );
     const opts: IReadApplicationOptions = {
       applicationHierarchy: [],
-      error: {name:"", message:"",details: [] },
+      error: { details: [] },
       taskTemplates: [],
-    };
+    } as any;
     loader.readApplicationJson("myapp", opts);
     const templates = opts.taskTemplates.find(
       (t) => t.task === "installation",
@@ -101,15 +100,17 @@ describe("ApplicationLoader.readApplicationJson", () => {
   });
 
   it("3. localPath application has a template with {before: extends application template}", () => {
-    writeJson(
-      path.join(jsonPath, "applications", "baseapp", "application.json"),
+    persistenceHelper.writeJsonSync(
+      Volume.JsonApplications,
+      "baseapp/application.json",
       {
         name: "baseapp",
         installation: ["base-template.json"],
       },
     );
-    writeJson(
-      path.join(localPath, "applications", "myapp", "application.json"),
+    persistenceHelper.writeJsonSync(
+      Volume.LocalRoot,
+      "applications/myapp/application.json",
       {
         name: "myapp",
         extends: "baseapp",
@@ -134,15 +135,17 @@ describe("ApplicationLoader.readApplicationJson", () => {
   });
 
   it("4. extends application has 2 templates, localPath application with after", () => {
-    writeJson(
-      path.join(jsonPath, "applications", "baseapp", "application.json"),
+    persistenceHelper.writeJsonSync(
+      Volume.JsonApplications,
+      "baseapp/application.json",
       {
         name: "baseapp",
         installation: ["base1.json", "base2.json"],
       },
     );
-    writeJson(
-      path.join(localPath, "applications", "myapp", "application.json"),
+    persistenceHelper.writeJsonSync(
+      Volume.LocalRoot,
+      "applications/myapp/application.json",
       {
         name: "myapp",
         extends: "baseapp",
@@ -165,15 +168,17 @@ describe("ApplicationLoader.readApplicationJson", () => {
     expect(templates![2]).toBe("base2.json");
   });
   it("5. recursion application extends itself", () => {
-    writeJson(
-      path.join(jsonPath, "applications", "myapp", "application.json"),
+    persistenceHelper.writeJsonSync(
+      Volume.JsonApplications,
+      "myapp/application.json",
       {
         name: "myapp",
         installation: ["base-template.json"],
       },
     );
-    writeJson(
-      path.join(localPath, "applications", "myapp", "application.json"),
+    persistenceHelper.writeJsonSync(
+      Volume.LocalRoot,
+      "applications/myapp/application.json",
       {
         name: "myapp",
         extends: "myapp",

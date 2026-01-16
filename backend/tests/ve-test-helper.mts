@@ -170,6 +170,9 @@ export class ProxmoxTestHelper {
       this.localDir,
       storageContextPath,
       secretFilePath,
+      true,
+      this.jsonDir,
+      this.schemaDir,
     );
     return PersistenceManager.getInstance().getContextManager();
   }
@@ -179,3 +182,5 @@ export class ProxmoxTestHelper {
     return storage.getTemplateProcessor();
   }
 }
+
+export class VeTestHelper extends ProxmoxTestHelper {}

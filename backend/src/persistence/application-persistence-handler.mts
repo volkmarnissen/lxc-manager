@@ -424,7 +424,36 @@ export class ApplicationPersistenceHandler {
       }
     }
 
-    return null;
+    const fallbackSvg = this.generateFallbackIconSvg(applicationName);
+    return {
+      iconContent: Buffer.from(fallbackSvg, "utf-8").toString("base64"),
+      iconType: "image/svg+xml",
+    };
+  }
+
+  private generateFallbackIconSvg(seed: string): string {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+    }
+    const hue = Math.abs(hash) % 360;
+    const hue2 = (hue + 45) % 360;
+    const bg = `hsl(${hue}, 65%, 45%)`;
+    const fg = `hsl(${hue2}, 70%, 75%)`;
+    const size = 96;
+    const pad = 12;
+    const cx = size / 2;
+    const cy = size / 2;
+    const r = size / 3;
+    const rect = `${pad},${pad} ${size - pad * 2},${size - pad * 2}`;
+
+    return [
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`,
+      `<rect width="${size}" height="${size}" rx="18" ry="18" fill="${bg}"/>`,
+      `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fg}"/>`,
+      `<rect x="${pad}" y="${pad}" width="${size - pad * 2}" height="${size - pad * 2}" rx="14" ry="14" fill="none" stroke="${fg}" stroke-width="6"/>`,
+      `</svg>`,
+    ].join("");
   }
 
   writeApplication(applicationName: string, application: IApplication): void {

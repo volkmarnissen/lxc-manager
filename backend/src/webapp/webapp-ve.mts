@@ -6,14 +6,14 @@ import {
   IPostVeConfigurationBody,
   IPostVeCopyUpgradeBody,
   TaskType,
-} from "./types.mjs";
+} from "../types.mjs";
 import { WebAppVeMessageManager } from "./webapp-ve-message-manager.mjs";
 import { WebAppVeRestartManager } from "./webapp-ve-restart-manager.mjs";
 import { WebAppVeParameterProcessor } from "./webapp-ve-parameter-processor.mjs";
 import { WebAppVeExecutionSetup } from "./webapp-ve-execution-setup.mjs";
 import { WebAppVeRouteHandlers } from "./webapp-ve-route-handlers.mjs";
-import { PersistenceManager } from "./persistence/persistence-manager.mjs";
-import { VMInstallContext } from "./context-manager.mjs";
+import { PersistenceManager } from "../persistence/persistence-manager.mjs";
+import { VMInstallContext } from "../context-manager.mjs";
 
 export class WebAppVE {
   private messageManager: WebAppVeMessageManager;

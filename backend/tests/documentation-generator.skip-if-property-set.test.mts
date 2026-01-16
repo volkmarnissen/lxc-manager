@@ -3,8 +3,7 @@ import { DocumentationGenerator } from "@src/documentation-generator.mjs";
 import { PersistenceManager } from "@src/persistence/persistence-manager.mjs";
 import fs from "node:fs";
 import path from "node:path";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import os from "node:os";
+import { rmSync, writeFileSync } from "node:fs";
 
 describe("DocumentationGenerator skip_if_property_set", () => {
   let jsonPath: string;
@@ -129,7 +128,6 @@ describe("DocumentationGenerator skip_if_property_set", () => {
         rmSync(testAppPath, { recursive: true, force: true });
       }
       // Cleanup generated html files
-      const projectRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
       const htmlAppPath = path.join(htmlPath, "test-skip-property-set-doc-app.md");
       if (fs.existsSync(htmlAppPath)) {
         rmSync(htmlAppPath, { force: true });
@@ -185,7 +183,11 @@ describe("DocumentationGenerator skip_if_property_set", () => {
     const { TemplateAnalyzer } = await import("@src/template-analyzer.mjs");
     const { DocumentationPathResolver } = await import("@src/documentation-path-resolver.mjs");
     
-    const pathResolver = new DocumentationPathResolver(jsonPath, localPath);
+    const pathResolver = new DocumentationPathResolver({
+      jsonPath,
+      schemaPath,
+      localPath,
+    });
     const templateAnalyzer = new TemplateAnalyzer(pathResolver, {
       jsonPath,
       schemaPath,
