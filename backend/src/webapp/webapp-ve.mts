@@ -252,6 +252,9 @@ export class WebAppVE {
       add("registry_password", body.registry_password);
       add("registry_token", body.registry_token);
       add("platform", body.platform);
+      add("application_id", body.application_id);
+      add("application_name", body.application_name);
+      add("version", body.version);
 
       const result = await this.routeHandlers.handleVeConfiguration(
         application,

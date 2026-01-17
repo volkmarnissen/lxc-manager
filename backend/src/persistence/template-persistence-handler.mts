@@ -2,7 +2,7 @@ import path from "path";
 import fs from "fs";
 import { IConfiguredPathes } from "../backend-types.mjs";
 import { ITemplate } from "../types.mjs";
-import { JsonValidator } from "../jsonvalidator.mjs";
+import { JsonError, JsonValidator } from "../jsonvalidator.mjs";
 
 /**
  * Handles template-specific persistence operations
@@ -78,7 +78,15 @@ export class TemplatePersistenceHandler {
 
       return templateData;
     } catch (e: Error | any) {
-      return null;
+      // Preserve validation details for UI error dialog
+      if (e && typeof e === "object" && (e as any).name === "JsonError") {
+        throw e;
+      }
+      throw new JsonError(
+        `Failed to load template from ${templatePath}`,
+        e ? [e] : undefined,
+        templatePath,
+      );
     }
   }
 

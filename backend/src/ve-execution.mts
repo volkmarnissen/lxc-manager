@@ -543,6 +543,7 @@ export class VeExecution extends EventEmitter {
         result: "All commands completed successfully",
         stderr: "",
         finished: true,
+        index: getNextMessageIndex(),
         partial: false,
       } as IVeExecuteMessage);
 

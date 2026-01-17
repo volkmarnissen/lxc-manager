@@ -210,6 +210,13 @@ export class WebAppVeRouteHandlers {
         initialInputs, // Pass initialInputs so skip_if_all_missing can check user inputs
       );
       const commands = loaded.commands;
+      if (!commands || commands.length === 0) {
+        return {
+          success: false,
+          error: "No commands to execute for this task",
+          statusCode: 422,
+        };
+      }
       const defaults = this.parameterProcessor.buildDefaults(loaded.parameters);
 
       // Built-in context variables (available to scripts as {{ application_id }}, etc.)

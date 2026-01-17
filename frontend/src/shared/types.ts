@@ -160,6 +160,22 @@ export interface IPostVeConfigurationBody {
   outputs?: { id: string; value: IParameterValue }[];
   changedParams?: { name: string; value: IParameterValue }[];
 }
+export interface IPostVeCopyUpgradeBody {
+  oci_image: string;
+  source_vm_id: number;
+  vm_id?: number;
+  disk_size?: string;
+  bridge?: string;
+  memory?: number;
+  storage?: string;
+  registry_username?: string;
+  registry_password?: string;
+  registry_token?: string;
+  platform?: string;
+  application_id?: string;
+  application_name?: string;
+  version?: string;
+}
 export interface IPostSshConfigResponse {
   success: boolean;
   key?: string;
@@ -187,6 +203,10 @@ export interface IManagedOciContainer {
   hostname?: string;
   oci_image: string;
   icon?: string;
+  application_id?: string;
+  application_name?: string;
+  version?: string;
+  status?: string;
 }
 
 export type IInstallationsResponse = IManagedOciContainer[];

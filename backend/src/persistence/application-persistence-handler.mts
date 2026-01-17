@@ -546,6 +546,7 @@ export class ApplicationPersistenceHandler {
       "restore",
       "uninstall",
       "update",
+      "upgrade",
       "copy-upgrade",
       "copy-rollback",
       "webui",

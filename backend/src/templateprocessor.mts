@@ -669,6 +669,17 @@ export class TemplateProcessor extends EventEmitter {
       } else {
         // Output ID already set by another template - check if this is a real conflict
         const conflictingTemplate = existing.template;
+        if (conflictingTemplate === "user_input") {
+          // User input only defines parameters, not outputs. Allow current template to set outputs.
+          const existingIndex = opts.resolvedParams.findIndex((p) => p.id === outputId);
+          if (existingIndex !== -1) {
+            opts.resolvedParams[existingIndex] = {
+              id: outputId,
+              template: currentTemplateName,
+            };
+          }
+          continue;
+        }
         
         // Check if the conflicting template is conditional
         let conflictingTemplateIsConditional = false;

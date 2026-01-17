@@ -188,6 +188,10 @@ export interface IManagedOciContainer {
   hostname?: string;
   oci_image: string;
   icon?: string;
+  application_id?: string;
+  application_name?: string;
+  version?: string;
+  status?: string;
 }
 
 export type IInstallationsResponse = IManagedOciContainer[];
@@ -196,6 +200,9 @@ export interface IPostVeCopyUpgradeBody {
   oci_image: string;
   source_vm_id: number;
   vm_id?: number;
+  application_id?: string;
+  application_name?: string;
+  version?: string;
   disk_size?: string;
   bridge?: string;
   memory?: number;
