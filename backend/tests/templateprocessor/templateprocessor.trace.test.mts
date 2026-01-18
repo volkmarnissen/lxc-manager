@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { ProxmoxTestHelper } from "@tests/ve-test-helper.mjs";
+import { VeTestHelper } from "@tests/ve-test-helper.mjs";
 
 describe("TemplateProcessor trace output", () => {
   const appName = "trace-app";
-  let helper: ProxmoxTestHelper;
+  let helper: VeTestHelper;
 
   beforeAll(async () => {
-    helper = new ProxmoxTestHelper();
+    helper = new VeTestHelper();
     await helper.setup();
 
     const appDir = path.join(helper.localDir, "applications", appName);

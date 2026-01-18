@@ -202,7 +202,7 @@ describe("ProxmoxConfiguration.loadApplication", () => {
       );
     } catch (err: any) {
       // Validation error is acceptable here when parameter is missing
-      expect(err.message).toMatch(/error/i);
+      expect(err.message).toMatch(/missing_param|no such parameter/i);
     }
   });
 
