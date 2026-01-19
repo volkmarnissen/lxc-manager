@@ -30,7 +30,7 @@ export class ApplicationsList implements OnInit {
   private cacheService = inject(CacheService);
 
   openProxmoxConfigDialog(app: IApplicationWebIntern) {
-    const task = globalThis.crypto?.randomUUID?.() ?? String(Date.now());
+    const task = 'installation';
     this.dialog.open(VeConfigurationDialog, { data: { app, task } });
   }
   showErrors(app: IApplicationWebIntern) {

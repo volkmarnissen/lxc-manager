@@ -19,7 +19,7 @@
 					and runs before the dependent template, and that no local override hides it.
 				</div>
 				<div class="missing-required-list">
-					Missing: {{ missingRequiredParams.map(p => p.id).join(', ') }}
+					Missing: {{ missingRequiredParamsLabel }}
 				</div>
 				<div class="missing-required-task">Task key: {{ taskKey }}</div>
 			</div>
@@ -33,6 +33,9 @@
 					[showAdvanced]="showAdvanced()"
 				/>
 			}
+		</div>
+		<div class="trace-action">
+			<button mat-stroked-button type="button" (click)="openTemplateTrace()">Template trace</button>
 		</div>
 			@if (hasAdvancedParams()) {
 				<div class="advanced-toggle" (click)="toggleAdvanced()" (keyup.enter)="toggleAdvanced()" (keyup.space)="toggleAdvanced()" tabindex="0" role="button" [attr.aria-expanded]="showAdvanced()">

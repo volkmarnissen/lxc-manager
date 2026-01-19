@@ -1,7 +1,7 @@
 
 // ...existing code...
 import { Component, OnInit, inject, signal, Input } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef, MatDialog } from '@angular/material/dialog';
 
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,6 +9,7 @@ import { IApplicationWeb, IParameter, IParameterValue } from '../../shared/types
 import { VeConfigurationService, VeConfigurationParam } from '../ve-configuration.service';
 import { ErrorHandlerService } from '../shared/services/error-handler.service';
 import { ParameterGroupComponent } from './parameter-group.component';
+import { TemplateTraceDialog } from './template-trace-dialog';
 import type { NavigationExtras } from '@angular/router';
 @Component({
   selector: 'app-ve-configuration-dialog',
@@ -34,8 +35,9 @@ export class VeConfigurationDialog implements OnInit {
   public dialogRef: MatDialogRef<VeConfigurationDialog> = inject(MatDialogRef<VeConfigurationDialog>);
   private errorHandler: ErrorHandlerService = inject(ErrorHandlerService);
   private fb: FormBuilder = inject(FormBuilder);
+  private dialog = inject(MatDialog);
   public data = inject(MAT_DIALOG_DATA) as { app: IApplicationWeb; task?: string };
-  private task = this.data.task ?? (globalThis.crypto?.randomUUID?.() ?? String(Date.now()));
+  private task = this.data.task ?? 'installation';
   constructor(  ) {
     this.form = this.fb.group({});
   }
@@ -150,8 +152,31 @@ export class VeConfigurationDialog implements OnInit {
     return this.missingRequiredParams.length > 0;
   }
 
+  get missingRequiredParamsLabel(): string {
+    return this.missingRequiredParams.map((p) => p.id).join(', ');
+  }
+
   get taskKey(): string {
     return this.task;
+  }
+
+  openTemplateTrace(): void {
+    this.configService.getTemplateTrace(this.data.app.id, this.task).subscribe({
+      next: (trace) => {
+        this.dialog.open(TemplateTraceDialog, {
+          width: '900px',
+          data: {
+            applicationName: this.data.app.name,
+            task: this.task,
+            trace,
+            missingRequiredIds: this.missingRequiredParams.map((param) => param.id),
+          },
+        });
+      },
+      error: (err: unknown) => {
+        this.errorHandler.handleError('Failed to load template trace', err);
+      }
+    });
   }
 
 

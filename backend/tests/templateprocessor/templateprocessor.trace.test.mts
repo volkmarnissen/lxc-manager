@@ -97,6 +97,9 @@ describe("TemplateProcessor trace output", () => {
     expect(result.traceInfo).toBeDefined();
     expect(result.traceInfo?.task).toBe("installation");
 
+    const templatePaths = result.templateTrace!.map((t) => t.path);
+    expect(templatePaths.some((p) => p.startsWith("local/"))).toBe(true);
+
     const ociImage = result.parameterTrace!.find((p) => p.id === "oci_image");
     const missingRequired = result.parameterTrace!.find((p) => p.id === "missing_required");
 

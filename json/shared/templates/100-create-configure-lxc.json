@@ -46,7 +46,6 @@
       "id": "rootfs_storage",
       "name": "Rootfs Storage",
       "type": "enum",
-      "default": "",
       "enumValuesTemplate": "list-available-pve-rootdir-storage.json",
       "description": "Proxmox storage for the container rootfs",
       "advanced": true

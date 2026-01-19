@@ -15,6 +15,7 @@ import {
   ICommand,
   IParameter,
   IJsonError,
+  IParameterValue,
 } from "@src/types.mjs";
 import { IVEContext } from "@src/backend-types.mjs";
 import { ApplicationLoader } from "@src/apploader.mjs";
@@ -44,6 +45,8 @@ interface IProcessTemplateOpts {
   webuiTemplates: string[];
   veContext?: IVEContext;
   executionMode?: ExecutionMode;  // Execution mode for VeExecution
+  enumValueInputs?: { id: string; value: IParameterValue }[];
+  enumValuesRefresh?: boolean;
   processedTemplates?: Map<string, IProcessedTemplate>;  // NEW: Collects template information
   templateReferences?: Map<string, Set<string>>;  // NEW: Template references (template -> referenced templates)
   outputSources?: Map<string, { template: string; kind: "outputs" | "properties" }>; // NEW: Output provenance
@@ -117,6 +120,10 @@ export interface ITemplateProcessorLoadResult {
   traceInfo?: ITemplateTraceInfo;
 }
 export class TemplateProcessor extends EventEmitter {
+  private static enumValuesCache = new Map<
+    string,
+    (string | { name: string; value: string | number | boolean })[] | null
+  >();
   resolvedParams: IResolvedParam[] = [];
   constructor(
     private pathes: IConfiguredPathes,
@@ -131,6 +138,7 @@ export class TemplateProcessor extends EventEmitter {
     veContext?: IVEContext,
     executionMode?: ExecutionMode,
     initialInputs?: Array<{ id: string; value: string | number | boolean }>,
+    enumValuesRefresh?: boolean,
   ): Promise<ITemplateProcessorLoadResult> {
     const readOpts: IReadApplicationOptions = {
       applicationHierarchy: [],
@@ -184,6 +192,14 @@ export class TemplateProcessor extends EventEmitter {
         }
       }
     }
+    const enumValueInputs = initialInputs
+      ? initialInputs.filter(
+          (input) =>
+            input.value !== null &&
+            input.value !== undefined &&
+            input.value !== "",
+        )
+      : undefined;
     const templatePathes = TemplatePathResolver.buildTemplatePathes(
       readOpts.applicationHierarchy,
       this.pathes,
@@ -217,6 +233,8 @@ export class TemplateProcessor extends EventEmitter {
         scriptPathes,
         webuiTemplates,
         executionMode: executionMode !== undefined ? executionMode : determineExecutionMode(),
+        enumValueInputs: enumValueInputs && enumValueInputs.length > 0 ? enumValueInputs : undefined,
+        enumValuesRefresh: enumValuesRefresh === true,
         processedTemplates,
         templateReferences,
         outputSources,
@@ -227,115 +245,18 @@ export class TemplateProcessor extends EventEmitter {
       await this.#processTemplate(ptOpts);
     }
     
-    // Build referencedBy map (reverse of templateReferences)
-    const referencedBy = new Map<string, Set<string>>();
-    for (const [templateName, refs] of templateReferences.entries()) {
-      for (const ref of refs) {
-        if (!referencedBy.has(ref)) {
-          referencedBy.set(ref, new Set());
-        }
-        referencedBy.get(ref)!.add(templateName);
-      }
-    }
-    
-    // Convert processedTemplates Map to Array and add referencedBy/references
-    const processedTemplatesArray: IProcessedTemplate[] = [];
-    for (const [templateName, templateInfo] of processedTemplates.entries()) {
-      const result: IProcessedTemplate = {
-        ...templateInfo,
-      };
-      if (referencedBy.has(templateName)) {
-        result.referencedBy = Array.from(referencedBy.get(templateName)!);
-      }
-      if (templateReferences.has(templateName)) {
-        result.references = Array.from(templateReferences.get(templateName)!);
-      }
-      processedTemplatesArray.push(result);
-    }
+    const processedTemplatesArray = this.buildProcessedTemplatesArray(
+      processedTemplates,
+      templateReferences,
+    );
 
-    const templateTrace: ITemplateTraceEntry[] = processedTemplatesArray.map((templateInfo) => {
-      const isLocal = templateInfo.path.startsWith(this.pathes.localPath);
-      const isJson = templateInfo.path.startsWith(this.pathes.jsonPath);
-      const origin: ITemplateTraceEntry["origin"] = templateInfo.isShared
-        ? (isLocal ? "shared-local" : isJson ? "shared-json" : "unknown")
-        : (isLocal ? "application-local" : isJson ? "application-json" : "unknown");
-
-      return {
-        name: templateInfo.name,
-        path: templateInfo.path,
-        origin,
-        isShared: templateInfo.isShared,
-        skipped: templateInfo.skipped,
-        conditional: templateInfo.conditional,
-      };
-    });
-
-    const parameterTrace: IParameterTraceEntry[] = outParameters.map((param) => {
-      const resolved = resolvedParams.find((rp) => rp.id === param.id);
-      const hasDefault = param.default !== undefined && param.default !== null && param.default !== "";
-
-      if (resolved) {
-        if (resolved.template === "user_input") {
-          return {
-            id: param.id,
-            name: param.name,
-            required: param.required,
-            default: param.default,
-            template: param.template,
-            templatename: param.templatename,
-            source: "user_input",
-            sourceTemplate: resolved.template,
-          };
-        }
-
-        const sourceInfo = outputSources.get(param.id);
-        const kind = sourceInfo?.kind;
-        return {
-          id: param.id,
-          name: param.name,
-          required: param.required,
-          default: param.default,
-          template: param.template,
-          templatename: param.templatename,
-          source: kind === "properties" ? "template_properties" : "template_output",
-          sourceTemplate: sourceInfo?.template ?? resolved.template,
-          sourceKind: kind,
-        };
-      }
-
-      if (hasDefault) {
-        return {
-          id: param.id,
-          name: param.name,
-          required: param.required,
-          default: param.default,
-          template: param.template,
-          templatename: param.templatename,
-          source: "default",
-        };
-      }
-
-      return {
-        id: param.id,
-        name: param.name,
-        required: param.required,
-        default: param.default,
-        template: param.template,
-        templatename: param.templatename,
-        source: "missing",
-      };
-    });
-
-    const appLocalDir = path.join(this.pathes.localPath, "applications", applicationName);
-    const appJsonDir = path.join(this.pathes.jsonPath, "applications", applicationName);
-    const traceInfo: ITemplateTraceInfo = {
-      application: applicationName,
-      task,
-      localDir: this.pathes.localPath,
-      jsonDir: this.pathes.jsonPath,
-      ...(fs.existsSync(appLocalDir) ? { appLocalDir } : {}),
-      ...(fs.existsSync(appJsonDir) ? { appJsonDir } : {}),
-    };
+    const templateTrace = this.buildTemplateTrace(processedTemplatesArray);
+    const parameterTrace = this.buildParameterTrace(
+      outParameters,
+      resolvedParams,
+      outputSources,
+    );
+    const traceInfo = this.buildTraceInfo(applicationName, task);
     // Save resolvedParams for getUnresolvedParameters
     this.resolvedParams = resolvedParams;
     if (errors.length > 0) {
@@ -505,75 +426,24 @@ export class TemplateProcessor extends EventEmitter {
           // Load enum values from another template (mocked execution):
           const enumTmplName = (param as any).enumValuesTemplate;
           opts.webuiTemplates?.push(enumTmplName);
-
-          // Prefer reusing the same processing logic by invoking #processTemplate
-          // on the referenced enum template; capture its commands and parse payload.
-          const tmpCommands: ICommand[] = [];
-          const tmpParams: IParameterWithTemplate[] = [];
-          const tmpErrors: IJsonError[] = [];
-          const tmpResolved: IResolvedParam[] = [];
-          const tmpWebui: string[] = [];
-          await this.#processTemplate({
-            ...opts,
-            template: enumTmplName,
-            templatename: enumTmplName,
-            commands: tmpCommands,
-            parameters: tmpParams,
-            errors: tmpErrors,
-            resolvedParams: tmpResolved,
-            webuiTemplates: tmpWebui,
-            parentTemplate: this.extractTemplateName(opts.template),
-          });
-
-          // Try executing via VeExecution to respect execution semantics; collect errors
-          // Skip execution if veContext is not provided (parameter extraction only)
-          if (opts.veContext) {
-            try {
-              const ve = new VeExecution(
-                tmpCommands,
-                [],
-                opts.veContext,
-                undefined,
-                undefined, // sshCommand deprecated - use executionMode instead
-                opts.executionMode ?? determineExecutionMode(),
-              );
-              const rc = await ve.run(null);
-              if (rc && Array.isArray(rc.outputs) && rc.outputs.length > 0) {
-                // If outputs is an array of {name, value}, use it as enum values
-                pparm.enumValues = rc.outputs;
-                // If only one enum value is available and no default is set, use it as default
-                if (rc.outputs.length === 1 && pparm.default === undefined) {
-                  const singleValue = rc.outputs[0];
-                  // Handle both string values and {name, value} objects
-                  if (typeof singleValue === "string") {
-                    pparm.default = singleValue;
-                  } else if (
-                    typeof singleValue === "object" &&
-                    singleValue !== null &&
-                    "value" in singleValue
-                  ) {
-                    pparm.default = (singleValue as any).value;
-                  }
-                }
+          const enumValues = await this.resolveEnumValuesTemplate(enumTmplName, opts);
+          if (Array.isArray(enumValues) && enumValues.length > 0) {
+            // If outputs is an array of {name, value}, use it as enum values
+            pparm.enumValues = enumValues;
+            // If only one enum value is available and no default is set, use it as default
+            if (enumValues.length === 1 && pparm.default === undefined) {
+              const singleValue = enumValues[0];
+              // Handle both string values and {name, value} objects
+              if (typeof singleValue === "string") {
+                pparm.default = singleValue;
+              } else if (
+                typeof singleValue === "object" &&
+                singleValue !== null &&
+                "value" in singleValue
+              ) {
+                pparm.default = (singleValue as any).value;
               }
-            } catch (e: any) {
-              const err =
-                e instanceof JsonError
-                  ? e
-                  : new JsonError(String(e?.message ?? e));
-              opts.errors?.push(err);
-              this.emit("message", {
-                stderr: err.message,
-                result: null,
-                exitCode: -1,
-                command: String(enumTmplName),
-                execute_on: undefined,
-                index: 0,
-              });
             }
-          } else {
-            // During validation, we skip enum value execution but still validate that the template exists
-            // The enum template will be validated separately as part of the application validation
           }
         }
 
@@ -588,6 +458,241 @@ export class TemplateProcessor extends EventEmitter {
     } else {
       return template.name;
     }
+  }
+
+  private normalizeEnumValueInputs(
+    inputs?: { id: string; value: IParameterValue }[],
+  ): { id: string; value: IParameterValue }[] {
+    if (!inputs || inputs.length === 0) return [];
+    return inputs
+      .filter((item) => item && typeof item.id === "string")
+      .map((item) => ({ id: item.id, value: item.value }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  private buildEnumValuesCacheKey(
+    enumTemplate: string,
+    veContext: IVEContext | undefined,
+    inputs?: { id: string; value: IParameterValue }[],
+  ): string {
+    const veKey = veContext?.getKey ? veContext.getKey() : "no-ve";
+    const normalizedInputs = this.normalizeEnumValueInputs(inputs);
+    return `${veKey}::${enumTemplate}::${JSON.stringify(normalizedInputs)}`;
+  }
+
+  private async resolveEnumValuesTemplate(
+    enumTemplate: string,
+    opts: IProcessTemplateOpts,
+  ): Promise<(string | { name: string; value: string | number | boolean })[] | null | undefined> {
+    if (!opts.veContext) return undefined;
+
+    const cacheKey = this.buildEnumValuesCacheKey(
+      enumTemplate,
+      opts.veContext,
+      opts.enumValueInputs,
+    );
+    const cached = TemplateProcessor.enumValuesCache.get(cacheKey);
+
+    if (cached !== undefined && !opts.enumValuesRefresh) {
+      return cached;
+    }
+
+    // Prefer reusing the same processing logic by invoking #processTemplate
+    // on the referenced enum template; capture its commands and parse payload.
+    const tmpCommands: ICommand[] = [];
+    const tmpParams: IParameterWithTemplate[] = [];
+    const tmpErrors: IJsonError[] = [];
+    const tmpResolved: IResolvedParam[] = [];
+    const tmpWebui: string[] = [];
+    await this.#processTemplate({
+      ...opts,
+      template: enumTemplate,
+      templatename: enumTemplate,
+      commands: tmpCommands,
+      parameters: tmpParams,
+      errors: tmpErrors,
+      resolvedParams: tmpResolved,
+      webuiTemplates: tmpWebui,
+      parentTemplate: this.extractTemplateName(opts.template),
+    });
+
+    // Try executing via VeExecution to respect execution semantics; collect errors
+    // Skip execution if veContext is not provided (parameter extraction only)
+    if (opts.veContext) {
+      try {
+        const ve = new VeExecution(
+          tmpCommands,
+          opts.enumValueInputs ?? [],
+          opts.veContext,
+          undefined,
+          undefined, // sshCommand deprecated - use executionMode instead
+          opts.executionMode ?? determineExecutionMode(),
+        );
+        const rc = await ve.run(null);
+        const values =
+          rc && Array.isArray(rc.outputs) && rc.outputs.length > 0
+            ? rc.outputs
+            : null;
+        TemplateProcessor.enumValuesCache.set(cacheKey, values);
+        return values;
+      } catch (e: any) {
+        if (opts.enumValuesRefresh && cached !== undefined) {
+          return cached;
+        }
+        const err =
+          e instanceof JsonError
+            ? e
+            : new JsonError(String(e?.message ?? e));
+        opts.errors?.push(err);
+        this.emit("message", {
+          stderr: err.message,
+          result: null,
+          exitCode: -1,
+          command: String(enumTemplate),
+          execute_on: undefined,
+          index: 0,
+        });
+      }
+    }
+
+    return cached;
+  }
+
+  private buildProcessedTemplatesArray(
+    processedTemplates: Map<string, IProcessedTemplate>,
+    templateReferences: Map<string, Set<string>>,
+  ): IProcessedTemplate[] {
+    // Build referencedBy map (reverse of templateReferences)
+    const referencedBy = new Map<string, Set<string>>();
+    for (const [templateName, refs] of templateReferences.entries()) {
+      for (const ref of refs) {
+        if (!referencedBy.has(ref)) {
+          referencedBy.set(ref, new Set());
+        }
+        referencedBy.get(ref)!.add(templateName);
+      }
+    }
+
+    const processedTemplatesArray: IProcessedTemplate[] = [];
+    for (const [templateName, templateInfo] of processedTemplates.entries()) {
+      const result: IProcessedTemplate = {
+        ...templateInfo,
+      };
+      if (referencedBy.has(templateName)) {
+        result.referencedBy = Array.from(referencedBy.get(templateName)!);
+      }
+      if (templateReferences.has(templateName)) {
+        result.references = Array.from(templateReferences.get(templateName)!);
+      }
+      processedTemplatesArray.push(result);
+    }
+    return processedTemplatesArray;
+  }
+
+  private buildTemplateTrace(
+    processedTemplatesArray: IProcessedTemplate[],
+  ): ITemplateTraceEntry[] {
+    return processedTemplatesArray.map((templateInfo) => {
+      const isLocal = templateInfo.path.startsWith(this.pathes.localPath);
+      const isJson = templateInfo.path.startsWith(this.pathes.jsonPath);
+      const origin: ITemplateTraceEntry["origin"] = templateInfo.isShared
+        ? (isLocal ? "shared-local" : isJson ? "shared-json" : "unknown")
+        : (isLocal ? "application-local" : isJson ? "application-json" : "unknown");
+
+      const relativePath = isLocal
+        ? path.relative(this.pathes.localPath, templateInfo.path)
+        : isJson
+          ? path.relative(this.pathes.jsonPath, templateInfo.path)
+          : templateInfo.path;
+      const normalizedPath = relativePath.split(path.sep).join("/");
+      const prefix = templateInfo.isShared
+        ? (isLocal ? "oci-lxc-deployer(local)" : isJson ? "oci-lxc-deployer(shared)" : "oci-lxc-deployer")
+        : (isLocal ? "local" : isJson ? "json" : "unknown");
+      const displayPath = `${prefix}/${normalizedPath}`;
+
+      return {
+        name: templateInfo.name,
+        path: displayPath,
+        origin,
+        isShared: templateInfo.isShared,
+        skipped: templateInfo.skipped,
+        conditional: templateInfo.conditional,
+      };
+    });
+  }
+
+  private buildParameterTrace(
+    outParameters: IParameterWithTemplate[],
+    resolvedParams: IResolvedParam[],
+    outputSources: Map<string, { template: string; kind: "outputs" | "properties" }>,
+  ): IParameterTraceEntry[] {
+    return outParameters.map((param) => {
+      const resolved = resolvedParams.find((rp) => rp.id === param.id);
+      const hasDefault = param.default !== undefined && param.default !== null && param.default !== "";
+
+      const withOptionalFields = (entry: IParameterTraceEntry): IParameterTraceEntry => {
+        if (typeof param.required === "boolean") entry.required = param.required;
+        if (param.default !== undefined && param.default !== null) entry.default = param.default;
+        if (param.template !== undefined) entry.template = param.template;
+        if (param.templatename !== undefined) entry.templatename = param.templatename;
+        return entry;
+      };
+
+      if (resolved) {
+        if (resolved.template === "user_input") {
+          const entry: IParameterTraceEntry = {
+            id: param.id,
+            name: param.name,
+            source: "user_input",
+          };
+          entry.sourceTemplate = resolved.template;
+          return withOptionalFields(entry);
+        }
+
+        const sourceInfo = outputSources.get(param.id);
+        const kind = sourceInfo?.kind;
+        const entry: IParameterTraceEntry = {
+          id: param.id,
+          name: param.name,
+          source: kind === "properties" ? "template_properties" : "template_output",
+        };
+        entry.sourceTemplate = sourceInfo?.template ?? resolved.template;
+        if (kind) entry.sourceKind = kind;
+        return withOptionalFields(entry);
+      }
+
+      if (hasDefault) {
+        const entry: IParameterTraceEntry = {
+          id: param.id,
+          name: param.name,
+          source: "default",
+        };
+        return withOptionalFields(entry);
+      }
+
+      const entry: IParameterTraceEntry = {
+        id: param.id,
+        name: param.name,
+        source: "missing",
+      };
+      return withOptionalFields(entry);
+    });
+  }
+
+  private buildTraceInfo(
+    applicationName: string,
+    task: TaskType,
+  ): ITemplateTraceInfo {
+    const appLocalDir = path.join(this.pathes.localPath, "applications", applicationName);
+    const appJsonDir = path.join(this.pathes.jsonPath, "applications", applicationName);
+    return {
+      application: applicationName,
+      task,
+      localDir: this.pathes.localPath,
+      jsonDir: this.pathes.jsonPath,
+      ...(fs.existsSync(appLocalDir) ? { appLocalDir } : {}),
+      ...(fs.existsSync(appJsonDir) ? { appJsonDir } : {}),
+    };
   }
   // Private method to process a template (including nested templates)
   async #processTemplate(opts: IProcessTemplateOpts): Promise<void> {
@@ -1090,7 +1195,17 @@ export class TemplateProcessor extends EventEmitter {
     veContext?: IVEContext,
   ): Promise<IParameter[]> {
     const loaded = await this.loadApplication(application, task, veContext);
-    // Only parameters whose id is not in resolvedParams.param
+    if (loaded.parameterTrace && loaded.parameterTrace.length > 0) {
+      const traceById = new Map(
+        loaded.parameterTrace.map((entry) => [entry.id, entry]),
+      );
+      return loaded.parameters.filter((param) => {
+        const trace = traceById.get(param.id);
+        return trace ? trace.source === "missing" : true;
+      });
+    }
+
+    // Fallback: Only parameters whose id is not in resolvedParams.param
     return loaded.parameters.filter(
       (param) =>
         undefined ==

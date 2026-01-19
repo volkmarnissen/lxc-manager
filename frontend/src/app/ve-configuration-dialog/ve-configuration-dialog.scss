@@ -117,6 +117,12 @@ form {
   opacity: 0.8;
 }
 
+.trace-action {
+  display: flex;
+  justify-content: center;
+  margin: 0 1rem 1rem;
+}
+
 .mat-mdc-dialog-content {
   min-width: 320px;
   display: flex;

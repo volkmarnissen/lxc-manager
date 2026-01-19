@@ -122,6 +122,7 @@ export enum ApiUri {
   Installations = "/api/installations/:veContext",
   TemplateDetailsForApplication = "/api/template-details/:application/:task/:veContext",
   UnresolvedParameters = "/api/unresolved-parameters/:application/:task/:veContext",
+  EnumValues = "/api/enum-values/:application/:task/:veContext",
   FrameworkNames = "/api/framework-names",
   FrameworkParameters = "/api/framework-parameters/:frameworkId",
   FrameworkCreateApplication = "/api/framework-create-application",
@@ -133,6 +134,14 @@ export enum ApiUri {
 // Response interfaces for all backend endpoints (frontend mirror)
 export interface IUnresolvedParametersResponse {
   unresolvedParameters: IParameter[];
+}
+export interface IEnumValuesEntry {
+  id: string;
+  enumValues: (string | { name: string; value: string | number | boolean })[];
+  default?: string | number | boolean;
+}
+export interface IEnumValuesResponse {
+  enumValues: IEnumValuesEntry[];
 }
 export interface ISshConfigsResponse {
   sshs: ISsh[];
@@ -160,6 +169,10 @@ export interface IPostVeConfigurationBody {
   params: { name: string; value: IParameterValue }[];
   outputs?: { id: string; value: IParameterValue }[];
   changedParams?: { name: string; value: IParameterValue }[];
+}
+export interface IPostEnumValuesBody {
+  params?: { id: string; value: IParameterValue }[];
+  refresh?: boolean;
 }
 export interface IPostSshConfigResponse {
   success: boolean;

@@ -28,6 +28,7 @@ run_with_timeout() {
 }
 
 FIRST=true
+COUNT=0
 printf '['
 
 add_item() {
@@ -39,11 +40,12 @@ add_item() {
     printf ','
   fi
   printf '{"name":"%s","value":"%s"}' "$_name" "$_value"
+  COUNT=$((COUNT + 1))
 }
 
 # Prefer pvesm status --content rootdir if available
 if run_with_timeout 2 pvesm status --content rootdir >/tmp/pvesm_rootdir.$$ 2>/dev/null; then
-  while IFS= read -r line; do
+  awk 'NR>1 {print}' /tmp/pvesm_rootdir.$$ | while IFS= read -r line; do
     name=$(echo "$line" | awk '{print $1}')
     type=$(echo "$line" | awk '{print $2}')
     avail=$(echo "$line" | awk '{print $6}')
@@ -60,9 +62,11 @@ if run_with_timeout 2 pvesm status --content rootdir >/tmp/pvesm_rootdir.$$ 2>/d
       fi
     fi
     add_item "$label" "$name"
-  done < <(awk 'NR>1 {print}' /tmp/pvesm_rootdir.$$)
+  done
   rm -f /tmp/pvesm_rootdir.$$ 2>/dev/null || true
-else
+fi
+
+if [ "$COUNT" -eq 0 ]; then
   # Fallback: list all storages and filter by rootdir content
   STORAGES=$(run_with_timeout 2 pvesm status | awk 'NR>1 {print $1}' || echo "")
   for stor in $STORAGES; do

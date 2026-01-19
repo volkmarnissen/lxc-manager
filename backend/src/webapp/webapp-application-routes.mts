@@ -3,6 +3,8 @@ import {
   ApiUri,
   TaskType,
   IUnresolvedParametersResponse,
+  IPostEnumValuesBody,
+  IEnumValuesResponse,
   IApplicationsResponse,
 } from "@src/types.mjs";
 import { ContextManager } from "../context-manager.mjs";
@@ -67,6 +69,66 @@ export function registerApplicationRoutes(
     } catch (err: any) {
       const serializedError = serializeError(err);
       res.status(500).json({
+        error: err instanceof Error ? err.message : String(err),
+        serializedError: serializedError,
+      });
+    }
+  });
+
+  app.post(ApiUri.EnumValues, express.json(), async (req, res) => {
+    try {
+      const application: string = req.params.application;
+      const task: string = req.params.task;
+      const veContextKey: string = req.params.veContext;
+      if (!task) {
+        return res.status(400).json({ success: false, error: "Missing task" });
+      }
+      const ctx = storageContext.getVEContextByKey(veContextKey);
+      if (!ctx) {
+        return res
+          .status(404)
+          .json({ success: false, error: "VE context not found" });
+      }
+
+      const body = (req.body || {}) as IPostEnumValuesBody;
+      if (body.params !== undefined && !Array.isArray(body.params)) {
+        return res
+          .status(400)
+          .json({ success: false, error: "Invalid parameters" });
+      }
+      const params = body.params ?? [];
+      if (params.some((p) => !p || typeof p.id !== "string")) {
+        return res
+          .status(400)
+          .json({ success: false, error: "Invalid parameters" });
+      }
+
+      const templateProcessor = storageContext.getTemplateProcessor();
+      const loaded = await templateProcessor.loadApplication(
+        application,
+        task as TaskType,
+        ctx,
+        undefined,
+        params,
+        body.refresh === true,
+      );
+
+      const enumValues = loaded.parameters
+        .filter((param) => param.type === "enum" && param.enumValues !== undefined)
+        .map((param) => ({
+          id: param.id,
+          enumValues: param.enumValues!,
+          default: param.default,
+        }));
+
+      returnResponse<IEnumValuesResponse>(res, {
+        enumValues,
+      });
+    } catch (err: any) {
+      const statusCode = getErrorStatusCode(err);
+      const serializedError = serializeError(err);
+      return res.status(statusCode).json({
+        success: false,
         error: err instanceof Error ? err.message : String(err),
         serializedError: serializedError,
       });
