@@ -1,7 +1,7 @@
-import { IRestartInfo, VeExecution } from "./ve-execution.mjs";
+import { IRestartInfo, VeExecution } from "./ve-execution/ve-execution.mjs";
 // Make sure the types file exists, or update the path if necessary
 // If your types are in a TypeScript file, use './types' instead of './types.js'
-import type { TaskType } from "./types.mjs";
+import type { TaskType, IVeExecuteMessage } from "./types.mjs";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -150,7 +150,7 @@ export async function exec(
       cm.getCurrentVEContext(),
       defaults,
     );
-    execInstance.on("message", (msg) => {
+    execInstance.on("message", (msg: IVeExecuteMessage) => {
       console.error(`[${msg.command}] ${msg.stderr}`);
       if (msg.exitCode !== 0) {
         console.log("=================== ERROR ==================");

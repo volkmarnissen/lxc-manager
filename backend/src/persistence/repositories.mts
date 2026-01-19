@@ -60,7 +60,9 @@ export interface IResourceRepository {
 export interface IRepositories
   extends IApplicationRepository,
     ITemplateRepository,
-    IResourceRepository {}
+    IResourceRepository {
+  preloadJsonResources?(): void;
+}
 
 export interface InMemoryRepositoriesOptions {
   applications?: Map<string, IApplication>;
@@ -195,6 +197,10 @@ export class InMemoryRepositories
     return this.localResources.get(ref.path) ?? null;
   }
 
+  preloadJsonResources(): void {
+    // No-op for in-memory repositories
+  }
+
   private static extractSectionFromContent(content: string, sectionName: string): string | null {
     const normalizeHeadingName = (name: string): string => {
       let s = name.trim().toLowerCase();
@@ -237,10 +243,43 @@ export class InMemoryRepositories
 }
 
 export class FileSystemRepositories implements IApplicationRepository, ITemplateRepository, IResourceRepository {
+  private templateCache = new Map<string, ITemplate>();
+  private scriptCache = new Map<string, string>();
+  private markdownCache = new Map<string, string>();
+
   constructor(
     private pathes: IConfiguredPathes,
     private persistence: IApplicationPersistence & ITemplatePersistence,
   ) {}
+
+  preloadJsonResources(): void {
+    const jsonRoot = this.pathes.jsonPath;
+
+    // Shared templates
+    const sharedTemplatesDir = path.join(jsonRoot, "shared", "templates");
+    this.preloadTemplatesFromDir(sharedTemplatesDir, "shared");
+
+    // Shared scripts
+    const sharedScriptsDir = path.join(jsonRoot, "shared", "scripts");
+    this.preloadScriptsFromDir(sharedScriptsDir, "shared");
+
+    // Applications
+    const appsDir = path.join(jsonRoot, "applications");
+    if (fs.existsSync(appsDir)) {
+      const appEntries = fs.readdirSync(appsDir, { withFileTypes: true });
+      for (const entry of appEntries) {
+        if (!entry.isDirectory()) continue;
+        const appId = entry.name;
+        const appBase = path.join(appsDir, appId);
+
+        const appTemplatesDir = path.join(appBase, "templates");
+        this.preloadTemplatesFromDir(appTemplatesDir, "application", appId);
+
+        const appScriptsDir = path.join(appBase, "scripts");
+        this.preloadScriptsFromDir(appScriptsDir, "application", appId);
+      }
+    }
+  }
 
   listApplications(): IApplicationWeb[] {
     return this.persistence.listApplicationsForFrontend();
@@ -288,10 +327,19 @@ export class FileSystemRepositories implements IApplicationRepository, ITemplate
   }
 
   getTemplate(ref: TemplateRef): ITemplate | null {
+    const cacheKey = this.getTemplateCacheKey(ref);
+    if (ref.origin === "json") {
+      const cached = this.templateCache.get(cacheKey);
+      if (cached) return cached;
+    }
     if (ref.scope === "shared") {
       const templatePath = this.persistence.resolveTemplatePath(ref.name, true);
       if (!templatePath) return null;
-      return this.persistence.loadTemplate(templatePath);
+      const template = this.persistence.loadTemplate(templatePath);
+      if (template && ref.origin === "json") {
+        this.templateCache.set(cacheKey, template);
+      }
+      return template;
     }
 
     const appPath = this.getApplicationPath(ref.applicationId);
@@ -302,13 +350,24 @@ export class FileSystemRepositories implements IApplicationRepository, ITemplate
       this.pathes,
     );
     if (!resolved) return null;
-    return this.persistence.loadTemplate(resolved.fullPath);
+    const template = this.persistence.loadTemplate(resolved.fullPath);
+    if (template && ref.origin === "json") {
+      this.templateCache.set(cacheKey, template);
+    }
+    return template;
   }
 
   getScript(ref: ScriptRef): string | null {
+    const cacheKey = this.getScriptCacheKey(ref);
+    const cached = this.scriptCache.get(cacheKey);
+    if (cached) return cached;
     const scriptPath = this.resolveScriptPath(ref);
     if (!scriptPath || !fs.existsSync(scriptPath)) return null;
-    return fs.readFileSync(scriptPath, "utf-8");
+    const content = fs.readFileSync(scriptPath, "utf-8");
+    if (scriptPath.startsWith(this.pathes.jsonPath + path.sep)) {
+      this.scriptCache.set(cacheKey, content);
+    }
+    return content;
   }
 
   resolveScriptPath(ref: ScriptRef): string | null {
@@ -346,14 +405,26 @@ export class FileSystemRepositories implements IApplicationRepository, ITemplate
   }
 
   getMarkdown(ref: MarkdownRef): string | null {
+    const cacheKey = this.getMarkdownCacheKey(ref);
+    const cached = this.markdownCache.get(cacheKey);
+    if (cached) return cached;
     const templatePath = this.resolveTemplatePathForMarkdown(ref);
     if (!templatePath) return null;
     const mdPath = MarkdownReader.getMarkdownPath(templatePath);
     if (!fs.existsSync(mdPath)) return null;
-    return fs.readFileSync(mdPath, "utf-8");
+    const content = fs.readFileSync(mdPath, "utf-8");
+    if (mdPath.startsWith(this.pathes.jsonPath + path.sep)) {
+      this.markdownCache.set(cacheKey, content);
+    }
+    return content;
   }
 
   getMarkdownSection(ref: MarkdownRef, sectionName: string): string | null {
+    const cacheKey = this.getMarkdownCacheKey(ref);
+    const cached = this.markdownCache.get(cacheKey);
+    if (cached) {
+      return FileSystemRepositories.extractSectionFromContent(cached, sectionName);
+    }
     const templatePath = this.resolveTemplatePathForMarkdown(ref);
     if (!templatePath) return null;
     const mdPath = MarkdownReader.getMarkdownPath(templatePath);
@@ -417,5 +488,128 @@ export class FileSystemRepositories implements IApplicationRepository, ITemplate
     } catch {
       return path.resolve(targetPath);
     }
+  }
+
+  private preloadTemplatesFromDir(
+    dir: string,
+    scope: TemplateScope,
+    applicationId?: string,
+  ): void {
+    if (!fs.existsSync(dir)) return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+      const fullPath = path.join(dir, entry.name);
+      const template = this.persistence.loadTemplate(fullPath);
+      if (!template) continue;
+      const name = TemplatePathResolver.normalizeTemplateName(entry.name);
+      if (scope === "shared") {
+        const ref: TemplateRef = { name, scope: "shared", origin: "json" };
+        this.templateCache.set(this.getTemplateCacheKey(ref), template);
+      } else if (applicationId) {
+        const ref: TemplateRef = {
+          name,
+          scope: "application",
+          applicationId,
+          origin: "json",
+        };
+        this.templateCache.set(this.getTemplateCacheKey(ref), template);
+      }
+
+      const mdPath = MarkdownReader.getMarkdownPath(fullPath);
+      if (fs.existsSync(mdPath)) {
+        const content = fs.readFileSync(mdPath, "utf-8");
+        if (scope === "shared") {
+          const mdRef: MarkdownRef = { templateName: name, scope: "shared" };
+          this.markdownCache.set(this.getMarkdownCacheKey(mdRef), content);
+        } else if (applicationId) {
+          const mdRef: MarkdownRef = {
+            templateName: name,
+            scope: "application",
+            applicationId,
+          };
+          this.markdownCache.set(this.getMarkdownCacheKey(mdRef), content);
+        }
+      }
+    }
+  }
+
+  private preloadScriptsFromDir(
+    dir: string,
+    scope: TemplateScope,
+    applicationId?: string,
+  ): void {
+    if (!fs.existsSync(dir)) return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      const fullPath = path.join(dir, entry.name);
+      const content = fs.readFileSync(fullPath, "utf-8");
+      if (scope === "shared") {
+        const ref: ScriptRef = { name: entry.name, scope: "shared" };
+        this.scriptCache.set(this.getScriptCacheKey(ref), content);
+      } else if (applicationId) {
+        const ref: ScriptRef = { name: entry.name, scope: "application", applicationId };
+        this.scriptCache.set(this.getScriptCacheKey(ref), content);
+      }
+    }
+  }
+
+  private getTemplateCacheKey(ref: TemplateRef): string {
+    return ref.scope === "shared"
+      ? `shared:${ref.name}`
+      : `app:${ref.applicationId ?? "unknown"}:${ref.name}`;
+  }
+
+  private getScriptCacheKey(ref: ScriptRef): string {
+    return ref.scope === "shared"
+      ? `shared:${ref.name}`
+      : `app:${ref.applicationId ?? "unknown"}:${ref.name}`;
+  }
+
+  private getMarkdownCacheKey(ref: MarkdownRef): string {
+    return ref.scope === "shared"
+      ? `shared:${ref.templateName}`
+      : `app:${ref.applicationId ?? "unknown"}:${ref.templateName}`;
+  }
+
+  private static extractSectionFromContent(content: string, sectionName: string): string | null {
+    const normalizeHeadingName = (name: string): string => {
+      let s = name.trim().toLowerCase();
+      s = s.replace(/\s*\{#.*\}\s*$/, "");
+      s = s.replace(/:+\s*$/, "");
+      s = s.replace(/^`+|`+$/g, "");
+      s = s.replace(/\s+/g, " ");
+      return s;
+    };
+
+    const lines = content.split(/\r?\n/);
+    const normalizedSectionName = normalizeHeadingName(sectionName);
+    let inSection = false;
+    const sectionContent: string[] = [];
+
+    for (const line of lines) {
+      const headingMatch = line.match(/^##\s+(.+)$/);
+      if (headingMatch) {
+        const headingName = normalizeHeadingName(headingMatch[1]!);
+        if (headingName === normalizedSectionName) {
+          inSection = true;
+          continue;
+        } else if (inSection) {
+          break;
+        }
+      } else if (inSection) {
+        sectionContent.push(line);
+      }
+    }
+
+    if (sectionContent.length === 0) return null;
+    while (sectionContent.length > 0 && sectionContent[0]!.trim() === "") {
+      sectionContent.shift();
+    }
+    while (sectionContent.length > 0 && sectionContent[sectionContent.length - 1]!.trim() === "") {
+      sectionContent.pop();
+    }
+    return sectionContent.length > 0 ? sectionContent.join("\n") : null;
   }
 }

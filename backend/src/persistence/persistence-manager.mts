@@ -89,6 +89,10 @@ export class PersistenceManager {
     );
 
     this.repositories = repositories ?? new FileSystemRepositories(this.pathes, this.persistence);
+    const reposWithPreload = this.repositories as IRepositories & {
+      preloadJsonResources?: () => void;
+    };
+    reposWithPreload.preloadJsonResources?.();
   }
 
   private assertBasePathsExist(pathes: IConfiguredPathes): void {

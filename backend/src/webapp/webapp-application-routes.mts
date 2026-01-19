@@ -117,7 +117,7 @@ export function registerApplicationRoutes(
         .map((param) => ({
           id: param.id,
           enumValues: param.enumValues!,
-          default: param.default,
+          ...(param.default !== undefined ? { default: param.default } : {}),
         }));
 
       returnResponse<IEnumValuesResponse>(res, {

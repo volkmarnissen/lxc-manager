@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { DocumentationPathResolver } from "../documentation-path-resolver.mjs";
 import { TemplateAnalyzer } from "./template-analyzer.mjs";
-import type { IProcessedTemplate } from "../templateprocessor.mjs";
+import type { IProcessedTemplate } from "./templateprocessor-types.mjs";
 import type { IParameter, ITemplate } from "../types.mjs";
 
 /**
