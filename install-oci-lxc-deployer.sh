@@ -256,7 +256,11 @@ echo "  Proxmox Host: ${proxmox_hostname}" >&2
 echo "  Volume base: ${volume_base}" >&2
 echo "  Config volume: ${config_volume_path}" >&2
 echo "  Secure volume: ${secure_volume_path}" >&2
-echo "  OWNER=${OWNER}, REPO=${REPO}, BRANCH=${BRANCH}, OCI_IMAGE=${OCI_IMAGE}" >&2 
+if [ "$OWNER" = "modbus2mqtt" ]; then
+  echo "  \033[33mOWNER=${OWNER}\033[0m, REPO=${REPO}, BRANCH=${BRANCH}, OCI_IMAGE=${OCI_IMAGE}" >&2
+else
+  echo "  OWNER=${OWNER}, REPO=${REPO}, BRANCH=${BRANCH}, OCI_IMAGE=${OCI_IMAGE}" >&2
+fi
 
 # Check and install SSH server if needed (on Proxmox VE host)
 # This matches the installation command from the SSH config page
