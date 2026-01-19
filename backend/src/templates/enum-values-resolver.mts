@@ -1,7 +1,4 @@
 import { JsonError } from "@src/jsonvalidator.mjs";
-import fs from "node:fs";
-import path from "node:path";
-import { PersistenceManager } from "@src/persistence/persistence-manager.mjs";
 import { IResolvedParam } from "@src/backend-types.mjs";
 import { ICommand, IJsonError, IParameterValue } from "@src/types.mjs";
 import { IVEContext } from "@src/backend-types.mjs";
@@ -28,70 +25,15 @@ export class EnumValuesResolver {
     string,
     Promise<(string | { name: string; value: string | number | boolean })[] | null | undefined>
   >();
-  private static diskCacheLoaded = false;
-  private static diskCache = new Map<
-    string,
-    (string | { name: string; value: string | number | boolean })[]
-  >();
-
-  private static getDiskCachePath(): string | null {
-    try {
-      const pm = PersistenceManager.getInstance();
-      const localPath = pm.getPathes().localPath;
-      return path.join(localPath, "enum-values-cache.json");
-    } catch {
-      return null;
-    }
-  }
-
-  private static ensureDiskCacheLoaded(): void {
-    if (this.diskCacheLoaded) return;
-    this.diskCacheLoaded = true;
-    const cachePath = this.getDiskCachePath();
-    if (!cachePath || !fs.existsSync(cachePath)) return;
-    try {
-      const raw = fs.readFileSync(cachePath, "utf-8");
-      const parsed = JSON.parse(raw) as Record<string, any>;
-      for (const [key, value] of Object.entries(parsed)) {
-        if (Array.isArray(value)) {
-          this.diskCache.set(key, value as any);
-          this.enumValuesCache.set(key, value as any);
-        }
-      }
-    } catch {
-      // Ignore corrupt cache
-    }
-  }
-
-  private static persistDiskCache(): void {
-    const cachePath = this.getDiskCachePath();
-    if (!cachePath) return;
-    try {
-      const obj: Record<string, any> = {};
-      for (const [key, value] of this.diskCache.entries()) {
-        obj[key] = value;
-      }
-      fs.writeFileSync(cachePath, JSON.stringify(obj, null, 2), "utf-8");
-    } catch {
-      // Ignore write errors
-    }
-  }
 
   static invalidateForVeKey(veKey: string | null | undefined): void {
     if (!veKey) return;
-    EnumValuesResolver.ensureDiskCacheLoaded();
     const prefix = `${veKey}::`;
     for (const key of Array.from(EnumValuesResolver.enumValuesCache.keys())) {
       if (key.startsWith(prefix)) {
         EnumValuesResolver.enumValuesCache.delete(key);
       }
     }
-    for (const key of Array.from(EnumValuesResolver.diskCache.keys())) {
-      if (key.startsWith(prefix)) {
-        EnumValuesResolver.diskCache.delete(key);
-      }
-    }
-    EnumValuesResolver.persistDiskCache();
   }
 
   private normalizeEnumValueInputs(
@@ -144,8 +86,6 @@ export class EnumValuesResolver {
   ): Promise<(string | { name: string; value: string | number | boolean })[] | null | undefined> {
     if (!opts.veContext) return undefined;
 
-    EnumValuesResolver.ensureDiskCacheLoaded();
-
     const effectiveInputs = this.withApplicationInput(
       opts.enumValueInputs,
       opts.enumValuesExecuteOn,
@@ -166,8 +106,6 @@ export class EnumValuesResolver {
     if (cached !== undefined && !opts.enumValuesRefresh) {
       if (cached !== null && !EnumValuesResolver.enumValuesCache.has(cacheKey)) {
         EnumValuesResolver.enumValuesCache.set(cacheKey, cached);
-        EnumValuesResolver.diskCache.set(cacheKey, cached);
-        EnumValuesResolver.persistDiskCache();
       }
       if (process.env.ENUM_TRACE === "1" || process.env.CACHE_TRACE === "1") {
         const parent = typeof opts.template === "string" ? opts.template : opts.template.name;
@@ -223,8 +161,6 @@ export class EnumValuesResolver {
                   : null;
               if (values !== null) {
                 EnumValuesResolver.enumValuesCache.set(cacheKey, values);
-                EnumValuesResolver.diskCache.set(cacheKey, values);
-                EnumValuesResolver.persistDiskCache();
               }
               return values;
             }
@@ -291,8 +227,6 @@ export class EnumValuesResolver {
               : null;
           if (values !== null) {
             EnumValuesResolver.enumValuesCache.set(cacheKey, values);
-            EnumValuesResolver.diskCache.set(cacheKey, values);
-            EnumValuesResolver.persistDiskCache();
           }
           return values;
         } catch (e: any) {

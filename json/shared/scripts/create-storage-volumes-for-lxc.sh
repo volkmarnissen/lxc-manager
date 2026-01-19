@@ -158,32 +158,127 @@ sanitize_name() {
 
 get_existing_volid() {
   name="$1"
-  pvesm list "$VOLUME_STORAGE" --content rootdir 2>/dev/null | awk '{print $1}' | grep -i "${name}" | head -n1 || true
+  storage_type="$2"
+  if [ "$storage_type" = "zfspool" ]; then
+    pvesm list "$VOLUME_STORAGE" --content rootdir 2>/dev/null \
+      | awk '{print $1}' \
+      | grep -Ei -- "subvol-[0-9]+-${name}$" \
+      | head -n1 || true
+  else
+    pvesm list "$VOLUME_STORAGE" --content rootdir 2>/dev/null \
+      | awk '{print $1}' \
+      | grep -i -- "${name}" \
+      | head -n1 || true
+  fi
 }
+
+get_storage_type() {
+  pvesm status -storage "$VOLUME_STORAGE" 2>/dev/null | awk 'NR==2 {print $2}' || true
+}
+
+alloc_volume() {
+  _volname="$1"
+  _size="$2"
+  _type=$(get_storage_type)
+  _errfile=$(mktemp)
+  _volid=""
+
+  _volid=$(pvesm alloc "$VOLUME_STORAGE" "$VMID" "$_volname" "$_size" 2>"$_errfile" || true)
+  _rc=$?
+  if [ "$_rc" -eq 0 ] && [ -n "$_volid" ]; then
+    rm -f "$_errfile"
+    echo "$_volid"
+    return 0
+  fi
+
+  if [ "$_type" = "zfspool" ]; then
+    _volid=$(pvesm alloc "$VOLUME_STORAGE" "$VMID" "$_volname" "$_size" --format subvol 2>"$_errfile" || true)
+    _rc=$?
+    if [ "$_rc" -eq 0 ] && [ -n "$_volid" ]; then
+      rm -f "$_errfile"
+      echo "$_volid"
+      return 0
+    fi
+  fi
+
+  _err=$(cat "$_errfile" 2>/dev/null || true)
+  rm -f "$_errfile"
+  log "pvesm alloc failed (type=$_type): ${_err}"
+  return 1
+}
+
+get_zfs_pool() {
+  pvesm config "$VOLUME_STORAGE" 2>/dev/null | awk '/^pool\s+/ {print $2; exit}' || true
+}
+
+resolve_volume_path() {
+  _volid="$1"
+  _volname="$2"
+  _type="$3"
+  _path="$(pvesm path "$_volid" 2>/dev/null || true)"
+  if [ -n "$_path" ]; then
+    echo "$_path"
+    return 0
+  fi
+  if [ "$_type" = "zfspool" ]; then
+    _pool=$(get_zfs_pool)
+    if [ -n "$_pool" ]; then
+      _mp=$(zfs get -H -o value mountpoint "${_pool}/${_volname}" 2>/dev/null || true)
+      if [ -n "$_mp" ] && [ "$_mp" != "-" ] && [ "$_mp" != "none" ]; then
+        echo "$_mp"
+        return 0
+      fi
+    fi
+  fi
+  return 1
+}
+
+STORAGE_TYPE=$(get_storage_type)
+SAFE_HOST=$(sanitize_name "$HOSTNAME")
+SHARED_NAME_KEY="oci-lxc-deployer-volumes"
+if [ "$STORAGE_TYPE" = "zfspool" ]; then
+  SHARED_VOLNAME="subvol-${VMID}-${SHARED_NAME_KEY}"
+else
+  SHARED_VOLNAME="vol-${SHARED_NAME_KEY}"
+fi
+
+SHARED_VOLID=$(get_existing_volid "$SHARED_NAME_KEY" "$STORAGE_TYPE")
+if [ -z "$SHARED_VOLID" ]; then
+  log "Creating shared volume $SHARED_VOLNAME in storage $VOLUME_STORAGE (size $VOLUME_SIZE)"
+  SHARED_VOLID=$(alloc_volume "$SHARED_VOLNAME" "$VOLUME_SIZE" || true)
+fi
+
+if [ -z "$SHARED_VOLID" ]; then
+  fail "Failed to allocate or find shared volume for ${SHARED_VOLNAME}"
+fi
+
+SHARED_VOLNAME_REAL="${SHARED_VOLID#*:}"
+sleep 1
+SHARED_VOLPATH=$(resolve_volume_path "$SHARED_VOLID" "$SHARED_VOLNAME_REAL" "$STORAGE_TYPE" || true)
+if [ -z "$SHARED_VOLPATH" ]; then
+  fail "Failed to resolve path for shared volume ${SHARED_VOLID}"
+fi
 
 while IFS= read -r line <&3; do
   [ -z "$line" ] && continue
   VOLUME_KEY=$(echo "$line" | cut -d'=' -f1)
   VOLUME_REST=$(echo "$line" | cut -d'=' -f2-)
   VOLUME_PATH=$(echo "$VOLUME_REST" | cut -d',' -f1)
+  VOLUME_OPTS=$(echo "$VOLUME_REST" | cut -d',' -f2-)
   [ -z "$VOLUME_KEY" ] && continue
   [ -z "$VOLUME_PATH" ] && continue
   VOLUME_PATH=$(printf '%s' "$VOLUME_PATH" | sed -E 's#^/*#/#')
 
-  SAFE_HOST=$(sanitize_name "$HOSTNAME")
   SAFE_KEY=$(sanitize_name "$VOLUME_KEY")
-  VOLNAME="vol-${SAFE_HOST}-${SAFE_KEY}"
+  SUBDIR="${SHARED_VOLPATH}/volumes/${SAFE_HOST}/${SAFE_KEY}"
+  mkdir -p "$SUBDIR"
 
-  VOLID=$(get_existing_volid "$VOLNAME")
-  if [ -z "$VOLID" ]; then
-    log "Creating volume $VOLNAME in storage $VOLUME_STORAGE (size $VOLUME_SIZE)"
-    VOLID=$(pvesm alloc "$VOLUME_STORAGE" "$VMID" "$VOLNAME" "$VOLUME_SIZE" 2>/dev/null || true)
-  else
-    log "Reusing existing volume $VOLID for $VOLNAME"
+  PERM=$(printf '%s' "$VOLUME_OPTS" | tr ',' '\n' | awk '/^[0-9]{3,4}$/ {print $1; exit}')
+  if [ -n "$PERM" ]; then
+    chmod "$PERM" "$SUBDIR" 2>/dev/null || true
   fi
-
-  if [ -z "$VOLID" ]; then
-    fail "Failed to allocate or find volume for $VOLNAME"
+  if [ -n "$EFFECTIVE_UID" ] && [ -n "$EFFECTIVE_GID" ]; then
+    chown "$EFFECTIVE_UID:$EFFECTIVE_GID" "$SUBDIR" 2>/dev/null || true
   fi
 
   MP=$(find_next_mp)
@@ -205,14 +300,9 @@ while IFS= read -r line <&3; do
     NEEDS_STOP=1
   fi
 
-  pct set "$VMID" -${MP} "${VOLID},${OPTS}" >&2
+  pct set "$VMID" -${MP} "${SUBDIR},${OPTS}" >&2
 
-  VOLPATH=$(pvesm path "$VOLID" 2>/dev/null || true)
-  if [ -n "$VOLPATH" ] && [ -n "$EFFECTIVE_UID" ] && [ -n "$EFFECTIVE_GID" ]; then
-    chown "$EFFECTIVE_UID:$EFFECTIVE_GID" "$VOLPATH" 2>/dev/null || true
-  fi
-
-  log "Attached ${VOLID} to ${VOLUME_PATH} via ${MP}"
+  log "Attached ${SUBDIR} to ${VOLUME_PATH} via ${MP}"
 
 done 3< "$TMPFILE"
 

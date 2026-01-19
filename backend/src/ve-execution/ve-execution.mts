@@ -485,7 +485,7 @@ export class VeExecution extends EventEmitter {
           continue;
         } catch (err: any) {
           // Handle execution errors
-          this.messageEmitter.emitErrorMessage(cmd, err, msgIndex++, hostname);
+          this.messageEmitter.emitErrorMessage(cmd, err, getNextMessageIndex(), hostname);
           // Only set restartInfo if we've executed at least one command successfully
           if (i > startIdx) {
             rcRestartInfo = this.stateManager.buildRestartInfo(i - 1);
@@ -525,9 +525,9 @@ export class VeExecution extends EventEmitter {
           // Handle execution errors
           if (cmd.execute_on && typeof cmd.execute_on === "string" && /^host:.*/.test(cmd.execute_on)) {
             const hostname = cmd.execute_on.split(":")[1] ?? "";
-            this.messageEmitter.emitErrorMessage(cmd, err, msgIndex++, hostname);
+            this.messageEmitter.emitErrorMessage(cmd, err, getNextMessageIndex(), hostname);
           } else {
-            this.messageEmitter.emitErrorMessage(cmd, err, msgIndex++);
+            this.messageEmitter.emitErrorMessage(cmd, err, getNextMessageIndex());
           }
           // Only set restartInfo if we've executed at least one command successfully
           if (i > startIdx) {
@@ -543,7 +543,7 @@ export class VeExecution extends EventEmitter {
         rcRestartInfo = this.stateManager.buildRestartInfo(i);
       } catch (e) {
         // Handle any other errors
-        this.messageEmitter.emitErrorMessage(cmd, e, msgIndex++);
+        this.messageEmitter.emitErrorMessage(cmd, e, getNextMessageIndex());
         // Set restartInfo even on error so restart is possible, but only if we've executed at least one command
         if (i > startIdx) {
           rcRestartInfo = this.stateManager.buildRestartInfo(i - 1);

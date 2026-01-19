@@ -235,6 +235,7 @@ ChallengeResponseAuthentication no
 UsePAM no
 AuthorizedKeysFile .ssh/authorized_keys .ssh/authenticated_keys
 AllowUsers root
+AcceptEnv LANG LC_*
 SSHCONF
   
   # Enable and restart SSH service

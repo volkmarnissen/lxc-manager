@@ -158,12 +158,20 @@ export class VeExecutionSshExecutor {
     if (this.executionMode === ExecutionMode.PRODUCTION) {
       // Production: use ssh with executionArgs (which contains SSH args + optional interpreter)
       actualCommand = "ssh";
-      actualArgs = executionArgs;
       // For production, prepend marker to script for shell scripts
       if (!interpreter || interpreter.length === 0 || !interpreter[0] || interpreter[0] === "sh" || interpreter[0].endsWith("/sh")) {
-        actualInput = `echo "${marker}"\n${input}`;
+        actualArgs = executionArgs;
+        actualInput = `export LC_ALL=C LANG=C\necho "${marker}"\n${input}`;
       } else {
-        // For non-shell interpreters in production, remote command handles it
+        // For non-shell interpreters in production, run interpreter via sh -c so we can export locale
+        const baseArgs = this.buildExecutionArgs(undefined);
+        const interpreterCmd = interpreter.join(" ");
+        actualArgs = [
+          ...baseArgs,
+          "sh",
+          "-c",
+          `echo "${marker}" && export LC_ALL=C LANG=C; ${interpreterCmd}`,
+        ];
         actualInput = input;
       }
     } else {
