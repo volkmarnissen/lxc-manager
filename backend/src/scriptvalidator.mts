@@ -22,9 +22,14 @@ export class ScriptValidator {
 
   /**
    * Extracts all {{ var }} placeholders from a string.
+   * Only extracts valid variable names (alphanumeric, underscore, hyphen, dot).
+   * Ignores patterns with quotes or other invalid characters to avoid false positives.
    */
   private extractTemplateVariables(str: string): string[] {
-    const regex = /{{ *([^}\ ]+) *}}/g;
+    // Match {{ var }} but only capture valid variable names
+    // Valid variable names: alphanumeric, underscore, hyphen, dot
+    // This avoids false positives from shell patterns like *"{{"*"}}"*
+    const regex = /{{ *([a-zA-Z0-9_.-]+) *}}/g;
     const vars = new Set<string>();
     let match;
     while ((match = regex.exec(str)) !== null) {

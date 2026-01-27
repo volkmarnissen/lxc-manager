@@ -74,6 +74,23 @@ export function registerApplicationRoutes(
     }
   });
 
+  app.get(ApiUri.LocalApplicationIds, (_req, res) => {
+    try {
+      const pm = PersistenceManager.getInstance();
+      const localAppNames = pm
+        .getApplicationService()
+        .getLocalAppNames();
+      const ids = Array.from(localAppNames.keys());
+      res.json(ids).status(200);
+    } catch (err: any) {
+      const serializedError = serializeError(err);
+      res.status(500).json({
+        error: err instanceof Error ? err.message : String(err),
+        serializedError: serializedError,
+      });
+    }
+  });
+
   app.post(ApiUri.EnumValues, express.json(), async (req, res) => {
     try {
       const application: string = req.params.application;

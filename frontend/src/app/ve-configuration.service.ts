@@ -71,6 +71,10 @@ export class VeConfigurationService {
   getApplications(): Observable<IApplicationWeb[]> {
     return this.http.get<IApplicationsResponse>(ApiUri.Applications);
   }
+
+  getLocalApplicationIds(): Observable<string[]> {
+    return this.http.get<string[]>(ApiUri.LocalApplicationIds);
+  }
   getInstallations(): Observable<IInstallationsResponse> {
     return this.get<IInstallationsResponse>(ApiUri.Installations);
   }

@@ -67,6 +67,27 @@ export class ApplicationPersistenceHandler {
     return result;
   }
 
+  /**
+   * Returns only local application names mapped to their paths
+   * Used for validation when creating new applications - allows creating
+   * local applications even if the same ID exists in json directory
+   */
+  getLocalAppNames(): Map<string, string> {
+    if (!this.enableCache) {
+      // Cache disabled: always scan fresh
+      return this.scanApplicationsDir(this.pathes.localPath);
+    }
+
+    // Local: Aus Cache (wird durch fs.watch invalidiert)
+    if (this.appNamesCache.local === null) {
+      this.appNamesCache.local = this.scanApplicationsDir(
+        this.pathes.localPath,
+      );
+    }
+
+    return new Map(this.appNamesCache.local);
+  }
+
   listApplicationsForFrontend(): IApplicationWeb[] {
     if (!this.enableCache) {
       // Cache disabled: always build fresh

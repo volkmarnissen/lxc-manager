@@ -158,11 +158,18 @@ export class CacheService {
   }
 
   /**
-   * Check if application ID is already taken
+   * Check if application ID is already taken in local directory
+   * Allows creating local applications even if the same ID exists in json directory
    */
   isApplicationIdTaken(applicationId: string): Observable<boolean> {
-    return this.getApplicationIds().pipe(
-      map(ids => ids.has(applicationId))
+    return this.configService.getLocalApplicationIds().pipe(
+      map(ids => ids.includes(applicationId)),
+      catchError(() => {
+        // On error, fall back to checking all applications
+        return this.getApplicationIds().pipe(
+          map(ids => ids.has(applicationId))
+        );
+      })
     );
   }
 

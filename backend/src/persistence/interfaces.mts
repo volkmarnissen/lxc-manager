@@ -31,6 +31,13 @@ export interface IApplicationPersistence extends IPersistence {
   getAllAppNames(): Map<string, string>;
 
   /**
+   * Returns only local application names mapped to their paths
+   * Used for validation when creating new applications - allows creating
+   * local applications even if the same ID exists in json directory
+   */
+  getLocalAppNames(): Map<string, string>;
+
+  /**
    * Returns list of applications for frontend display
    * Only loads application.json and icons, NOT full templates
    * This method is optimized for the frontend application list

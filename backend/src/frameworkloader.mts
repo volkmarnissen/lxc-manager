@@ -130,10 +130,11 @@ export class FrameworkLoader {
       "installation",
     );
 
-    // Check if application already exists using persistence
-    const allAppNames = this.persistence.getAllAppNames();
-    if (allAppNames.has(request.applicationId)) {
-      const existingAppPath = allAppNames.get(request.applicationId)!;
+    // Check if application already exists in local directory only
+    // Allow creating local applications even if the same ID exists in json directory
+    const localAppNames = this.persistence.getLocalAppNames();
+    if (localAppNames.has(request.applicationId)) {
+      const existingAppPath = localAppNames.get(request.applicationId)!;
       throw new Error(
         `Application ${request.applicationId} already exists at ${existingAppPath}`,
       );

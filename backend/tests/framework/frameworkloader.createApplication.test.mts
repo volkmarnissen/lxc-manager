@@ -142,7 +142,7 @@ describe("FrameworkLoader.createApplicationFromFramework", () => {
       parameterValues: [],
     };
 
-    await expect(loader.createApplicationFromFramework(request)).rejects.toThrow(
+    expect(await loader.createApplicationFromFramework(request)).rejects.toThrow(
       "already exists at",
     );
   });

@@ -119,6 +119,7 @@ export enum ApiUri {
   VeRestartInstallation = "/api/ve/restart-installation/:vmInstallKey/:veContext",
   VeExecute = "/api/ve/execute/:veContext",
   Applications = "/api/applications",
+  LocalApplicationIds = "/api/applications/local/ids",
   Installations = "/api/installations/:veContext",
   VeCopyUpgrade = "/api/ve/copy-upgrade/:application/:veContext",
   TemplateDetailsForApplication = "/api/template-details/:application/:task/:veContext",
