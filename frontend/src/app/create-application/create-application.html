@@ -1,25 +1,6 @@
-<!-- Step 3: Parameters --><div class="create-application-container">
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
--->}  </mat-card>    </mat-card-content>      </mat-form-field>        <textarea matInput readonly [value]="envVarKeysText()" rows="6"></textarea>        <mat-label>Environment Variables in .env</mat-label>      <mat-form-field appearance="outline" class="full-width">      <p><strong>Umgebungsvariablen in .env gesetzt</strong> ({{ envVarKeys().length }} Variablen)</p>    <mat-card-content>    </mat-card-header>      <mat-card-title>Environment Variables</mat-card-title>    <mat-card-header>  <mat-card>@if ((isDockerComposeFramework() || isOciComposeMode()) && envFileConfigured()) {<!-- <!-- REMOVE this entire section (lines ~178-190): --><!-- ...existing code... -->  <h1>Create Application from Framework</h1>
-
+<!-- Step 3: Parameters -->
+ <div class="create-application-container">
+  <h1>Create Application from Framework</h1>
   <mat-stepper #stepper linear (selectionChange)="onStepChange($event)">
     <!-- Step 1: Select Framework -->
     <mat-step [editable]="true">
