@@ -761,9 +761,11 @@ The system will automatically fetch metadata from the image and pre-fill applica
     const envVars = this.composeService.parseEnvFile(valueWithMetadata);
     this.updateMissingEnvVars(envVars);
     this.updateEnvFileRequirement();
-    
+
     if (this.isOciComposeMode()) {
       this.fillEnvsForSelectedService();
+      // Update uid/gid in next tick to avoid ExpressionChangedAfterItHasBeenCheckedError
+      setTimeout(() => this.updateUserFromCompose(), 0);
     }
   }
 
@@ -969,6 +971,12 @@ The system will automatically fetch metadata from the image and pre-fill applica
     }
   }
 
+  // Helper to get required variables from command string
+  private getCommandVariables(command: string): Set<string> {
+    const { vars } = this.composeService.extractVarRefsFromString(command);
+    return new Set(vars);
+  }
+
   private updateUserFromCompose(): void {
     if (!this.isOciComposeMode()) return;
 
@@ -979,11 +987,20 @@ The system will automatically fetch metadata from the image and pre-fill applica
     if (!serviceName) return;
 
     const service = data.services.find((s: ComposeService) => s.name === serviceName);
-    const user = service?.config?.['user'];
+    let user = service?.config?.['user'];
     
     if (typeof user === 'string' || typeof user === 'number') {
-        const userStr = String(user);
-        const parts = userStr.split(':');
+        // Resolve variables in user string
+        const envFileContent = this.parameterForm.get('env_file')?.value ?? '';
+        const effectiveEnvs = this.composeService.getEffectiveServiceEnvironment(service!.config, data, serviceName, envFileContent);
+        
+        // Manual substitution
+        let resolvedUser = String(user);
+        for(const [key, value] of effectiveEnvs.entries()) {
+            resolvedUser = resolvedUser.replace(`\${${key}}`, value);
+        }
+
+        const parts = resolvedUser.split(':');
         
         // Map first part to uid
         if (parts.length > 0 && parts[0].trim()) {
@@ -1019,55 +1036,13 @@ The system will automatically fetch metadata from the image and pre-fill applica
 
     const service = data.services.find(s => s.name === serviceName);
     if (!service) return;
-
-    const serviceEnvs = this.extractServiceEnvs(service.config);
-    // required vars (dürfen auch ohne .env / ohne Werte übernommen werden)
-    const requiredKeys =
-      data.serviceEnvironmentVariablesRequired?.[serviceName] ??
-      data.serviceEnvironmentVariables?.[serviceName] ??
-      [];
-
-    const envFileValue = this.parameterForm.get('env_file')?.value;
-    const envVarsMap = envFileValue
-      ? this.composeService.parseEnvFile(envFileValue)
-      : new Map<string, string>();
-
-    const serviceDefaults = data.serviceEnvironmentVariableDefaults?.[serviceName] ?? {};
+    
+    const envFileContent = this.parameterForm.get('env_file')?.value ?? '';
+    const effectiveEnvs = this.composeService.getEffectiveServiceEnvironment(service.config, data, serviceName, envFileContent);
 
     const lines: string[] = [];
-    const seen = new Set<string>();
-
-    // 1) Aus compose/env_file übernehmen (wie bisher), aber Werte auch leer zulassen
-    for (const envEntry of serviceEnvs) {
-      const [key, composeValue] = this.parseEnvEntry(envEntry);
-      if (!key) continue;
-
-      seen.add(key);
-
-      const envValue = envVarsMap.get(key);
-      const defaultValue = serviceDefaults[key];
-
-      if (envValue !== undefined) {
-        // auch leere Werte übernehmen; nur Defaults weglassen, wenn NICHT required
-        if (key in serviceDefaults && envValue === defaultValue && !requiredKeys.includes(key)) continue;
-        lines.push(`${key}=${envValue ?? ''}`);
-        continue;
-      }
-
-      if (composeValue !== undefined) {
-        if (key in serviceDefaults && composeValue === defaultValue && !requiredKeys.includes(key)) continue;
-        lines.push(envEntry);
-      }
-    }
-
-    // 2) REQUIRED Keys ergänzen, auch wenn nirgends definiert → KEY=
-    for (const key of requiredKeys) {
-      if (!key || seen.has(key)) continue;
-
-      const envValue = envVarsMap.get(key);
-      // Wenn nicht vorhanden oder leer -> explizit KEY= (gewünscht)
-      if (envValue === undefined) lines.push(`${key}=`);
-      else lines.push(`${key}=${envValue ?? ''}`);
+    for (const [key, value] of effectiveEnvs.entries()) {
+        lines.push(`${key}=${value}`);
     }
 
     const envsCtrl = this.parameterForm.get('envs');

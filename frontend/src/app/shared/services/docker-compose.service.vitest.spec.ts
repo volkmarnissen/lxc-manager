@@ -291,4 +291,101 @@ services:
       expect(result).toMatch(/^file:\.env:content:/);
     });
   });
+
+  describe('getEffectiveServiceEnvironment', () => {
+    it('should resolve variables with .env file taking priority over defaults', () => {
+      const composeYaml = `
+version: '3.8'
+services:
+  app:
+    image: myimage
+    environment:
+      - VAR1=\${VAR1:-default1}
+      - VAR2=hardcoded
+`;
+      const envFileContent = 'VAR1=from_env';
+      const parsedData = service.parseComposeFile(btoa(composeYaml));
+      const serviceConfig = parsedData!.services.find(s => s.name === 'app')?.config;
+
+      const effectiveEnvs = service.getEffectiveServiceEnvironment(
+        serviceConfig!,
+        parsedData!,
+        'app',
+        envFileContent
+      );
+
+      expect(effectiveEnvs.get('VAR1')).toBe('from_env');
+      expect(effectiveEnvs.get('VAR2')).toBe('hardcoded');
+    });
+
+    it('should use defaults when .env file is empty', () => {
+      const composeYaml = `
+version: '3.8'
+services:
+  app:
+    image: myimage
+    environment:
+      - VAR1=\${VAR1:-default1}
+      - VAR2=\${VAR2:-default2}
+`;
+      const parsedData = service.parseComposeFile(btoa(composeYaml));
+      const serviceConfig = parsedData!.services.find(s => s.name === 'app')?.config;
+
+      const effectiveEnvs = service.getEffectiveServiceEnvironment(
+        serviceConfig!,
+        parsedData!,
+        'app',
+        ''
+      );
+
+      expect(effectiveEnvs.get('VAR1')).toBe('default1');
+      expect(effectiveEnvs.get('VAR2')).toBe('default2');
+    });
+
+    it('should return empty string for undefined variables without defaults', () => {
+      const composeYaml = `
+version: '3.8'
+services:
+  app:
+    image: myimage
+    environment:
+      - UNDEFINED=\${UNDEFINED}
+`;
+      const parsedData = service.parseComposeFile(btoa(composeYaml));
+      const serviceConfig = parsedData!.services.find(s => s.name === 'app')?.config;
+
+      const effectiveEnvs = service.getEffectiveServiceEnvironment(
+        serviceConfig!,
+        parsedData!,
+        'app',
+        ''
+      );
+
+      expect(effectiveEnvs.get('UNDEFINED')).toBe('');
+    });
+
+    it('should handle variables referenced in command and other fields', () => {
+      const composeYaml = `
+version: '3.8'
+services:
+  app:
+    image: myimage
+    command: start --key \${KEY}
+    user: \${UID}
+`;
+      const envFileContent = 'KEY=value\nUID=1000';
+      const parsedData = service.parseComposeFile(btoa(composeYaml));
+      const serviceConfig = parsedData!.services.find(s => s.name === 'app')?.config;
+
+      const effectiveEnvs = service.getEffectiveServiceEnvironment(
+        serviceConfig!,
+        parsedData!,
+        'app',
+        envFileContent
+      );
+
+      expect(effectiveEnvs.get('KEY')).toBe('value');
+      expect(effectiveEnvs.get('UID')).toBe('1000');
+    });
+  });
 });

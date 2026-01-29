@@ -15,12 +15,21 @@
         "type": "string",
         "description": "Initial command to execute in the container (lxc.init_cmd). Useful for OCI images that require a specific start command.",
         "advanced": true
+    },
+    {
+      "id": "envs",
+      "name": "Environment Variables",
+      "type": "string",
+      "advanced": true,
+      "multiline": true,
+      "default": "",
+      "description": "Environment variables to substitute in initial_command."
     }
   ],
   "commands": [
     {
       "name": "Configure OCI LXC options",
-      "script": "oci-lxc-configuration.sh"
+      "script": "oci-lxc-configuration.py"
     }
   ]
 }

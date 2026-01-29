@@ -48,7 +48,7 @@ export class DockerComposeService {
     return /^[A-Za-z0-9+/]+={0,2}$/.test(s);
   }
 
-  private extractVarRefsFromString(value: string): { vars: string[]; defaults: Record<string, string>; required: string[] } {
+  public extractVarRefsFromString(value: string): { vars: string[]; defaults: Record<string, string>; required: string[] } {
     const vars = new Set<string>();
     const defaults: Record<string, string> = {};
     const required = new Set<string>();
@@ -759,5 +759,101 @@ export class DockerComposeService {
     }
 
     return Array.from(required).sort();
+  }
+
+  public getEffectiveServiceEnvironment(
+    serviceConfig: Record<string, unknown>,
+    parsedData: ParsedComposeData,
+    serviceName: string,
+    envFileContent: string
+  ): Map<string, string> {
+    const effectiveEnvs = new Map<string, string>();
+    // Parse env file content - handle both plain text and base64-encoded with metadata
+    const envVarsFromFile = this.parseEnvFile(envFileContent);
+
+    const allKnownVars = new Set([
+        ...this.extractServiceEnvironmentVariables(serviceConfig),
+        ...Object.keys(parsedData.serviceEnvironmentVariableDefaults?.[serviceName] ?? {})
+    ]);
+
+    for (const key of allKnownVars) {
+        // Priority 1: Value from .env file
+        if (envVarsFromFile.has(key)) {
+            effectiveEnvs.set(key, envVarsFromFile.get(key)!);
+            continue;
+        }
+
+        // Priority 2: Default value from compose file (e.g., ${VAR:-default})
+        const defaultValue = parsedData.serviceEnvironmentVariableDefaults?.[serviceName]?.[key];
+        if (defaultValue !== undefined) {
+            effectiveEnvs.set(key, defaultValue);
+            continue;
+        }
+
+        // Priority 3: Hardcoded value in compose file (e.g., environment: { KEY: value })
+        const environment = serviceConfig['environment'];
+        if (environment) {
+            if (Array.isArray(environment)) {
+                for (const envEntry of environment) {
+                    if (typeof envEntry === 'string') {
+                        const equalIndex = envEntry.indexOf('=');
+                        if (equalIndex > 0) {
+                            const entryKey = envEntry.substring(0, equalIndex).trim();
+                            if (entryKey === key) {
+                                let value = envEntry.substring(equalIndex + 1).trim();
+
+                                // Resolve variable references in the value
+                                // If value is ${VAR} and VAR is not defined, resolve to empty string
+                                const varRefMatch = value.match(/^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$/);
+                                if (varRefMatch) {
+                                    const referencedVar = varRefMatch[1];
+                                    if (envVarsFromFile.has(referencedVar)) {
+                                        value = envVarsFromFile.get(referencedVar)!;
+                                    } else if (parsedData.serviceEnvironmentVariableDefaults?.[serviceName]?.[referencedVar] !== undefined) {
+                                        value = parsedData.serviceEnvironmentVariableDefaults[serviceName][referencedVar];
+                                    } else {
+                                        value = '';
+                                    }
+                                }
+
+                                effectiveEnvs.set(key, value);
+                                break;
+                            }
+                        }
+                    }
+                }
+            } else if (typeof environment === 'object') {
+                const envObj = environment as Record<string, unknown>;
+                if (key in envObj) {
+                    let value = String(envObj[key] ?? '');
+
+                    // Resolve variable references in the value
+                    const varRefMatch = value.match(/^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$/);
+                    if (varRefMatch) {
+                        const referencedVar = varRefMatch[1];
+                        if (envVarsFromFile.has(referencedVar)) {
+                            value = envVarsFromFile.get(referencedVar)!;
+                        } else if (parsedData.serviceEnvironmentVariableDefaults?.[serviceName]?.[referencedVar] !== undefined) {
+                            value = parsedData.serviceEnvironmentVariableDefaults[serviceName][referencedVar];
+                        } else {
+                            value = '';
+                        }
+                    }
+
+                    effectiveEnvs.set(key, value);
+                }
+            }
+        }
+    }
+
+    // Handle variables referenced in any part of the service but not defined
+    const referencedVars = this.extractVarRefsFromString(JSON.stringify(serviceConfig)).vars;
+    for(const key of referencedVars) {
+        if (!effectiveEnvs.has(key)) {
+            effectiveEnvs.set(key, '');
+        }
+    }
+
+    return effectiveEnvs;
   }
 }
